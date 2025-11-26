@@ -1,0 +1,22 @@
+name = "Mettapedia"
+version = "0.1.0"
+defaultTargets = ["Mettapedia"]
+
+[[lean_lib]]
+name = "Mettapedia"
+
+[[lean_exe]]
+name = "mettapedia"
+root = "Main"
+
+# LeanHammer dependency (MUST come before mathlib to avoid recompiling mathlib)
+[[require]]
+name = "Hammer"
+git = "https://github.com/JOSHCLUNE/LeanHammer"
+rev = "v4.25.0"
+
+# Mathlib dependency (matching LeanHammer version)
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.25.0"
