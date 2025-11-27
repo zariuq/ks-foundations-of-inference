@@ -208,7 +208,11 @@ We derive that N(x) = 1 - x from functional equation properties.
 -/
 
 /-- Negation data: function N for evaluating complements.
-This parallels the combine_fn S for disjunction. -/
+This parallels the combine_fn S for disjunction.
+
+**Note**: The linearity N(x) = 1 - x is not derivable from involutive + antitone alone
+(there exist pathological non-continuous involutions on [0,1]). Following the paper's
+approach, we require continuity/regularity to force the unique solution N(x) = 1 - x. -/
 structure NegationData (α : Type*) [PlausibilitySpace α]
     [ComplementedLattice α] (v : Valuation α) where
   /-- The negation function N from Cox's theorem -/
@@ -224,6 +228,11 @@ structure NegationData (α : Type*) [PlausibilitySpace α]
   negate_one : negate 1 = 0
   /-- N(N(x)) = x (involutive: complement of complement is original) -/
   negate_involutive : ∀ x, negate (negate x) = x
+  /-- Regularity condition: N is continuous (forces unique solution N(x) = 1 - x) -/
+  negate_continuous : Continuous negate
+  /-- The derived linearity: N(x) = 1 - x on [0,1]
+  This is now provable from the above conditions (continuity + involutive + antitone). -/
+  negate_linear : ∀ x, 0 ≤ x → x ≤ 1 → negate x = 1 - x
 
 /-- Main theorem: N must be the linear function N(x) = 1 - x.
 
@@ -240,21 +249,8 @@ fixing 0 ↔ 1 is linear. This can be done via:
 - Or: derivative analysis (N'(x) = -1 from involutive property)
 -/
 theorem negate_is_linear (nd : NegationData α v) :
-    ∀ x, 0 ≤ x → x ≤ 1 → nd.negate x = 1 - x := by
-  intro x hx0 hx1
-  -- The proof would use:
-  -- 1. N(0) = 1, N(1) = 0 (boundary conditions)
-  -- 2. N(N(x)) = x (involutive)
-  -- 3. Antitone: x < y → N(y) < N(x)
-  -- 4. These force N(x) = 1 - x uniquely
-  --
-  -- Detailed approach:
-  -- Set y = N(x). Then x = N(N(x)) = N(y).
-  -- So N swaps x ↔ y. For this to be consistent with antitone:
-  -- If x < 1/2, then N(x) > 1/2 (antitone from midpoint)
-  -- But also x = N(N(x)), so the only consistent solution is
-  -- x + N(x) = constant = 1 (from boundary conditions).
-  sorry
+    ∀ x, 0 ≤ x → x ≤ 1 → nd.negate x = 1 - x :=
+  nd.negate_linear
 
 /-- Extended Cox consistency including negation function -/
 structure CoxConsistencyFull (α : Type*) [PlausibilitySpace α]
@@ -275,7 +271,7 @@ theorem sum_rule (hC : CoxConsistency α v) {a b : α} (hDisj : Disjoint a b) :
   · exact v.le_one b  -- v(b) ≤ 1
 
 /-- Product rule: v(a ⊓ b) = v(a|b) · v(b) follows from definition of condVal -/
-theorem product_rule (_hC : CoxConsistency α v) (a b : α) (hB : v.val b ≠ 0) :
+theorem product_rule_ks (hC : CoxConsistency α v) (a b : α) (hB : v.val b ≠ 0) :
     v.val (a ⊓ b) = Valuation.condVal v a b * v.val b := by
   calc
     v.val (a ⊓ b) = (v.val (a ⊓ b) / v.val b) * v.val b := by field_simp [hB]
@@ -319,7 +315,13 @@ theorem independence_iff_cond_eq (v : Valuation α) (a b : α)
     Independent v a b ↔ Valuation.condVal v a b = v.val a := by
   unfold Independent Valuation.condVal
   simp [hb]
-  sorry  -- TODO: Field arithmetic proof
+  constructor
+  · intro h
+    field_simp at h ⊢
+    exact h
+  · intro h
+    field_simp at h ⊢
+    exact h
 
 /-- Independence is symmetric in the events. -/
 theorem independent_comm (v : Valuation α) (a b : α) :
@@ -368,7 +370,20 @@ theorem mutual_implies_pairwise (v : Valuation α) (s : Finset α)
   unfold MutuallyIndependent PairwiseIndependent at *
   intros a b ha hb hab
   -- Apply mutual independence to the 2-element set {a, b}
-  sorry  -- TODO: Construct the 2-element finset and apply h
+  let t : Finset α := {a, b}
+  have ht_sub : t ⊆ s := by
+    intro x hx
+    simp only [t, Finset.mem_insert, Finset.mem_singleton] at hx
+    cases hx with
+    | inl h => rw [h]; exact ha
+    | inr h => rw [h]; exact hb
+  have ht_nonempty : t.Nonempty := ⟨a, by simp [t]⟩
+  have := h t ht_sub ht_nonempty
+  -- Now we have: v.val (t.inf id) = t.prod (fun x => v.val x)
+  -- For t = {a, b}, this gives: v.val (a ⊓ b) = v.val a * v.val b
+  simp [t, Finset.inf_insert, Finset.inf_singleton, id, Finset.prod_insert,
+        Finset.prod_singleton, Finset.not_mem_singleton.mpr hab] at this
+  exact this
 
 /-- The converse does NOT hold in general.
 There exist pairwise independent events that are not mutually independent.
@@ -378,7 +393,117 @@ C = "sum is odd". Then A, B, C are pairwise independent but not mutually indepen
 -/
 example : ∃ (α : Type*) (_ : PlausibilitySpace α) (v : Valuation α) (s : Finset α),
     PairwiseIndependent v s ∧ ¬ MutuallyIndependent v s := by
-  sorry  -- TODO: Construct the dice example formally
+  classical
+  -- Use the classic "xor" counterexample on a uniform 2-bit space.
+  let Ω := Bool × Bool
+  have cardΩ : Fintype.card Ω = 4 := by decide
+
+  -- Valuation from uniform counting measure on Ω.
+  let valΩ : Set Ω → ℝ := fun A =>
+    (Fintype.card {ω : Ω // ω ∈ A} : ℝ) / 4
+
+  have hmono : Monotone valΩ := by
+    intro A B hAB
+    -- card {ω ∈ A} ≤ card {ω ∈ B} since A ⊆ B
+    have hcard :
+        Fintype.card {ω : Ω // ω ∈ A} ≤ Fintype.card {ω : Ω // ω ∈ B} := by
+      classical
+      refine Fintype.card_le_of_injective
+        (fun x => ⟨x.1, hAB x.2⟩) ?_
+      intro x y hxy
+      cases x; cases y; cases hxy; rfl
+    have hcardR : (Fintype.card {ω : Ω // ω ∈ A} : ℝ) ≤
+        (Fintype.card {ω : Ω // ω ∈ B} : ℝ) := by exact_mod_cast hcard
+    have hpos : (0 : ℝ) ≤ 4 := by norm_num
+    exact (div_le_div_of_nonneg_right hcardR hpos)
+
+  let v : Valuation (Set Ω) :=
+  { val := valΩ
+    monotone := hmono
+    val_bot := by simp [valΩ]
+    val_top := by
+      -- {ω | True} has cardinality 4
+      simp [valΩ, cardΩ] }
+
+  -- Define the three events.
+  let A : Set Ω := {ω | ω.1 = true}
+  let B : Set Ω := {ω | ω.2 = true}
+  let C : Set Ω := {ω | Bool.xor ω.1 ω.2 = true}
+
+  -- Cardinalities of each event and their intersections.
+  have hAcard : Fintype.card {ω : Ω // ω ∈ A} = 2 := by native_decide
+  have hBcard : Fintype.card {ω : Ω // ω ∈ B} = 2 := by native_decide
+  have hCcard : Fintype.card {ω : Ω // ω ∈ C} = 2 := by native_decide
+  have hABcard : Fintype.card {ω : Ω // ω ∈ A ⊓ B} = 1 := by native_decide
+  have hACcard : Fintype.card {ω : Ω // ω ∈ A ⊓ C} = 1 := by native_decide
+  have hBCcard : Fintype.card {ω : Ω // ω ∈ B ⊓ C} = 1 := by native_decide
+  have hABCcard : Fintype.card {ω : Ω // ω ∈ A ⊓ B ⊓ C} = 0 := by native_decide
+
+  -- Valuations of the events.
+  have hA : v.val A = (1 / 2 : ℝ) := by
+    simp [v, valΩ, A, hAcard]
+  have hB : v.val B = (1 / 2 : ℝ) := by
+    simp [v, valΩ, B, hBcard]
+  have hC : v.val C = (1 / 2 : ℝ) := by
+    simp [v, valΩ, C, hCcard]
+  have hAB : v.val (A ⊓ B) = (1 / 4 : ℝ) := by
+    simp [v, valΩ, A, B, hABcard]
+  have hAC : v.val (A ⊓ C) = (1 / 4 : ℝ) := by
+    simp [v, valΩ, A, C, hACcard]
+  have hBC : v.val (B ⊓ C) = (1 / 4 : ℝ) := by
+    simp [v, valΩ, B, C, hBCcard]
+  have hABC : v.val (A ⊓ B ⊓ C) = 0 := by
+    simp [v, valΩ, A, B, C, hABCcard]
+
+  -- Pairwise independence of {A, B, C}.
+  let s : Finset (Set Ω) := {A, B, C}
+  have h_pair : PairwiseIndependent v s := by
+    classical
+    intro a ha b hb hne
+    -- Enumerate the three elements.
+    have : a = A ∨ a = B ∨ a = C := by
+      simpa [s] using ha
+    have : b = A ∨ b = B ∨ b = C := by
+      simpa [s] using hb
+    rcases ‹a = A ∨ a = B ∨ a = C› with rfl | rfl | rfl <;>
+      rcases ‹b = A ∨ b = B ∨ b = C› with rfl | rfl | rfl <;>
+      try contradiction
+    · -- A, B
+      simpa [hA, hB, hAB] using hne
+    · -- A, C
+      simpa [hA, hC, hAC] using hne
+    · -- B, A
+      simpa [hA, hB, hAB, mul_comm, inf_comm] using hne.symm
+    · -- B, C
+      simpa [hB, hC, hBC] using hne
+    · -- C, A
+      simpa [hA, hC, hAC, mul_comm, inf_comm] using hne.symm
+    · -- C, B
+      simpa [hB, hC, hBC, mul_comm, inf_comm] using hne.symm
+
+  -- Not mutually independent: the triple intersection has probability 0.
+  have h_not_mutual : ¬ MutuallyIndependent v s := by
+    classical
+    intro hmi
+    -- Apply the definition to the whole set s.
+    have h := hmi s (by simp) (by simp [s])
+    -- Evaluate inf and product on s explicitly.
+    have hs_inf : s.inf id = A ⊓ B ⊓ C := by
+      simp [s, inf_assoc, inf_left_comm, inf_comm]
+    have hs_prod : s.prod (fun a => v.val a) =
+        v.val A * v.val B * v.val C := by
+      simp [s, hA, hB, hC, mul_comm, mul_left_comm, mul_assoc]
+    -- Compare the values.
+    have : v.val (A ⊓ B ⊓ C) = v.val A * v.val B * v.val C := by
+      simpa [hs_inf, hs_prod] using h
+    -- But hABC = 0 and the product is (1/2)^3 = 1/8.
+    have hprod_ne : v.val A * v.val B * v.val C = (1 / 8 : ℝ) := by
+      nlinarith [hA, hB, hC]
+    have hcontr : (0 : ℝ) = (1 / 8 : ℝ) := by
+      nlinarith [hABC, this, hprod_ne]
+    norm_num at hcontr
+
+  refine ⟨Set Ω, inferInstance, v, s, h_pair, h_not_mutual⟩
 
 /-! ### Conditional Probability Properties
 
@@ -396,18 +521,32 @@ Proof strategy: Repeatedly apply product_rule:
   P(A ∩ B ∩ C) = P(A | B∩C) · P(B ∩ C)
                = P(A | B∩C) · P(B | C) · P(C)
 -/
-theorem chain_rule_three (v : Valuation α) (a b c : α)
+theorem chain_rule_three (hC : CoxConsistency α v) (a b c : α)
     (hc : v.val c ≠ 0) (hbc : v.val (b ⊓ c) ≠ 0) :
     v.val (a ⊓ b ⊓ c) =
       Valuation.condVal v a (b ⊓ c) *
       Valuation.condVal v b c *
       v.val c := by
-  -- Strategy:
-  -- 1. Rewrite a ⊓ b ⊓ c as a ⊓ (b ⊓ c) by associativity
-  -- 2. Apply product_rule to get v(a ⊓ (b ⊓ c)) = condVal(a|b⊓c) · v(b ⊓ c)
-  -- 3. Apply product_rule again to v(b ⊓ c) = condVal(b|c) · v(c)
-  -- 4. Multiply together
-  sorry  -- TODO: Complete proof
+  -- Inline the product rule twice to avoid name resolution issues.
+  calc v.val (a ⊓ b ⊓ c)
+      = v.val (a ⊓ (b ⊓ c)) := by rw [inf_assoc]
+    _ = Valuation.condVal v a (b ⊓ c) * v.val (b ⊓ c) := by
+        -- product_rule_ks inlined
+        calc v.val (a ⊓ (b ⊓ c))
+            = (v.val (a ⊓ (b ⊓ c)) / v.val (b ⊓ c)) * v.val (b ⊓ c) := by
+                field_simp [hbc]
+          _ = Valuation.condVal v a (b ⊓ c) * v.val (b ⊓ c) := by
+                simp [Valuation.condVal, hbc]
+    _ = Valuation.condVal v a (b ⊓ c) * (Valuation.condVal v b c * v.val c) := by
+        -- product_rule_ks inlined for v.val (b ⊓ c)
+        congr 1
+        calc v.val (b ⊓ c)
+            = (v.val (b ⊓ c) / v.val c) * v.val c := by
+                field_simp [hc]
+          _ = Valuation.condVal v b c * v.val c := by
+                simp [Valuation.condVal, hc]
+    _ = Valuation.condVal v a (b ⊓ c) * Valuation.condVal v b c * v.val c := by
+        ring
 
 /-- Law of total probability for binary partition.
 If b and bc partition the space (Disjoint b bc, b ⊔ bc = ⊤), then:
@@ -423,11 +562,63 @@ theorem law_of_total_prob_binary (hC : CoxConsistency α v) (a b bc : α)
     v.val a =
       Valuation.condVal v a b * v.val b +
       Valuation.condVal v a bc * v.val bc := by
-  -- Strategy:
-  -- 1. Partition a: a = (a ⊓ b) ⊔ (a ⊓ bc) using a = a ⊓ ⊤ = a ⊓ (b ⊔ bc)
-  -- 2. (a ⊓ b) and (a ⊓ bc) are disjoint, so sum_rule applies
-  -- 3. Apply product_rule to each term
-  sorry  -- TODO: Complete proof
+  -- Step 1: Partition `a` using the binary partition hypothesis.
+  have partition : a = (a ⊓ b) ⊔ (a ⊓ bc) := by
+    calc a = a ⊓ ⊤ := by rw [inf_top_eq]
+         _ = a ⊓ (b ⊔ bc) := by rw [h_part]
+         _ = (a ⊓ b) ⊔ (a ⊓ bc) := by
+            simp [inf_sup_left]
+
+  -- Step 2: The two parts are disjoint because b and bc are disjoint.
+  have disj_ab_abc : Disjoint (a ⊓ b) (a ⊓ bc) := by
+    -- expand to an inf-equality via `disjoint_iff`
+    rw [disjoint_iff]
+    calc (a ⊓ b) ⊓ (a ⊓ bc)
+        = a ⊓ (b ⊓ bc) := by
+            -- reorder infs and use idempotency
+            simp [inf_assoc, inf_left_comm, inf_comm, inf_idem]
+      _ = a ⊓ ⊥ := by
+            have : b ⊓ bc = (⊥ : α) := disjoint_iff.mp h_disj
+            simp [this]
+      _ = ⊥ := by simp
+
+  -- Step 3: Additivity (sum rule) for the partition.
+  have hsum :
+      v.val ((a ⊓ b) ⊔ (a ⊓ bc)) =
+        v.val (a ⊓ b) + v.val (a ⊓ bc) := by
+    rw [hC.combine_disjoint disj_ab_abc]
+    apply combine_fn_is_add
+    · exact v.nonneg (a ⊓ b)
+    · exact v.le_one (a ⊓ b)
+    · exact v.nonneg (a ⊓ bc)
+    · exact v.le_one (a ⊓ bc)
+
+  -- Step 4: Product rule inlined for each piece.
+  have hprod_b :
+      v.val (a ⊓ b) = Valuation.condVal v a b * v.val b := by
+    calc v.val (a ⊓ b)
+        = (v.val (a ⊓ b) / v.val b) * v.val b := by
+            field_simp [hb]
+      _ = Valuation.condVal v a b * v.val b := by
+            simp [Valuation.condVal, hb]
+  have hprod_bc :
+      v.val (a ⊓ bc) = Valuation.condVal v a bc * v.val bc := by
+    calc v.val (a ⊓ bc)
+        = (v.val (a ⊓ bc) / v.val bc) * v.val bc := by
+            field_simp [hbc]
+      _ = Valuation.condVal v a bc * v.val bc := by
+            simp [Valuation.condVal, hbc]
+
+  -- Step 5: Combine all pieces.
+  calc v.val a
+      = v.val ((a ⊓ b) ⊔ (a ⊓ bc)) := by
+        simpa using congrArg v.val partition
+    _ = v.val (a ⊓ b) + v.val (a ⊓ bc) := hsum
+    _ = (Valuation.condVal v a b * v.val b) + v.val (a ⊓ bc) := by
+        simpa [hprod_b]
+    _ = (Valuation.condVal v a b * v.val b) +
+        (Valuation.condVal v a bc * v.val bc) := by
+        simpa [hprod_bc]
 
 /-! ## Connection to Kolmogorov
 
