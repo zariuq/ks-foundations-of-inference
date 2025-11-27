@@ -12,6 +12,7 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Tactic
 import Mathlib.MeasureTheory.Measure.Count
 import Mathlib.Data.Fintype.Prod
+import Hammer
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
@@ -438,13 +439,19 @@ example : ∃ (α : Type) (_ : PlausibilitySpace α) (v : Valuation α) (s : Fin
         apply Fintype.card_le_of_embedding
         exact Set.embeddingOfSubset a b hab
       val_bot := by
-        rw [Fintype.card_eq_zero]
-        · simp
-        · rw [← Set.isEmpty_coe_sort]; simp
+        -- GPT-5: Use change to make goal explicit about empty set
+        change ((Fintype.card (∅ : Set Ω) : ℝ) / 4) = 0
+        simp
       val_top := by
-        rw [Fintype.card_congr (Equiv.Set.univ (Bool × Bool))]
-        simp only [Fintype.card_prod, Fintype.card_bool]
-        norm_num }
+        -- GPT-5: Explicit proof that |univ| = 4
+        change ((Fintype.card (Set.univ : Set Ω) : ℝ) / 4) = 1
+        have hcard_univ : Fintype.card (Set.univ : Set Ω) = Fintype.card Ω := by
+          simpa using (Fintype.card_congr (Equiv.Set.univ (α := Ω))).symm
+        have hcard_Ω : Fintype.card Ω = 4 := by
+          simpa [Ω, Fintype.card_prod, Fintype.card_bool]
+        have hcard : Fintype.card (Set.univ : Set Ω) = 4 := by
+          simpa [hcard_Ω] using hcard_univ
+        simp [hcard] }
 
   -- Define events
   let A : α := {x | x.1 = true}      -- First coin heads: P(A) = 2/4 = 1/2
@@ -455,13 +462,14 @@ example : ∃ (α : Type) (_ : PlausibilitySpace α) (v : Valuation α) (s : Fin
   constructor
   · -- Prove PairwiseIndependent: v(X ⊓ Y) = v(X) · v(Y) for all distinct pairs
     intro s hs s' hs' h_distinct
-    -- TODO: Case analysis on which pair (s, s') from {A, B, C}
-    -- For each of the 6 ordered pairs (excluding equal):
-    -- - (A, B): A ∩ B = {(T,T)}, so |A∩B| = 1, thus P(A∩B) = 1/4 = (2/4)·(2/4)
-    -- - (A, C): A ∩ C = {(T,F)}, so |A∩C| = 1, thus P(A∩C) = 1/4 = (2/4)·(2/4)
-    -- - (B, C): B ∩ C = {(F,T)}, so |B∩C| = 1, thus P(B∩C) = 1/4 = (2/4)·(2/4)
-    -- (plus symmetric cases B,A), (C,A), (C,B))
-    -- Each case: compute Fintype.card explicitly and verify 1/4 = 1/2 · 1/2
+    unfold Independent
+    -- TODO: Hammer successfully performs case split into 6 pairs.
+    -- Need cardinality computation lemmas:
+    -- - |A| = |{x | x.1 = true}| = 2
+    -- - |B| = |{x | x.2 = true}| = 2
+    -- - |C| = |{x | x.1 ≠ x.2}| = 2
+    -- - |A ∩ B| = 1, |A ∩ C| = 1, |B ∩ C| = 1
+    -- Then arithmetic shows 1/4 = (2/4)·(2/4) = 1/2 · 1/2
     sorry
   · -- Prove ¬ MutuallyIndependent
     intro h_mutual
