@@ -57,6 +57,73 @@ noncomputable def condVal (a b : α) : ℝ :=
 
 end Valuation
 
+/-- Notation for valuation: 𝕍[v](a) means v.val a -/
+scoped notation "𝕍[" v "](" a ")" => Valuation.val v a
+
+/-- Notation for conditional valuation: 𝕍[v](a | b) means v.condVal a b -/
+scoped notation "𝕍[" v "](" a " | " b ")" => Valuation.condVal v a b
+
+/-! ### Boolean cardinality lemmas for the XOR example -/
+
+@[simp] lemma card_A : Fintype.card {x : Bool × Bool | x.1 = true} = 2 := by
+  decide
+
+@[simp] lemma card_B : Fintype.card {x : Bool × Bool | x.2 = true} = 2 := by
+  decide
+
+@[simp] lemma card_C : Fintype.card {x : Bool × Bool | x.1 ≠ x.2} = 2 := by
+  decide
+
+@[simp] lemma card_A_inter_B :
+    Fintype.card {x : Bool × Bool | x.1 = true ∧ x.2 = true} = 1 := by
+  decide
+
+@[simp] lemma card_A_inter_C :
+    Fintype.card {x : Bool × Bool | x.1 = true ∧ x.1 ≠ x.2} = 1 := by
+  decide
+
+@[simp] lemma card_B_inter_C :
+    Fintype.card {x : Bool × Bool | x.2 = true ∧ x.1 ≠ x.2} = 1 := by
+  decide
+
+@[simp] lemma card_A_inter_B_inter_C :
+    Fintype.card {x : Bool × Bool | x.1 = true ∧ x.2 = true ∧ x.1 ≠ x.2} = 0 := by
+  decide
+
+-- Lemmas for complement cardinality (C = {x | x.1 ≠ x.2} is complement of {x | x.1 = x.2})
+@[simp] lemma card_eq : Fintype.card {x : Bool × Bool | x.1 = x.2} = 2 := by decide
+
+-- Helper: set intersection equals set-builder with conjunction
+lemma set_inter_setOf {α : Type*} (p q : α → Prop) :
+    {x | p x} ∩ {x | q x} = {x | p x ∧ q x} := by ext; simp [Set.mem_inter_iff]
+
+-- Cardinality lemmas for set intersections (these match the goal forms)
+@[simp] lemma card_setOf_fst_true :
+    Fintype.card {x : Bool × Bool | x.1 = true} = 2 := by decide
+
+@[simp] lemma card_setOf_snd_true :
+    Fintype.card {x : Bool × Bool | x.2 = true} = 2 := by decide
+
+@[simp] lemma card_setOf_ne :
+    Fintype.card {x : Bool × Bool | x.1 ≠ x.2} = 2 := by decide
+
+@[simp] lemma card_setOf_not_eq :
+    Fintype.card {x : Bool × Bool | ¬x.1 = x.2} = 2 := by decide
+
+-- Cardinality of set intersections (for pairwise independence)
+@[simp] lemma card_inter_fst_snd :
+    Fintype.card ↑({x : Bool × Bool | x.1 = true} ∩ {x | x.2 = true} : Set (Bool × Bool)) = 1 := by decide
+
+@[simp] lemma card_inter_fst_ne :
+    Fintype.card ↑({x : Bool × Bool | x.1 = true} ∩ {x | x.1 ≠ x.2} : Set (Bool × Bool)) = 1 := by decide
+
+@[simp] lemma card_inter_snd_ne :
+    Fintype.card ↑({x : Bool × Bool | x.2 = true} ∩ {x | x.1 ≠ x.2} : Set (Bool × Bool)) = 1 := by decide
+
+-- Cardinality of triple intersection
+@[simp] lemma card_inter_fst_snd_ne :
+    Fintype.card ↑(({x : Bool × Bool | x.1 = true} ∩ {x | x.2 = true}) ∩ {x | x.1 ≠ x.2} : Set (Bool × Bool)) = 0 := by decide
+
 /-! ## Cox's Theorem Style Consistency Axioms
 
 Following Cox's theorem, we need:
@@ -276,7 +343,7 @@ theorem sum_rule (hC : CoxConsistency α v) {a b : α} (hDisj : Disjoint a b) :
   · exact v.le_one b  -- v(b) ≤ 1
 
 /-- Product rule: v(a ⊓ b) = v(a|b) · v(b) follows from definition of condVal -/
-theorem product_rule_ks (hC : CoxConsistency α v) (a b : α) (hB : v.val b ≠ 0) :
+theorem product_rule_ks (_hC : CoxConsistency α v) (a b : α) (hB : v.val b ≠ 0) :
     v.val (a ⊓ b) = Valuation.condVal v a b * v.val b := by
   calc
     v.val (a ⊓ b) = (v.val (a ⊓ b) / v.val b) * v.val b := by field_simp [hB]
@@ -310,6 +377,7 @@ individual plausibilities. -/
 def Independent (v : Valuation α) (a b : α) : Prop :=
   v.val (a ⊓ b) = v.val a * v.val b
 
+omit [ComplementedLattice α] in
 /-- Independence means conditional equals unconditional probability.
 This is the "no information" characterization.
 
@@ -328,6 +396,7 @@ theorem independence_iff_cond_eq (v : Valuation α) (a b : α)
     field_simp at h ⊢
     exact h
 
+omit [ComplementedLattice α] in
 /-- Independence is symmetric in the events. -/
 theorem independent_comm (v : Valuation α) (a b : α) :
     Independent v a b ↔ Independent v b a := by
@@ -335,6 +404,7 @@ theorem independent_comm (v : Valuation α) (a b : α) :
   rw [inf_comm]
   ring_nf
 
+omit [ComplementedLattice α] in
 /-- If events are independent, then conditioning on one doesn't change
 the probability of the other. -/
 theorem independent_cond_invariant (v : Valuation α) (a b : α)
@@ -368,6 +438,7 @@ def MutuallyIndependent (v : Valuation α) (s : Finset α) : Prop :=
   ∀ t : Finset α, t ⊆ s → t.Nonempty →
     v.val (t.inf id) = t.prod (fun a => v.val a)
 
+omit [ComplementedLattice α] in
 /-- Mutual independence implies pairwise independence. -/
 theorem mutual_implies_pairwise (v : Valuation α) (s : Finset α)
     (h : MutuallyIndependent v s) :
@@ -387,7 +458,7 @@ theorem mutual_implies_pairwise (v : Valuation α) (s : Finset α)
   -- Now we have: v.val (t.inf id) = t.prod (fun x => v.val x)
   -- For t = {a, b}, this gives: v.val (a ⊓ b) = v.val a * v.val b
   simp [t, Finset.inf_insert, Finset.inf_singleton, id, Finset.prod_insert,
-        Finset.prod_singleton, Finset.not_mem_singleton.mpr hab] at this
+        Finset.prod_singleton, Finset.notMem_singleton.mpr hab] at this
   exact this
 
 /-! ## Counterexample: Pairwise ≠ Mutual Independence
@@ -417,68 +488,215 @@ def valuationFromProbabilityMeasure {Ω : Type*} [MeasurableSpace Ω]
   val_bot := by simp
   val_top := by simp [measure_univ]
 
+/-! ### XOR Counterexample Components (Module Level)
+
+Define the XOR counterexample at module level so `decide` works without local variable issues. -/
+
+/-- The XOR sample space: Bool × Bool (4 points) -/
+abbrev XorSpace := Bool × Bool
+
+/-- Event A: first coin is heads (use abbrev for transparency) -/
+abbrev xorEventA : Set XorSpace := {x | x.1 = true}
+/-- Event B: second coin is heads -/
+abbrev xorEventB : Set XorSpace := {x | x.2 = true}
+/-- Event C: coins disagree (XOR) -/
+abbrev xorEventC : Set XorSpace := {x | x.1 ≠ x.2}
+
+/-- Uniform valuation on Bool × Bool: P(S) = |S|/4 -/
+noncomputable def xorValuation : Valuation (Set XorSpace) where
+  val s := (Fintype.card s : ℝ) / 4
+  monotone := by
+    intro a b hab
+    apply div_le_div_of_nonneg_right _ (by norm_num : (0 : ℝ) ≤ 4)
+    exact Nat.cast_le.mpr (Fintype.card_le_of_embedding (Set.embeddingOfSubset a b hab))
+  val_bot := by simp
+  val_top := by
+    -- Goal: (Fintype.card ⊤ : ℝ) / 4 = 1
+    -- Use Set.top_eq_univ + Fintype.card_setUniv (handles any Fintype instance!)
+    simp only [Set.top_eq_univ, Fintype.card_setUniv, Fintype.card_prod, Fintype.card_bool]
+    norm_num
+
+-- Helper to unfold xorValuation.val
+@[simp] lemma xorValuation_val_eq (s : Set XorSpace) :
+    xorValuation.val s = (Fintype.card s : ℝ) / 4 := rfl
+
+-- Cardinality facts in SUBTYPE form (for single events after simp)
+-- Goals become: Fintype.card { x // predicate }
+@[simp] lemma card_subtype_fst_true :
+    Fintype.card { x : XorSpace // x.1 = true } = 2 := by native_decide
+@[simp] lemma card_subtype_snd_true :
+    Fintype.card { x : XorSpace // x.2 = true } = 2 := by native_decide
+@[simp] lemma card_subtype_fst_eq_snd :
+    Fintype.card { x : XorSpace // x.1 = x.2 } = 2 := by native_decide
+-- For xorEventC = {x | x.1 ≠ x.2}, goal becomes 4 - Fintype.card{x.1 = x.2}
+@[simp] lemma card_complement :
+    (4 : ℕ) - Fintype.card { x : XorSpace // x.1 = x.2 } = 2 := by native_decide
+
+-- Cardinality facts in FINSET.FILTER form (for intersections after simp)
+@[simp] lemma card_filter_AB :
+    (Finset.filter (Membership.mem (xorEventA ∩ xorEventB)) Finset.univ).card = 1 := by native_decide
+@[simp] lemma card_filter_AC :
+    (Finset.filter (Membership.mem (xorEventA ∩ xorEventC)) Finset.univ).card = 1 := by native_decide
+@[simp] lemma card_filter_BC :
+    (Finset.filter (Membership.mem (xorEventB ∩ xorEventC)) Finset.univ).card = 1 := by native_decide
+@[simp] lemma card_filter_ABC :
+    (Finset.filter (Membership.mem ((xorEventA ∩ xorEventB) ∩ xorEventC)) Finset.univ).card = 0 := by native_decide
+@[simp] lemma card_filter_A :
+    (Finset.filter (Membership.mem xorEventA) Finset.univ).card = 2 := by native_decide
+@[simp] lemma card_filter_B :
+    (Finset.filter (Membership.mem xorEventB) Finset.univ).card = 2 := by native_decide
+@[simp] lemma card_filter_C :
+    (Finset.filter (Membership.mem xorEventC) Finset.univ).card = 2 := by native_decide
+
+/-! ### The "Gemini Idiom" for Fintype Cardinality
+
+**Problem:** Computing `Fintype.card {x : α | P x}` often fails with `decide` or `native_decide`
+due to instance mismatch between `Classical.propDecidable` and `Set.decidableSetOf`.
+
+**Solution (discovered with Gemini's help):**
+```
+rw [Fintype.card_subtype]; simp [eventDef]; decide
+```
+
+**Why it works:**
+1. `Fintype.card_subtype` converts Type-cardinality to Finset-filter cardinality:
+   `Fintype.card {x // P x} = (Finset.univ.filter P).card`
+2. `simp [eventDef]` unfolds the event definition to a decidable predicate
+3. `decide` works on Finsets because they use computational decidability
+
+**When to use:** Any `Fintype.card` goal on a subtype of a finite type where direct
+computation fails. This is the standard pattern for discrete probability cardinalities.
+-/
+
+@[simp] lemma card_xorEventA [Fintype xorEventA] : Fintype.card xorEventA = 2 := by
+  rw [Fintype.card_subtype]; simp [xorEventA]; decide
+
+@[simp] lemma card_xorEventB [Fintype xorEventB] : Fintype.card xorEventB = 2 := by
+  rw [Fintype.card_subtype]; simp [xorEventB]; decide
+
+@[simp] lemma card_xorEventC [Fintype xorEventC] : Fintype.card xorEventC = 2 := by
+  rw [Fintype.card_subtype]; simp [xorEventC]; decide
+
+@[simp] lemma card_xorEventAB [Fintype (xorEventA ∩ xorEventB : Set XorSpace)] :
+    Fintype.card (xorEventA ∩ xorEventB : Set XorSpace) = 1 := by
+  rw [Fintype.card_subtype]; simp [xorEventA, xorEventB]; decide
+
+@[simp] lemma card_xorEventAC [Fintype (xorEventA ∩ xorEventC : Set XorSpace)] :
+    Fintype.card (xorEventA ∩ xorEventC : Set XorSpace) = 1 := by
+  rw [Fintype.card_subtype]; simp [xorEventA, xorEventC]; decide
+
+@[simp] lemma card_xorEventBC [Fintype (xorEventB ∩ xorEventC : Set XorSpace)] :
+    Fintype.card (xorEventB ∩ xorEventC : Set XorSpace) = 1 := by
+  rw [Fintype.card_subtype]; simp [xorEventB, xorEventC]; decide
+
+@[simp] lemma card_xorEventABC [Fintype ((xorEventA ∩ xorEventB) ∩ xorEventC : Set XorSpace)] :
+    Fintype.card ((xorEventA ∩ xorEventB) ∩ xorEventC : Set XorSpace) = 0 := by
+  rw [Fintype.card_subtype]; simp [xorEventA, xorEventB, xorEventC]
+
+-- Valuation facts (now simp can apply the cardinality lemmas)
+lemma xorVal_A : xorValuation.val xorEventA = 1/2 := by
+  simp only [xorValuation_val_eq, card_xorEventA]; norm_num
+
+lemma xorVal_B : xorValuation.val xorEventB = 1/2 := by
+  simp only [xorValuation_val_eq, card_xorEventB]; norm_num
+
+lemma xorVal_C : xorValuation.val xorEventC = 1/2 := by
+  simp only [xorValuation_val_eq, card_xorEventC]; norm_num
+
+lemma xorVal_AB : xorValuation.val (xorEventA ∩ xorEventB) = 1/4 := by
+  simp only [xorValuation_val_eq, card_xorEventAB]; norm_num
+
+lemma xorVal_AC : xorValuation.val (xorEventA ∩ xorEventC) = 1/4 := by
+  simp only [xorValuation_val_eq, card_xorEventAC]; norm_num
+
+lemma xorVal_BC : xorValuation.val (xorEventB ∩ xorEventC) = 1/4 := by
+  simp only [xorValuation_val_eq, card_xorEventBC]; norm_num
+
+lemma xorVal_ABC : xorValuation.val ((xorEventA ∩ xorEventB) ∩ xorEventC) = 0 := by
+  simp only [xorValuation_val_eq, card_xorEventABC]; norm_num
+lemma xorVal_ABC' : xorValuation.val (xorEventA ⊓ (xorEventB ⊓ xorEventC)) = 0 := by
+  -- ⊓ = ∩ for sets, convert first
+  calc xorValuation.val (xorEventA ⊓ (xorEventB ⊓ xorEventC))
+      = xorValuation.val ((xorEventA ∩ xorEventB) ∩ xorEventC) := by
+          simp only [Set.inf_eq_inter, Set.inter_assoc]
+    _ = 0 := xorVal_ABC
+
+-- Distinctness facts (use ext with witnesses)
+lemma xorA_ne_B : xorEventA ≠ xorEventB := by
+  intro h
+  have hm : (true, false) ∈ xorEventA := rfl
+  rw [h] at hm
+  simp [xorEventB] at hm
+lemma xorA_ne_C : xorEventA ≠ xorEventC := by
+  intro h
+  have hm : (true, true) ∈ xorEventA := rfl
+  rw [h] at hm
+  simp [xorEventC] at hm
+lemma xorB_ne_C : xorEventB ≠ xorEventC := by
+  intro h
+  have hm : (true, true) ∈ xorEventB := rfl
+  rw [h] at hm
+  simp [xorEventC] at hm
+
+-- Pairwise independence for each pair
+-- Independent uses ⊓, but our lemmas use ∩. For sets, ⊓ = ∩.
+lemma xorIndep_AB : Independent xorValuation xorEventA xorEventB := by
+  unfold Independent
+  simp only [Set.inf_eq_inter, xorVal_AB, xorVal_A, xorVal_B]
+  norm_num
+
+lemma xorIndep_AC : Independent xorValuation xorEventA xorEventC := by
+  unfold Independent
+  simp only [Set.inf_eq_inter, xorVal_AC, xorVal_A, xorVal_C]
+  norm_num
+
+lemma xorIndep_BC : Independent xorValuation xorEventB xorEventC := by
+  unfold Independent
+  simp only [Set.inf_eq_inter, xorVal_BC, xorVal_B, xorVal_C]
+  norm_num
+
+-- Pairwise independence for the triple
+lemma xorPairwiseIndependent : PairwiseIndependent xorValuation {xorEventA, xorEventB, xorEventC} := by
+  intro a b ha hb h_distinct
+  simp only [Finset.mem_insert, Finset.mem_singleton] at ha hb
+  rcases ha with rfl | rfl | rfl <;> rcases hb with rfl | rfl | rfl
+  · exact (h_distinct rfl).elim
+  · exact xorIndep_AB
+  · exact xorIndep_AC
+  · rw [independent_comm]; exact xorIndep_AB
+  · exact (h_distinct rfl).elim
+  · exact xorIndep_BC
+  · rw [independent_comm]; exact xorIndep_AC
+  · rw [independent_comm]; exact xorIndep_BC
+  · exact (h_distinct rfl).elim
+
+-- Mutual independence fails
+lemma xorNotMutuallyIndependent : ¬ MutuallyIndependent xorValuation {xorEventA, xorEventB, xorEventC} := by
+  intro h_mutual
+  -- Apply to the full triple
+  have h := h_mutual {xorEventA, xorEventB, xorEventC}
+    (by simp) (by simp)
+  -- Simplify the inf and prod
+  simp only [Finset.inf_insert, Finset.inf_singleton, id] at h
+  -- Now h : xorValuation.val (xorEventA ⊓ (xorEventB ⊓ xorEventC)) = ∏ a ∈ {xorEventA, xorEventB, xorEventC}, xorValuation.val a
+  rw [xorVal_ABC'] at h
+  -- Simplify the product to v(A) * v(B) * v(C)
+  simp only [Finset.prod_insert, Finset.mem_insert, Finset.mem_singleton,
+    xorA_ne_B, xorA_ne_C, xorB_ne_C, not_false_eq_true, not_or, and_self,
+    Finset.prod_singleton, xorVal_A, xorVal_B, xorVal_C] at h
+  -- Now h says: 0 = 1/2 * 1/2 * 1/2 = 1/8, which is false
+  norm_num at h
+
+/-- The XOR counterexample shows pairwise independence does NOT imply mutual independence.
+
+This example uses Bool × Bool as sample space with uniform probability:
+- Events A (first=true), B (second=true), C (XOR) are pairwise independent
+- But P(A ∩ B ∩ C) = 0 ≠ 1/8 = P(A)·P(B)·P(C), so not mutually independent
+-/
 example : ∃ (α : Type) (_ : PlausibilitySpace α) (v : Valuation α) (s : Finset α),
-    PairwiseIndependent v s ∧ ¬ MutuallyIndependent v s := by
-  -- XOR counterexample using explicit finite counting
-  -- Sample space: Bool × Bool (four outcomes)
-  let Ω := Bool × Bool
-
-  -- Event lattice: all subsets of Ω
-  let α := Set Ω
-
-  -- All subsets of a finite type are finite
-  haveI : ∀ (s : Set Ω), Fintype s := fun s => Set.fintypeSubset (Set.univ : Set Ω) (by simp)
-
-  -- Uniform probability valuation: P(S) = |S|/4
-  letI v : Valuation α :=
-    { val := fun s => (Fintype.card s : ℝ) / 4
-      monotone := by
-        intro a b hab
-        apply div_le_div_of_nonneg_right _ (by norm_num : (0 : ℝ) ≤ 4)
-        apply Nat.cast_le.mpr
-        apply Fintype.card_le_of_embedding
-        exact Set.embeddingOfSubset a b hab
-      val_bot := by
-        -- GPT-5: Use change to make goal explicit about empty set
-        change ((Fintype.card (∅ : Set Ω) : ℝ) / 4) = 0
-        simp
-      val_top := by
-        -- GPT-5: Explicit proof that |univ| = 4
-        change ((Fintype.card (Set.univ : Set Ω) : ℝ) / 4) = 1
-        have hcard_univ : Fintype.card (Set.univ : Set Ω) = Fintype.card Ω := by
-          simpa using (Fintype.card_congr (Equiv.Set.univ (α := Ω))).symm
-        have hcard_Ω : Fintype.card Ω = 4 := by
-          simpa [Ω, Fintype.card_prod, Fintype.card_bool]
-        have hcard : Fintype.card (Set.univ : Set Ω) = 4 := by
-          simpa [hcard_Ω] using hcard_univ
-        simp [hcard] }
-
-  -- Define events
-  let A : α := {x | x.1 = true}      -- First coin heads: P(A) = 2/4 = 1/2
-  let B : α := {x | x.2 = true}      -- Second coin heads: P(B) = 2/4 = 1/2
-  let C : α := {x | x.1 ≠ x.2}       -- Coins disagree (XOR): P(C) = 2/4 = 1/2
-
-  use α, inferInstance, v, {A, B, C}
-  constructor
-  · -- Prove PairwiseIndependent: v(X ⊓ Y) = v(X) · v(Y) for all distinct pairs
-    intro s hs s' hs' h_distinct
-    unfold Independent
-    -- TODO: Hammer successfully performs case split into 6 pairs.
-    -- Need cardinality computation lemmas:
-    -- - |A| = |{x | x.1 = true}| = 2
-    -- - |B| = |{x | x.2 = true}| = 2
-    -- - |C| = |{x | x.1 ≠ x.2}| = 2
-    -- - |A ∩ B| = 1, |A ∩ C| = 1, |B ∩ C| = 1
-    -- Then arithmetic shows 1/4 = (2/4)·(2/4) = 1/2 · 1/2
-    sorry
-  · -- Prove ¬ MutuallyIndependent
-    intro h_mutual
-    -- TODO: Apply h_mutual to the triple {A, B, C} and derive contradiction
-    -- Key computation: A ∩ B ∩ C = {(T,T)} ∩ {(T,F), (F,T)} = ∅
-    -- So v(A ∩ B ∩ C) = |∅|/4 = 0/4 = 0
-    -- But v(A)·v(B)·v(C) = (2/4)·(2/4)·(2/4) = 8/64 = 1/8
-    -- Since 0 ≠ 1/8, we have a contradiction
-    sorry
+    PairwiseIndependent v s ∧ ¬ MutuallyIndependent v s :=
+  ⟨Set XorSpace, inferInstance, xorValuation, {xorEventA, xorEventB, xorEventC},
+   xorPairwiseIndependent, xorNotMutuallyIndependent⟩
 
 /-! ### Conditional Probability Properties
 
@@ -496,7 +714,7 @@ Proof strategy: Repeatedly apply product_rule:
   P(A ∩ B ∩ C) = P(A | B∩C) · P(B ∩ C)
                = P(A | B∩C) · P(B | C) · P(C)
 -/
-theorem chain_rule_three (hC : CoxConsistency α v) (a b c : α)
+theorem chain_rule_three (_hC : CoxConsistency α v) (a b c : α)
     (hc : v.val c ≠ 0) (hbc : v.val (b ⊓ c) ≠ 0) :
     v.val (a ⊓ b ⊓ c) =
       Valuation.condVal v a (b ⊓ c) *
@@ -551,7 +769,7 @@ theorem law_of_total_prob_binary (hC : CoxConsistency α v) (a b bc : α)
     calc (a ⊓ b) ⊓ (a ⊓ bc)
         = a ⊓ (b ⊓ bc) := by
             -- reorder infs and use idempotency
-            simp [inf_assoc, inf_left_comm, inf_comm, inf_idem]
+            simp [inf_left_comm, inf_comm]
       _ = a ⊓ ⊥ := by
             have : b ⊓ bc = (⊥ : α) := disjoint_iff.mp h_disj
             simp [this]
@@ -586,14 +804,11 @@ theorem law_of_total_prob_binary (hC : CoxConsistency α v) (a b bc : α)
 
   -- Step 5: Combine all pieces.
   calc v.val a
-      = v.val ((a ⊓ b) ⊔ (a ⊓ bc)) := by
-        simpa using congrArg v.val partition
+      = v.val ((a ⊓ b) ⊔ (a ⊓ bc)) := congrArg v.val partition
     _ = v.val (a ⊓ b) + v.val (a ⊓ bc) := hsum
-    _ = (Valuation.condVal v a b * v.val b) + v.val (a ⊓ bc) := by
-        simpa [hprod_b]
+    _ = (Valuation.condVal v a b * v.val b) + v.val (a ⊓ bc) := by rw [hprod_b]
     _ = (Valuation.condVal v a b * v.val b) +
-        (Valuation.condVal v a bc * v.val bc) := by
-        simpa [hprod_bc]
+        (Valuation.condVal v a bc * v.val bc) := by rw [hprod_bc]
 
 /-! ## Connection to Kolmogorov
 
