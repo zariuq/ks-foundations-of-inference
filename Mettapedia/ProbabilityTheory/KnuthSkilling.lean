@@ -364,40 +364,50 @@ theorem regrade_add_rat (W : WeakRegraduation combine_fn)
     _ = W.regrade r + W.regrade s := W.combine_eq_add r s
 
 /-- Specialized version for unit fractions: combine_fn (k/n) (1/n) = (k+1)/n in reals.
-This avoids the troublesome type coercions by working directly with naturals. -/
+Following GPT-5.1's advice: prove bounds in ℚ first, then cast to ℝ via Rat.cast_nonneg. -/
 lemma combine_fn_unit_fracs {combine_fn : ℝ → ℝ → ℝ}
     (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) →
                       (r : ℝ) + (s : ℝ) ≤ 1 → combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
     (k n : ℕ) (hn : 0 < n) (hk : k + 1 ≤ n) :
     combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) = ((k : ℝ) + 1) / (n : ℝ) := by
-  have hn_pos : (n : ℝ) > 0 := Nat.cast_pos.mpr hn
   have hn_q_ne0 : (n : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.pos_iff_ne_zero.mp hn)
-  -- Use h_combine_rat with (k : ℚ) / n and (1 : ℚ) / n
-  have hk_cast : (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := rat_div_cast_eq k n hn_q_ne0
-  have h1_cast : ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
-  -- Bounds using norm_cast to handle coercion automatically
   have hn_q_pos : (0 : ℚ) < n := by exact_mod_cast hn
-  have hkr : 0 ≤ (((k : ℚ) / n) : ℝ) := by
-    have h : (0 : ℚ) ≤ (k : ℚ) / n := by positivity
-    exact_mod_cast h
-  have h1r : 0 ≤ ((((1 : ℚ) / n)) : ℝ) := by
-    have h : (0 : ℚ) ≤ (1 : ℚ) / n := by positivity
-    exact_mod_cast h
-  have hsr : (((k : ℚ) / n) : ℝ) + ((((1 : ℚ) / n)) : ℝ) ≤ 1 := by
-    have h_q : (k : ℚ) / n + (1 : ℚ) / n ≤ 1 := by
-      rw [← add_div, div_le_one hn_q_pos]
-      have hkn : (k : ℚ) + 1 ≤ n := by exact_mod_cast hk
-      linarith
-    push_cast at h_q ⊢
-    convert h_q using 1
-    ring
-  have h := h_combine_rat ((k : ℚ) / n) ((1 : ℚ) / n) hkr h1r hsr
-  simp only [hk_cast, h1_cast] at h
-  have h_sum : ((k : ℚ) / n + (1 : ℚ) / n : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
-    simp only [Rat.cast_add, Rat.cast_div, Rat.cast_natCast, Rat.cast_one]
+
+  -- Define the rationals we'll feed into h_combine_rat
+  let r : ℚ := (k : ℚ) / n
+  let s : ℚ := (1 : ℚ) / n
+
+  -- Prove bounds in ℚ first (the easy part)
+  have hr_q : 0 ≤ r := by dsimp [r]; positivity
+  have hs_q : 0 ≤ s := by dsimp [s]; positivity
+  have hrs_q : r + s ≤ 1 := by
+    dsimp [r, s]
+    have hkn : (k : ℚ) + 1 ≤ n := by exact_mod_cast hk
+    rw [← add_div, div_le_one hn_q_pos]
+    linarith
+
+  -- Cast bounds to ℝ using Rat.cast_nonneg (the key insight from GPT-5.1!)
+  have hr : 0 ≤ (r : ℝ) := Rat.cast_nonneg.mpr hr_q
+  have hs : 0 ≤ (s : ℝ) := Rat.cast_nonneg.mpr hs_q
+  have hrs : (r : ℝ) + (s : ℝ) ≤ 1 := by
+    have hrs_real : ((r + s : ℚ) : ℝ) ≤ 1 := by exact_mod_cast hrs_q
+    simpa [Rat.cast_add] using hrs_real
+
+  -- Now apply h_combine_rat in its natural ℚ form
+  have h := h_combine_rat r s hr hs hrs
+
+  -- Cast equalities to convert between forms
+  have hk_cast : (r : ℝ) = (k : ℝ) / (n : ℝ) := by
+    dsimp [r]; simp [Rat.cast_div, Rat.cast_natCast]
+  have h1_cast : (s : ℝ) = (1 : ℝ) / (n : ℝ) := by
+    dsimp [s]; simp [Rat.cast_div, Rat.cast_one, Rat.cast_natCast]
+  have h_sum : ((r + s : ℚ) : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
+    dsimp [r, s]
+    simp [Rat.cast_add, Rat.cast_div, Rat.cast_natCast, Rat.cast_one]
     field_simp
-  rw [h_sum] at h
-  exact h
+
+  -- Put it all together
+  simpa [hk_cast, h1_cast, h_sum] using h
 
 /-- Helper: φ(1/n) = 1/n for positive n.
 
@@ -423,51 +433,46 @@ theorem regrade_unit_frac (W : WeakRegraduation combine_fn)
     | succ k ih =>
       have hk' : k ≤ n := Nat.le_of_succ_le hk
       have ih' := ih hk'
-      -- Cast equalities for cleaner reasoning
+      -- Use combine_fn_unit_fracs which handles all coercion issues internally
+      have h_combine' : combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) =
+          ((k : ℝ) + 1) / (n : ℝ) := combine_fn_unit_fracs h_combine_rat k n hn hk
+      -- Cast equalities for linking
       have hk_cast_eq : (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := rat_div_cast_eq k n hn_q_ne0
       have h1_cast_eq : ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
       have hk1_cast_eq : ((((k + 1 : ℕ) : ℚ) / n) : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
         rw [rat_div_cast_eq (k + 1) n hn_q_ne0]; simp only [Nat.cast_add, Nat.cast_one]
-      -- Bounds for h_combine_rat
-      have hk_ge0 : 0 ≤ (k : ℝ) / (n : ℝ) := by positivity
-      have h1n_ge0 : 0 ≤ (1 : ℝ) / (n : ℝ) := by positivity
-      have h_sum_le1 : (k : ℝ) / (n : ℝ) + (1 : ℝ) / (n : ℝ) ≤ 1 := by
-        rw [← add_div, div_le_one hn_pos]
-        have : (k : ℝ) + 1 ≤ n := by exact_mod_cast hk
-        linarith
-      -- Use h_combine_rat to show combine_fn (k/n) (1/n) = (k+1)/n
-      have h_combine : combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) =
-          (((k : ℚ) / n + (1 : ℚ) / n : ℚ) : ℝ) := by
-        -- Prove bounds directly in the form h_combine_rat expects
-        have hkr : 0 ≤ (((k : ℚ) / n) : ℝ) := by simp only [hk_cast_eq]; positivity
-        have h1r : 0 ≤ ((((1 : ℚ) / n)) : ℝ) := by simp only [h1_cast_eq]; positivity
-        have hsr : (((k : ℚ) / n) : ℝ) + ((((1 : ℚ) / n)) : ℝ) ≤ 1 := by
-          simp only [hk_cast_eq, h1_cast_eq, ← add_div, div_le_one hn_pos]
-          have : (k : ℝ) + 1 ≤ n := by exact_mod_cast hk
-          linarith
-        have := h_combine_rat ((k : ℚ) / n) ((1 : ℚ) / n) hkr h1r hsr
-        simp only [hk_cast_eq, h1_cast_eq] at this
-        exact this
-      -- Simplify (k/n + 1/n : ℚ) = ((k+1)/n : ℚ)
-      have h_sum_eq : ((k : ℚ) / n + (1 : ℚ) / n : ℚ) = ((k + 1 : ℕ) : ℚ) / n := by
-        field_simp; simp only [Nat.cast_add, Nat.cast_one]
-      rw [h_sum_eq] at h_combine
-      -- Use W.combine_eq_add to get φ((k+1)/n) = φ(k/n) + φ(1/n)
-      have h_add : W.regrade ((((k + 1 : ℕ) : ℚ) / n) : ℝ) =
-          W.regrade (((k : ℚ) / n) : ℝ) + W.regrade ((((1 : ℚ) / n)) : ℝ) := by
-        conv_lhs => rw [hk1_cast_eq, ← h_combine]
-        rw [hk_cast_eq, h1_cast_eq]
-        exact W.combine_eq_add _ _
-      rw [h_add, ih']
-      simp only [Nat.cast_add, Nat.cast_one]; ring
+      -- Goal: W.regrade (((k+1)/n : ℚ) : ℝ) = (k+1) * W.regrade ((1/n : ℚ) : ℝ)
+      -- Lean normalizes both sides to real-division form
+      calc W.regrade ((((k + 1 : ℕ) : ℚ) / n) : ℝ)
+          = W.regrade (((k : ℝ) + 1) / (n : ℝ)) := by rw [hk1_cast_eq]
+        _ = W.regrade (combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ))) := by rw [← h_combine']
+        _ = W.regrade ((k : ℝ) / (n : ℝ)) + W.regrade ((1 : ℝ) / (n : ℝ)) := W.combine_eq_add _ _
+        _ = W.regrade (((k : ℚ) / n) : ℝ) + W.regrade ((((1 : ℚ) / n)) : ℝ) := by
+              rw [← hk_cast_eq, ← h1_cast_eq]
+        _ = (k : ℝ) * W.regrade ((((1 : ℚ) / n)) : ℝ) + W.regrade ((((1 : ℚ) / n)) : ℝ) := by
+              rw [ih']
+        _ = ((k : ℝ) + 1) * W.regrade ((((1 : ℚ) / n)) : ℝ) := by ring
+        _ = ((k + 1 : ℕ) : ℝ) * W.regrade ((((1 : ℚ) / n)) : ℝ) := by
+              simp only [Nat.cast_add, Nat.cast_one]
   -- At k = n: φ(n/n) = φ(1) = 1, and φ(n/n) = n · φ(1/n)
   have h_at_n := h_mult n (le_refl n)
-  have h_nn : (((n : ℚ) / n) : ℝ) = 1 := by
-    rw [rat_div_cast_eq n n hn_q_ne0]
-    exact div_self hn_ne0
-  rw [h_nn, W.one] at h_at_n
-  -- 1 = n · φ(1/n), so φ(1/n) = 1/n
-  rw [rat_div_cast_eq 1 n hn_q_ne0] at h_at_n ⊢
+  -- h_at_n : W.regrade (((n : ℚ) / n) : ℝ) = (n : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ)
+  -- Note: Lean normalizes (((n : ℚ) / n) : ℝ) to (n : ℝ) / (n : ℝ), and similarly for 1/n
+  have h_nn : (n : ℝ) / (n : ℝ) = 1 := div_self hn_ne0
+  -- Use the cast equality to match h_mult's form
+  have h_nn' : (((n : ℚ) / n) : ℝ) = 1 := by
+    rw [rat_div_cast_eq n n hn_q_ne0]; exact h_nn
+  simp only [h_nn'] at h_at_n
+  rw [W.one] at h_at_n
+  -- h_at_n : 1 = (n : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ)
+  -- Goal: W.regrade (((1 : ℚ) / n) : ℝ) = (1 : ℝ) / (n : ℝ)
+  -- Use cast equality for 1/n
+  have h_1n_eq : (((1 : ℚ) / n) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
+  rw [h_1n_eq]
+  -- Goal: W.regrade ((1 : ℝ) / (n : ℝ)) = (1 : ℝ) / (n : ℝ)
+  -- From h_at_n: 1 = (n : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ)
+  simp only [h_1n_eq] at h_at_n
+  -- h_at_n: 1 = (n : ℝ) * W.regrade ((1 : ℝ) / (n : ℝ))
   field_simp at h_at_n ⊢
   linarith
 
@@ -514,34 +519,46 @@ theorem regrade_on_rat (W : WeakRegraduation combine_fn)
     | succ k ih =>
       have hk' : k ≤ n := Nat.le_of_succ_le hk
       have ih' := ih hk'
-      -- Use cast equality to get the right types
+      -- Cast equalities
       have hk_cast_eq : (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := rat_div_cast_eq k n hn_q_ne0
       have h1_cast_eq : ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
       have hk1_cast_eq : ((((k + 1 : ℕ) : ℚ) / n) : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
-        rw [rat_div_cast_eq (k + 1) n hn_q_ne0]
-        simp only [Nat.cast_add, Nat.cast_one]
-      -- Bounds for additivity (use suffices to ensure correct types)
-      have hk_ge0 : 0 ≤ (((k : ℚ) / n) : ℝ) := by
-        suffices 0 ≤ (k : ℝ) / (n : ℝ) by rwa [← hk_cast_eq] at this
-        positivity
-      have h1n_ge0 : 0 ≤ ((((1 : ℚ) / n)) : ℝ) := by
-        suffices 0 ≤ (1 : ℝ) / (n : ℝ) by rwa [← h1_cast_eq] at this
-        positivity
-      have h_sum_le1 : (((k : ℚ) / n) : ℝ) + ((((1 : ℚ) / n)) : ℝ) ≤ 1 := by
-        suffices (k : ℝ) / (n : ℝ) + (1 : ℝ) / (n : ℝ) ≤ 1 by
-          rwa [← hk_cast_eq, ← h1_cast_eq] at this
-        rw [← add_div, div_le_one hn_pos]
-        have : (k : ℝ) + 1 ≤ n := by exact_mod_cast hk
+        rw [rat_div_cast_eq (k + 1) n hn_q_ne0]; simp only [Nat.cast_add, Nat.cast_one]
+      -- GPT-5.1 pattern: prove bounds in ℚ first, then cast via Rat.cast_nonneg
+      let r : ℚ := (k : ℚ) / n
+      let s : ℚ := (1 : ℚ) / n
+      have hn_q_pos : (0 : ℚ) < n := by exact_mod_cast hn
+      have hr_q : 0 ≤ r := by dsimp [r]; positivity
+      have hs_q : 0 ≤ s := by dsimp [s]; positivity
+      have hrs_q : r + s ≤ 1 := by
+        dsimp [r, s]
+        rw [← add_div, div_le_one hn_q_pos]
+        have : (k : ℚ) + 1 ≤ n := by exact_mod_cast hk
         linarith
+      have hk_ge0 : 0 ≤ (r : ℝ) := Rat.cast_nonneg.mpr hr_q
+      have h1n_ge0 : 0 ≤ (s : ℝ) := Rat.cast_nonneg.mpr hs_q
+      have h_sum_le1 : (r : ℝ) + (s : ℝ) ≤ 1 := by
+        have hrs_real : ((r + s : ℚ) : ℝ) ≤ 1 := by exact_mod_cast hrs_q
+        simpa [Rat.cast_add] using hrs_real
       -- Apply additivity
-      have h_add := regrade_add_rat W h_combine_rat ((k : ℚ) / n) ((1 : ℚ) / n) hk_ge0 h1n_ge0 h_sum_le1
+      have h_add := regrade_add_rat W h_combine_rat r s hk_ge0 h1n_ge0 h_sum_le1
       -- Rewrite sum
-      have h_sum_eq : ((k : ℚ) / n + (1 : ℚ) / n : ℚ) = ((k + 1 : ℕ) : ℚ) / n := by
-        field_simp; simp only [Nat.cast_add, Nat.cast_one]
+      have h_sum_eq : (r + s : ℚ) = ((k + 1 : ℕ) : ℚ) / n := by
+        dsimp [r, s]; field_simp; simp only [Nat.cast_add, Nat.cast_one]
       rw [h_sum_eq] at h_add
-      rw [h_add, ih', h1_cast_eq, hk1_cast_eq]
-      field_simp
-      ring
+      -- Link r and s back to the goal form
+      have hr_eq : (r : ℝ) = (k : ℝ) / (n : ℝ) := by dsimp [r]; simp [Rat.cast_div, Rat.cast_natCast]
+      have hs_eq : (s : ℝ) = (1 : ℝ) / (n : ℝ) := by dsimp [s]; simp [Rat.cast_div, Rat.cast_one, Rat.cast_natCast]
+      -- h_add : W.regrade ↑((k+1)/n) = W.regrade r + W.regrade s (Lean normalizes both sides)
+      -- Goal : W.regrade (((k+1)/n : ℚ) : ℝ) = (k+1)/n (Lean normalizes LHS)
+      -- Use calc to bridge
+      calc W.regrade ((((k + 1 : ℕ) : ℚ) / n) : ℝ)
+          = W.regrade (((k : ℝ) + 1) / (n : ℝ)) := by rw [hk1_cast_eq]
+        _ = W.regrade (r : ℝ) + W.regrade (s : ℝ) := by
+              simp only [hk1_cast_eq, hr_eq, hs_eq] at h_add; exact h_add
+        _ = (k : ℝ) / (n : ℝ) + (1 : ℝ) / (n : ℝ) := by rw [← hk_cast_eq, ← h1_cast_eq, ih', h1_cast_eq]
+        _ = ((k : ℝ) + 1) / (n : ℝ) := by field_simp; ring
+        _ = ((k + 1 : ℕ) : ℝ) / (n : ℝ) := by simp only [Nat.cast_add, Nat.cast_one]
   -- Apply h_kn at k = p'
   have h_result := h_kn p' hp'_le_n
   -- Convert to the form we need
