@@ -363,6 +363,42 @@ theorem regrade_add_rat (W : WeakRegraduation combine_fn)
       = W.regrade (combine_fn (r : ℝ) (s : ℝ)) := by rw [h1]
     _ = W.regrade r + W.regrade s := W.combine_eq_add r s
 
+/-- Specialized version for unit fractions: combine_fn (k/n) (1/n) = (k+1)/n in reals.
+This avoids the troublesome type coercions by working directly with naturals. -/
+lemma combine_fn_unit_fracs {combine_fn : ℝ → ℝ → ℝ}
+    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) →
+                      (r : ℝ) + (s : ℝ) ≤ 1 → combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
+    (k n : ℕ) (hn : 0 < n) (hk : k + 1 ≤ n) :
+    combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) = ((k : ℝ) + 1) / (n : ℝ) := by
+  have hn_pos : (n : ℝ) > 0 := Nat.cast_pos.mpr hn
+  have hn_q_ne0 : (n : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.pos_iff_ne_zero.mp hn)
+  -- Use h_combine_rat with (k : ℚ) / n and (1 : ℚ) / n
+  have hk_cast : (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := rat_div_cast_eq k n hn_q_ne0
+  have h1_cast : ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
+  -- Bounds using norm_cast to handle coercion automatically
+  have hn_q_pos : (0 : ℚ) < n := by exact_mod_cast hn
+  have hkr : 0 ≤ (((k : ℚ) / n) : ℝ) := by
+    have h : (0 : ℚ) ≤ (k : ℚ) / n := by positivity
+    exact_mod_cast h
+  have h1r : 0 ≤ ((((1 : ℚ) / n)) : ℝ) := by
+    have h : (0 : ℚ) ≤ (1 : ℚ) / n := by positivity
+    exact_mod_cast h
+  have hsr : (((k : ℚ) / n) : ℝ) + ((((1 : ℚ) / n)) : ℝ) ≤ 1 := by
+    have h_q : (k : ℚ) / n + (1 : ℚ) / n ≤ 1 := by
+      rw [← add_div, div_le_one hn_q_pos]
+      have hkn : (k : ℚ) + 1 ≤ n := by exact_mod_cast hk
+      linarith
+    push_cast at h_q ⊢
+    convert h_q using 1
+    ring
+  have h := h_combine_rat ((k : ℚ) / n) ((1 : ℚ) / n) hkr h1r hsr
+  simp only [hk_cast, h1_cast] at h
+  have h_sum : ((k : ℚ) / n + (1 : ℚ) / n : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
+    simp only [Rat.cast_add, Rat.cast_div, Rat.cast_natCast, Rat.cast_one]
+    field_simp
+  rw [h_sum] at h
+  exact h
+
 /-- Helper: φ(1/n) = 1/n for positive n.
 
 Proof: n copies of 1/n sum to 1, and φ(1) = 1. By additivity (combine_eq_add + h_combine_rat),
@@ -402,17 +438,15 @@ theorem regrade_unit_frac (W : WeakRegraduation combine_fn)
       -- Use h_combine_rat to show combine_fn (k/n) (1/n) = (k+1)/n
       have h_combine : combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) =
           (((k : ℚ) / n + (1 : ℚ) / n : ℚ) : ℝ) := by
-        -- Create rational-form bounds using Eq.mpr with congrArg
-        have hkr : 0 ≤ (((k : ℚ) / n) : ℝ) :=
-          Eq.mpr (congrArg (fun x => 0 ≤ x) hk_cast_eq) hk_ge0
-        have h1r : 0 ≤ ((((1 : ℚ) / n)) : ℝ) :=
-          Eq.mpr (congrArg (fun x => 0 ≤ x) h1_cast_eq) h1n_ge0
+        -- Prove bounds directly in the form h_combine_rat expects
+        have hkr : 0 ≤ (((k : ℚ) / n) : ℝ) := by simp only [hk_cast_eq]; positivity
+        have h1r : 0 ≤ ((((1 : ℚ) / n)) : ℝ) := by simp only [h1_cast_eq]; positivity
         have hsr : (((k : ℚ) / n) : ℝ) + ((((1 : ℚ) / n)) : ℝ) ≤ 1 := by
-          have heq : (((k : ℚ) / n) : ℝ) + ((((1 : ℚ) / n)) : ℝ) =
-              (k : ℝ) / (n : ℝ) + (1 : ℝ) / (n : ℝ) := by rw [hk_cast_eq, h1_cast_eq]
-          exact Eq.mpr (congrArg (fun x => x ≤ 1) heq) h_sum_le1
+          simp only [hk_cast_eq, h1_cast_eq, ← add_div, div_le_one hn_pos]
+          have : (k : ℝ) + 1 ≤ n := by exact_mod_cast hk
+          linarith
         have := h_combine_rat ((k : ℚ) / n) ((1 : ℚ) / n) hkr h1r hsr
-        rw [hk_cast_eq, h1_cast_eq] at this
+        simp only [hk_cast_eq, h1_cast_eq] at this
         exact this
       -- Simplify (k/n + 1/n : ℚ) = ((k+1)/n : ℚ)
       have h_sum_eq : ((k : ℚ) / n + (1 : ℚ) / n : ℚ) = ((k + 1 : ℕ) : ℚ) / n := by
