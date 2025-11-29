@@ -13,6 +13,7 @@ import Mathlib.Tactic
 import Mathlib.MeasureTheory.Measure.Count
 import Mathlib.Data.Fintype.Prod
 import Mathlib.Order.BoundedOrder.Basic
+import Mathlib.Data.Prod.Lex  -- For Lex (α × β) with LinearOrder
 import Hammer
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
@@ -389,6 +390,246 @@ This is why KnuthSkillingAlgebra MUST extend LinearOrder, not PartialOrder.
 The K&S paper implicitly assumes trichotomy when it says "three possibilities are exhaustive".
 -/
 
+/-! ## Counterexample 2: ℚ×ℚ with Lexicographic Order (Archimedean is ESSENTIAL)
+
+The ℝ² counterexample above shows that LinearOrder (totality) is necessary.
+But is the Archimedean property also necessary?
+
+YES! We prove this by constructing ℚ×ℚ with lexicographic order:
+- It IS a LinearOrder (total order)
+- It satisfies associativity, identity, strict monotonicity
+- But it FAILS the Archimedean property
+- Therefore NO order-preserving additive homomorphism to ℝ exists
+
+This proves the Archimedean property is ESSENTIAL, not just "nice to have".
+-/
+
+section LexCounterexample
+
+/-! ### ℚ×ℚ with Lexicographic Order and Component-wise Addition
+
+The lexicographic order on ℚ×ℚ is:
+  (a, b) < (c, d) ⟺ a < c, or (a = c and b < d)
+
+This is a total order, unlike the coordinate-wise order on ℝ².
+
+The operation is still component-wise addition:
+  (a, b) ⊕ (c, d) = (a + c, b + d)
+-/
+
+/-- ℚ×ℚ with lexicographic order.
+    We use the `Lex` wrapper to get the lexicographic LinearOrder instance. -/
+abbrev QQ := Lex (ℚ × ℚ)
+
+-- LinearOrder instance is automatically available via Prod.Lex.instLinearOrder
+
+/-- Component-wise addition on ℚ×ℚ (this is our "op") -/
+def QQ.add (p q : QQ) : QQ := toLex ((ofLex p).1 + (ofLex q).1, (ofLex p).2 + (ofLex q).2)
+
+/-- The origin (0, 0) is the identity -/
+def QQ.zero : QQ := toLex (0, 0)
+
+/-- Two key elements for demonstrating non-Archimedean behavior -/
+def QQ.epsilon : QQ := toLex (0, 1)  -- "infinitesimally small"
+def QQ.one : QQ := toLex (1, 0)      -- "standard unit"
+
+/-! ### Verification of K&S Axioms (except Archimedean) -/
+
+/-- Associativity of QQ.add -/
+theorem QQ.add_assoc : ∀ x y z : QQ, QQ.add (QQ.add x y) z = QQ.add x (QQ.add y z) := by
+  intro x y z
+  simp only [QQ.add, ofLex_toLex]
+  congr 1 <;> ring
+
+/-- Right identity -/
+theorem QQ.add_zero_right : ∀ x : QQ, QQ.add x QQ.zero = x := by
+  intro x
+  simp only [QQ.add, QQ.zero, ofLex_toLex, add_zero, toLex_ofLex]
+
+/-- Left identity -/
+theorem QQ.add_zero_left : ∀ x : QQ, QQ.add QQ.zero x = x := by
+  intro x
+  simp only [QQ.add, QQ.zero, ofLex_toLex, zero_add, toLex_ofLex]
+
+/-- Strict monotonicity in first argument (using lexicographic order) -/
+theorem QQ.add_strictMono_left : ∀ y : QQ, StrictMono (fun x => QQ.add x y) := by
+  intro y
+  intro x₁ x₂ h
+  -- h : x₁ < x₂ in lexicographic order
+  simp only [QQ.add]
+  -- Use the Lex order directly via toLex_lt_toLex
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff] at h
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff]
+  simp only [ofLex_toLex]
+  rcases h with ⟨h1⟩ | ⟨h1, h2⟩
+  · -- Case: x₁.1 < x₂.1
+    left
+    exact add_lt_add_right h1 (ofLex y).1
+  · -- Case: x₁.1 = x₂.1 and x₁.2 < x₂.2
+    right
+    constructor
+    · simp [h1]
+    · exact add_lt_add_right h2 (ofLex y).2
+
+/-- Strict monotonicity in second argument -/
+theorem QQ.add_strictMono_right : ∀ x : QQ, StrictMono (fun y => QQ.add x y) := by
+  intro x
+  intro y₁ y₂ h
+  simp only [QQ.add]
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff] at h
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff]
+  simp only [ofLex_toLex]
+  rcases h with ⟨h1⟩ | ⟨h1, h2⟩
+  · left
+    exact add_lt_add_left h1 (ofLex x).1
+  · right
+    constructor
+    · simp [h1]
+    · exact add_lt_add_left h2 (ofLex x).2
+
+/-! ### The Key Result: Archimedean Property FAILS -/
+
+/-- QQ.epsilon = (0, 1) is positive (greater than origin) -/
+theorem QQ.epsilon_pos : QQ.zero < QQ.epsilon := by
+  simp only [QQ.zero, QQ.epsilon]
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff]
+  right
+  constructor
+  · rfl
+  · norm_num
+
+/-- QQ.one = (1, 0) is positive -/
+theorem QQ.one_pos : QQ.zero < QQ.one := by
+  simp only [QQ.zero, QQ.one]
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff]
+  left
+  norm_num
+
+/-- Iterating epsilon n times gives (0, n+1) -/
+theorem QQ.iterate_epsilon (n : ℕ) :
+    Nat.iterate (QQ.add QQ.epsilon) n QQ.epsilon = toLex (0, (n + 1 : ℚ)) := by
+  induction n with
+  | zero =>
+    simp only [Nat.iterate, QQ.epsilon, Nat.cast_zero, zero_add]
+  | succ n ih =>
+    simp only [Nat.iterate, ih, QQ.add, QQ.epsilon, ofLex_toLex]
+    congr 1
+    · ring
+    · push_cast; ring
+
+/-- **THE KEY THEOREM**: No matter how many times we iterate epsilon,
+    it NEVER exceeds QQ.one = (1, 0)!
+
+    This is because (0, n) < (1, 0) in lexicographic order for ALL n,
+    since the first component 0 < 1. -/
+theorem QQ.epsilon_never_exceeds_one :
+    ∀ n : ℕ, Nat.iterate (QQ.add QQ.epsilon) n QQ.epsilon < QQ.one := by
+  intro n
+  rw [QQ.iterate_epsilon]
+  simp only [QQ.one]
+  rw [toLex_lt_toLex, Prod.Lex.lt_iff]
+  left
+  norm_num
+
+/-- The Archimedean property FAILS for QQ:
+    epsilon > zero but no n makes iterate_epsilon(n) > one -/
+theorem QQ.not_archimedean :
+    ∃ x y : QQ, QQ.zero < x ∧ ∀ n : ℕ, ¬(y < Nat.iterate (QQ.add x) n x) := by
+  use QQ.epsilon, QQ.one
+  constructor
+  · exact QQ.epsilon_pos
+  · intro n
+    -- ¬(QQ.one < iterate ...) means iterate ... ≤ QQ.one
+    -- We'll show iterate ... < QQ.one, which implies ¬(QQ.one < iterate ...)
+    push_neg
+    exact le_of_lt (QQ.epsilon_never_exceeds_one n)
+
+/-! ### Why No Order-Preserving Homomorphism to ℝ Exists -/
+
+/-- **Main Theorem**: There is no order-preserving additive map Θ : QQ → ℝ.
+
+**Proof sketch**:
+- If such Θ existed, then Θ(epsilon) > 0 since epsilon > zero.
+- And Θ(one) > 0 since one > zero.
+- By additivity: Θ(iterate_epsilon n) = (n+1) · Θ(epsilon)
+- For large enough n: (n+1) · Θ(epsilon) > Θ(one)
+- This would mean iterate_epsilon n > one (by order-preservation)
+- But we proved iterate_epsilon n < one for ALL n!
+
+This contradiction shows no such Θ exists.
+-/
+theorem QQ.no_representation :
+    ¬∃ (Θ : QQ → ℝ), (∀ x y : QQ, x < y ↔ Θ x < Θ y) ∧
+                      (∀ x y : QQ, Θ (QQ.add x y) = Θ x + Θ y) := by
+  intro ⟨Θ, hΘ_mono, hΘ_add⟩
+  -- Step 1: Θ(epsilon) > 0 since epsilon > zero
+  have h_eps_pos : 0 < Θ QQ.epsilon := by
+    have h := hΘ_mono QQ.zero QQ.epsilon
+    rw [h] at QQ.epsilon_pos
+    -- Θ zero = 0 by additivity: Θ zero = Θ (add zero zero) = 2 * Θ zero
+    have h_zero : Θ QQ.zero = 0 := by
+      have heq : QQ.zero = QQ.add QQ.zero QQ.zero := by
+        simp only [QQ.add, QQ.zero, ofLex_toLex, add_zero]
+      rw [heq, hΘ_add]
+      linarith
+    rw [h_zero] at QQ.epsilon_pos
+    exact QQ.epsilon_pos
+  -- Step 2: Θ(one) is finite (some real number)
+  -- Step 3: By Archimedean property of ℝ, ∃ n such that (n+1) * Θ(epsilon) > Θ(one)
+  obtain ⟨n, hn⟩ := exists_nat_gt (Θ QQ.one / Θ QQ.epsilon)
+  -- (n : ℝ) > Θ(one) / Θ(epsilon) means n * Θ(epsilon) > Θ(one)
+  have h_n_big : ((n : ℕ) : ℝ) * Θ QQ.epsilon > Θ QQ.one := by
+    have h_div : Θ QQ.one / Θ QQ.epsilon < n := hn
+    calc Θ QQ.one = (Θ QQ.one / Θ QQ.epsilon) * Θ QQ.epsilon := by
+           field_simp
+         _ < n * Θ QQ.epsilon := by
+           apply mul_lt_mul_of_pos_right h_div h_eps_pos
+  -- Step 4: Show Θ(iterate_epsilon n) = (n+1) * Θ(epsilon)
+  have h_iterate : Θ (Nat.iterate (QQ.add QQ.epsilon) n QQ.epsilon) = (n + 1 : ℕ) * Θ QQ.epsilon := by
+    induction n with
+    | zero => simp
+    | succ n ih =>
+      simp only [Nat.iterate]
+      rw [hΘ_add, ih]
+      push_cast
+      ring
+  -- Step 5: So Θ(iterate_epsilon n) > Θ(one) for large enough n
+  -- Actually, we need n such that (n+1) * Θ(epsilon) > Θ(one)
+  -- Our n satisfies n * Θ(epsilon) > Θ(one), so (n+1) * Θ(epsilon) > Θ(one) too
+  have h_contradiction : Θ (Nat.iterate (QQ.add QQ.epsilon) n QQ.epsilon) > Θ QQ.one := by
+    rw [h_iterate]
+    calc ((n + 1 : ℕ) : ℝ) * Θ QQ.epsilon
+        = (n : ℝ) * Θ QQ.epsilon + Θ QQ.epsilon := by ring
+      _ > Θ QQ.one + 0 := by linarith [h_n_big, h_eps_pos]
+      _ = Θ QQ.one := by ring
+  -- Step 6: By order preservation, this means iterate_epsilon n > one
+  have h_order : QQ.one < Nat.iterate (QQ.add QQ.epsilon) n QQ.epsilon := by
+    rwa [hΘ_mono]
+  -- Step 7: But we proved iterate_epsilon n < one for ALL n!
+  have h_bound := QQ.epsilon_never_exceeds_one n
+  -- h_bound : iterate < one, h_order : one < iterate - contradiction!
+  exact absurd h_order (not_lt.mpr (le_of_lt h_bound))
+
+end LexCounterexample
+
+/-! ## Summary: Both Counterexamples Together
+
+**Counterexample 1 (ℝ² coordinate-wise)**: Shows LinearOrder is necessary
+- Has partial order but not linear order
+- Has incomparable elements (1,2) and (2,1)
+- No order-embedding to ℝ exists because ℝ is totally ordered
+
+**Counterexample 2 (ℚ×ℚ lexicographic)**: Shows Archimedean is necessary
+- HAS linear order (lexicographic is total)
+- Has all K&S axioms EXCEPT Archimedean
+- Epsilon (0,1) is "infinitesimally small" compared to one (1,0)
+- No order-preserving additive map to ℝ exists because ℝ IS Archimedean
+
+Together, these prove that the KnuthSkillingAlgebra class is MINIMALLY specified:
+- LinearOrder: cannot be weakened to PartialOrder
+- Archimedean: cannot be dropped
+-/
+
 namespace KnuthSkillingAlgebra
 
 variable {α : Type*} [KnuthSkillingAlgebra α]
@@ -592,6 +833,21 @@ theorem iterate_op_add (a : α) (m n : ℕ) :
       _ = op a (iterate_op a (m + n)) := by rw [ih]
       _ = iterate_op a (m + n + 1) := by rw [← iterate_op_succ]
       _ = iterate_op a (m + 1 + n) := by ring_nf
+
+/-- **Iterate composition lemma**: iterate_op (iterate_op x n) m = iterate_op x (n * m).
+
+This is a key lemma for the separation argument that shows how iterating an iterate
+relates to a single iterate with multiplied exponent. NO commutativity needed! -/
+theorem iterate_op_mul (x : α) (n m : ℕ) :
+    iterate_op (iterate_op x n) m = iterate_op x (n * m) := by
+  induction m with
+  | zero => simp only [iterate_op_zero, Nat.mul_zero]
+  | succ m ih =>
+    calc iterate_op (iterate_op x n) (m + 1)
+        = op (iterate_op x n) (iterate_op (iterate_op x n) m) := rfl
+      _ = op (iterate_op x n) (iterate_op x (n * m)) := by rw [ih]
+      _ = iterate_op x (n + n * m) := by rw [iterate_op_add]
+      _ = iterate_op x (n * (m + 1)) := by ring_nf
 
 /-- **Repetition Lemma (K&S lines 1497-1534)**:
 If iterate_op a n ≤ iterate_op x m, then iterate_op a (n * k) ≤ iterate_op x (m * k) for all k.
@@ -807,6 +1063,12 @@ theorem iterate_op_mono (y : α) (hy : ident < y) : Monotone (iterate_op y) := b
   · have : m = n := le_antisymm hmn hge
     rw [this]
 
+/-- For y > ident and m > 0, we have iterate_op y m > ident. -/
+theorem iterate_op_pos (y : α) (hy : ident < y) (m : ℕ) (hm : m > 0) :
+    ident < iterate_op y m := by
+  calc ident = iterate_op y 0 := (iterate_op_zero y).symm
+    _ < iterate_op y m := iterate_op_strictMono y hy hm
+
 /-- The lower ratio set is bounded above (by Archimedean property).
 For any x, there exists N such that iterate_op x m < iterate_op a N for all m. -/
 theorem lowerRatioSet_bddAbove (a x : α) (ha : ident < a) (hx : ident < x) :
@@ -970,15 +1232,53 @@ theorem ks_separation_lemma (a x y : α) (ha : ident < a) (hx : ident < x)
   rcases le_or_lt (iterate_op a N) y with h_sep | h_same
   · -- Case 1: iterate_op a N ≤ y. Then n = N, m = 1 works.
     exact ⟨N, 1, Nat.one_pos, by rwa [iterate_op_one], by rwa [iterate_op_one]⟩
-  · -- Case 2: y < iterate_op a N. Both x, y are in the same "interval".
-    -- The gap between y and x, when scaled up, eventually exceeds one step of a.
-    -- By Archimedean on the sequence iterate_op y m vs iterate_op x m,
-    -- for large enough m, the gap exceeds iterate_op a 1 = a.
-    -- TODO: Full K&S proof using repetition lemma (paper lines 1497-1534)
-    -- For now, we use the fact that for m large enough, there's an integer n
-    -- with iterate_op x m < iterate_op a n ≤ iterate_op y m.
-    -- This follows from: Θ(y) - Θ(x) > 0, so for m > 1/(Θ(y) - Θ(x)),
-    -- the gap m*Θ(y) - m*Θ(x) > 1, hence contains an integer.
+  · -- Case 2: y < iterate_op a N. Both x, y are in the same "interval" between
+    -- consecutive iterates of a.
+    --
+    -- **Proof strategy** (K&S paper lines 1536-1622):
+    -- Key insight: The gap between iterate_op y m and iterate_op x m grows unboundedly.
+    -- For large enough m, this gap "contains" a full step of a.
+    --
+    -- Step 1: By Archimedean on y, ∃ L such that iterate_op y L > a.
+    obtain ⟨L, hL⟩ := bounded_by_iterate y hy a
+    -- Step 2: We prove by induction that iterate_op y (L + m) > op (iterate_op x m) a
+    -- Then with M = L + L, we have iterate_op y M > op (iterate_op x (M - L)) a.
+    have gap_dominates : ∀ m : ℕ, m ≥ 1 → iterate_op y (L + m) > op (iterate_op x m) a := by
+      intro m hm
+      induction m with
+      | zero => omega
+      | succ m ih =>
+        cases m with
+        | zero =>
+          -- Base case: m = 1
+          -- iterate_op y (L + 1) = op y (iterate_op y L) > op y a > op x a = op (iterate_op x 1) a
+          calc iterate_op y (L + 1)
+              = op y (iterate_op y L) := by rfl
+            _ > op y a := op_strictMono_right y hL
+            _ > op x a := op_strictMono_left a hxy
+            _ = op (iterate_op x 1) a := by rw [iterate_op_one]
+        | succ n =>
+          -- Inductive step: assume holds for m = n + 1 ≥ 1, prove for m = n + 2
+          have ih' : iterate_op y (L + (n + 1)) > op (iterate_op x (n + 1)) a := ih (by omega)
+          have h_idx : L + (n + 2) = (L + (n + 1)) + 1 := by omega
+          calc iterate_op y (L + (n + 2))
+              = iterate_op y ((L + (n + 1)) + 1) := by rw [h_idx]
+            _ = op y (iterate_op y (L + (n + 1))) := rfl
+            _ > op y (op (iterate_op x (n + 1)) a) := op_strictMono_right y ih'
+            _ = op (op y (iterate_op x (n + 1))) a := (op_assoc y (iterate_op x (n + 1)) a).symm
+            _ > op (op x (iterate_op x (n + 1))) a := op_strictMono_left a (op_strictMono_left (iterate_op x (n + 1)) hxy)
+            _ = op (iterate_op x (n + 2)) a := rfl
+    -- Step 3: Use gap_dominates to find separation
+    -- Take M = 2 * L. Then iterate_op y (2L) > op (iterate_op x L) a.
+    -- Define n_x = max{k : iterate_op a k ≤ iterate_op x (2L)}
+    -- We have: iterate_op a (n_x + 1) ≤ op (iterate_op x (2L)) a < iterate_op y (2L + L)
+    -- Actually, we need a cleaner construction...
+    --
+    -- TODO: Complete the separation argument by:
+    -- 1. Defining n_x(m) = max{k : iterate_op a k ≤ iterate_op x m} for m = 2L
+    -- 2. Showing iterate_op a (n_x(m) + 1) ≤ iterate_op y m using gap_dominates
+    -- The gap_dominates lemma shows the gap grows, but we need to extract
+    -- the specific n, m witnesses for separation.
     sorry
 
 /-- Key consequence of separation: n/m is a strict upper bound for lowerRatioSet a x.
@@ -1075,31 +1375,176 @@ theorem ThetaFull_strictMono_on_pos (a : α) (ha : ident < a) (x y : α)
   -- Claim: There exists n', m' with n'/m' > n/m and n'/m' ∈ lowerRatioSet a y.
   -- This follows from: iterate_op y (m+1) > iterate_op y m ≥ iterate_op a n,
   -- so some n+k satisfies iterate_op a (n+k) ≤ iterate_op y (m+1) with k > n/m.
-  have h_exists_larger : ∃ r ∈ lowerRatioSet a y, (n : ℝ) / m < r := by
-    -- iterate_op y (m + 1) > iterate_op y m ≥ iterate_op a n
-    have h_y_grows : iterate_op y (m + 1) > iterate_op y m := by
-      have heq : iterate_op y (m + 1) = op y (iterate_op y m) := rfl
-      rw [heq]
-      -- op y (iterate_op y m) > iterate_op y m
-      -- = op ident (iterate_op y m) by op_ident_left
-      conv_rhs => rw [← op_ident_left (iterate_op y m)]
-      exact op_strictMono_left (iterate_op y m) hy
-    have h_y_m1_bound : iterate_op a n < iterate_op y (m + 1) :=
-      lt_of_le_of_lt h_in_y h_y_grows
-    -- By Archimedean, ∃ N such that iterate_op y (m+1) < iterate_op a N
-    obtain ⟨N, hN⟩ := bounded_by_iterate a ha (iterate_op y (m + 1))
-    -- The maximum k with iterate_op a (n + k) ≤ iterate_op y (m+1) is at least 1
-    -- since iterate_op a n < iterate_op y (m+1)
-    -- Choose the largest such k
-    -- For simplicity, just take n+1 if it works, else use Archimedean argument
-    -- TODO: Complete this argument using the Archimedean property
-    -- The key: since iterate_op a n < iterate_op y (m+1), there's room for at least one more step.
-    sorry
-  obtain ⟨r, hr_in_y, hr_gt⟩ := h_exists_larger
-  calc sSup (lowerRatioSet a x)
-      ≤ (n : ℝ) / m := h_sup_x_le
-    _ < r := hr_gt
-    _ ≤ sSup (lowerRatioSet a y) := le_csSup hy_bdd hr_in_y
+  -- Two cases for proving strict inequality:
+  -- Case A: h_in_y is strict (iterate_op a n < iterate_op y m) → we can find larger ratio
+  -- Case B: h_in_y is equality → sSup (lowerRatioSet a x) < n/m is strict
+
+  by_cases h_strict_in : iterate_op a n < iterate_op y m
+  · -- Case A: iterate_op a n < iterate_op y m (strict)
+    -- Find a strictly larger element in lowerRatioSet a y
+    have h_exists_larger : ∃ r ∈ lowerRatioSet a y, (n : ℝ) / m < r := by
+      -- Since iterate_op a n < iterate_op y m, check if iterate_op a (n+1) ≤ iterate_op y m
+      by_cases h_n1_fits : iterate_op a (n + 1) ≤ iterate_op y m
+      · -- (n+1, m) is in lowerRatioSet a y with ratio (n+1)/m > n/m
+        use ((n + 1 : ℕ) : ℝ) / m
+        constructor
+        · exact ⟨n + 1, m, hm_pos, h_n1_fits, rfl⟩
+        · have hm_pos' : (0 : ℝ) < m := Nat.cast_pos.mpr hm_pos
+          rw [div_lt_div_iff₀ hm_pos' hm_pos']
+          push_cast
+          nlinarith
+      · -- iterate_op a (n+1) > iterate_op y m, but iterate_op a n < iterate_op y m
+        -- Use Archimedean: ∃ K with iterate_op y K > a
+        push_neg at h_n1_fits
+        obtain ⟨K, hK⟩ := bounded_by_iterate y hy a
+        have h_yK_gt_a : a < iterate_op y K := hK
+        -- Split on whether (n+1)/(m+K) gives us a better ratio than n/m
+        -- (n+1)/(m+K) > n/m ⟺ (n+1)m > n(m+K) ⟺ m > nK
+        by_cases h_ratio : m > n * K
+        · -- Case: m > nK, so (n+1)/(m+K) > n/m works as witness
+          have h_mK_bound : iterate_op a (n + 1) < iterate_op y (m + K) := by
+            have h_lhs : iterate_op a (n + 1) = op (iterate_op a n) a := by
+              conv_lhs => rw [← iterate_op_add a n 1, iterate_op_one]
+            have h_rhs : iterate_op y (m + K) = op (iterate_op y m) (iterate_op y K) := by
+              rw [← iterate_op_add]
+            rw [h_lhs, h_rhs]
+            calc op (iterate_op a n) a
+                < op (iterate_op y m) a := op_strictMono_left a h_strict_in
+              _ < op (iterate_op y m) (iterate_op y K) := op_strictMono_right (iterate_op y m) h_yK_gt_a
+          use ((n + 1 : ℕ) : ℝ) / (m + K)
+          constructor
+          · refine ⟨n + 1, m + K, by omega, le_of_lt h_mK_bound, ?_⟩
+            simp only [Nat.cast_add, Nat.cast_one]
+          · have hm_pos' : (0 : ℝ) < m := Nat.cast_pos.mpr hm_pos
+            have hmK_pos : (0 : ℝ) < (m : ℝ) + K := by positivity
+            rw [div_lt_div_iff₀ hm_pos' hmK_pos]
+            have h_ratio_real : (n : ℝ) * K < m := by
+              calc (n : ℝ) * K = ((n * K : ℕ) : ℝ) := by push_cast; ring
+                _ < (m : ℝ) := Nat.cast_lt.mpr h_ratio
+            push_cast
+            linarith
+        · -- Case: m ≤ nK. Use GPT-5.1 Pro's insight - reuse ks_separation_lemma
+          -- Key: apply ks_separation_lemma to (iterate_op a n, iterate_op y m)
+          push_neg at h_ratio
+          -- First, show iterate_op a n > ident (needed for ks_separation_lemma)
+          have h_an_pos : ident < iterate_op a n := by
+            have h_xm_pos : ident < iterate_op x m := iterate_op_pos x hx m hm_pos
+            exact lt_trans h_xm_pos h_gap
+          -- Second, iterate_op y m > ident
+          have h_ym_pos : ident < iterate_op y m := iterate_op_pos y hy m hm_pos
+          -- Apply ks_separation_lemma to (iterate_op a n, iterate_op y m)
+          obtain ⟨N, M, hM_pos, h_gap', h_in'⟩ :=
+            ks_separation_lemma a (iterate_op a n) (iterate_op y m) ha h_an_pos h_ym_pos h_strict_in
+          -- Using iterate_op_mul:
+          have h_gap_rewrite : iterate_op a (n * M) < iterate_op a N := by
+            calc iterate_op a (n * M)
+                = iterate_op (iterate_op a n) M := (iterate_op_mul a n M).symm
+              _ < iterate_op a N := h_gap'
+          have h_in_rewrite : iterate_op a N ≤ iterate_op y (m * M) := by
+            calc iterate_op a N
+                ≤ iterate_op (iterate_op y m) M := h_in'
+              _ = iterate_op y (m * M) := iterate_op_mul y m M
+          -- From h_gap_rewrite: n * M < N
+          have h_nM_lt_N : n * M < N := by
+            by_contra h_not_lt
+            push_neg at h_not_lt
+            have h_ge : iterate_op a N ≤ iterate_op a (n * M) := iterate_op_mono a ha h_not_lt
+            exact absurd (lt_of_lt_of_le h_gap_rewrite h_ge) (lt_irrefl _)
+          -- So (N, m * M) ∈ lowerRatioSet a y with ratio N / (m * M) > n / m
+          have hmM_pos : m * M > 0 := Nat.mul_pos hm_pos hM_pos
+          -- Note: Lean needs explicit cast for the membership proof
+          have h_mem : (N : ℝ) / ((m * M : ℕ) : ℝ) ∈ lowerRatioSet a y :=
+            ⟨N, m * M, hmM_pos, h_in_rewrite, rfl⟩
+          refine ⟨(N : ℝ) / ((m * M : ℕ) : ℝ), h_mem, ?_⟩
+          -- N / (m * M) > n / m
+          have hm_pos' : (0 : ℝ) < m := Nat.cast_pos.mpr hm_pos
+          have hmM_pos' : (0 : ℝ) < ((m * M : ℕ) : ℝ) := Nat.cast_pos.mpr hmM_pos
+          rw [div_lt_div_iff₀ hm_pos' hmM_pos']
+          have h_key : (n : ℝ) * M < N := by
+            calc (n : ℝ) * M = ((n * M : ℕ) : ℝ) := by simp [Nat.cast_mul]
+              _ < ((N : ℕ) : ℝ) := Nat.cast_lt.mpr h_nM_lt_N
+          simp only [Nat.cast_mul]
+          calc (n : ℝ) * ((m : ℝ) * M)
+              = n * M * m := by ring
+            _ < N * m := by nlinarith
+    obtain ⟨r, hr_in_y, hr_gt⟩ := h_exists_larger
+    calc sSup (lowerRatioSet a x)
+        ≤ (n : ℝ) / m := h_sup_x_le
+      _ < r := hr_gt
+      _ ≤ sSup (lowerRatioSet a y) := le_csSup hy_bdd hr_in_y
+
+  · -- Case B: iterate_op a n = iterate_op y m (exact equality)
+    -- In this case, n/m IS the supremum of lowerRatioSet a y
+    -- We show sSup (lowerRatioSet a x) < n/m directly
+    push_neg at h_strict_in
+    have h_eq : iterate_op a n = iterate_op y m := le_antisymm h_in_y h_strict_in
+
+    -- n/m is the supremum of lowerRatioSet a y (since iterate_op a n = iterate_op y m)
+    have h_nm_is_sup : sSup (lowerRatioSet a y) = (n : ℝ) / m := by
+      apply le_antisymm
+      · -- sSup ≤ n/m: every element is ≤ n/m
+        apply csSup_le hy_ne
+        intro r ⟨n', m', hm'_pos, hle', hr_eq⟩
+        rw [hr_eq]
+        -- Need n'/m' ≤ n/m, i.e., n' * m ≤ n * m'
+        -- From hle': iterate_op a n' ≤ iterate_op y m'
+        -- And from h_eq: iterate_op a n = iterate_op y m
+        -- By scaling: iterate_op a (n * m') = iterate_op y (m * m')
+        --            iterate_op a (n' * m) ≤ iterate_op y (m' * m)
+        -- So iterate_op a (n' * m) ≤ iterate_op y (m' * m) = iterate_op a (n * m')
+        -- By strict mono of iterate_op a: n' * m ≤ n * m'
+        have h1 : iterate_op a (n' * m) ≤ iterate_op y (m' * m) :=
+          repetition_lemma_le a y n' m' m hle'
+        have h2 : iterate_op y (m' * m) = iterate_op a (n * m') := by
+          calc iterate_op y (m' * m)
+              = iterate_op y (m * m') := by ring_nf
+            _ = iterate_op (iterate_op y m) m' := (iterate_op_mul y m m').symm
+            _ = iterate_op (iterate_op a n) m' := by rw [h_eq]
+            _ = iterate_op a (n * m') := iterate_op_mul a n m'
+        -- Combine: iterate_op a (n' * m) ≤ iterate_op y (m' * m) = iterate_op a (n * m')
+        have h_combined : iterate_op a (n' * m) ≤ iterate_op a (n * m') :=
+          le_trans h1 (le_of_eq h2)
+        -- By monotonicity of iterate_op a: n' * m ≤ n * m'
+        have h_nm : n' * m ≤ n * m' := by
+          by_contra h_not_le
+          push_neg at h_not_le
+          have h_gt : iterate_op a (n * m') < iterate_op a (n' * m) :=
+            iterate_op_strictMono a ha h_not_le
+          exact absurd (lt_of_lt_of_le h_gt h_combined) (lt_irrefl _)
+        -- Convert to real division inequality
+        have hm_pos_real : (0 : ℝ) < m := Nat.cast_pos.mpr hm_pos
+        have hm'_pos_real : (0 : ℝ) < m' := Nat.cast_pos.mpr hm'_pos
+        rw [div_le_div_iff₀ hm'_pos_real hm_pos_real]
+        calc (n' : ℝ) * m = ((n' * m : ℕ) : ℝ) := by push_cast; ring
+          _ ≤ ((n * m' : ℕ) : ℝ) := Nat.cast_le.mpr h_nm
+          _ = (n : ℝ) * m' := by push_cast; ring
+      · -- n/m ≤ sSup: n/m is in the set
+        exact le_csSup hy_bdd h_nm_in_y
+
+    -- Now show sSup (lowerRatioSet a x) < n/m
+    -- We have: ∀ r ∈ lowerRatioSet a x, r < n/m (from separation_gives_strict_bound)
+    -- And lowerRatioSet a x ⊂ lowerRatioSet a y strictly (since x < y)
+    -- The gap is witnessedby h_gap: iterate_op x m < iterate_op a n
+
+    -- Key: the gap means lowerRatioSet a x is bounded away from n/m
+    -- Since iterate_op x m < iterate_op a n = iterate_op y m, and x < y,
+    -- there's a "gap" in the ratios
+
+    have h_strict_bound : sSup (lowerRatioSet a x) < (n : ℝ) / m := by
+      -- From h_gap: iterate_op x m < iterate_op a n, let n* = max{k : iterate_op a k ≤ iterate_op x m}.
+      -- Then n* ≤ n - 1. For any (n', m') ∈ lowerRatioSet a x, by repetition:
+      --   n' * m < (n* + 1) * m' ≤ n * m'
+      -- So n'/m' ≤ n/m - 1/(m * m').
+      -- The gap 1/(m * m') shrinks as m' grows, but m' is bounded by Archimedean:
+      -- n'/m' ≤ N_x where x < iterate_op a N_x.
+      -- The key is that this bound N_x < n/m when x < y and iterate_op a n = iterate_op y m.
+      -- This follows from Θ(x) < Θ(y) = n/m in the eventual representation.
+      -- TODO: Complete using the Archimedean bound argument (K&S Appendix A).
+      sorry
+
+    calc sSup (lowerRatioSet a x)
+        < (n : ℝ) / m := h_strict_bound
+      _ = sSup (lowerRatioSet a y) := h_nm_is_sup.symm
 
 /-! ### Summary: Representation Theorem Infrastructure Status
 
