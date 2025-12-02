@@ -237,6 +237,11 @@ class KnuthSkillingAlgebra (α : Type*) extends LinearOrder α where
       For any x > ident and any y, there exists n such that iterating x surpasses y.
       We formalize this by requiring that the iterate sequence is unbounded. -/
   op_archimedean : ∀ x y : α, ident < x → ∃ n : ℕ, y < Nat.iterate (op x) n x
+  /-- Positivity: identity is the bottom element.
+      This is K&S Axiom I - there is a bottom element ⊥ such that ∀x, x ≥ ⊥.
+      In measure/probability theory, this means "plausibility cannot be negative".
+      This axiom eliminates degenerate cases where x < ident. -/
+  ident_le : ∀ x : α, ident ≤ x
 
 /-! ## CRITICAL: Why LinearOrder is REQUIRED (not just PartialOrder)
 

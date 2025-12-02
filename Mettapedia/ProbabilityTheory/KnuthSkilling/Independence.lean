@@ -9,7 +9,7 @@ Independence definitions and advanced probability theorems:
 - Inclusion-exclusion for two events
 -/
 
-import Mettapedia.ProbabilityTheory.KnuthSkilling.CoxConsistency
+import Mettapedia.ProbabilityTheory.KnuthSkilling.ProbabilityDerivation
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 

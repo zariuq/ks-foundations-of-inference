@@ -1,13 +1,17 @@
 /-
 # Knuth-Skilling Representation Theorem
 
-The core representation theorem for K&S algebras:
+The core representation theorem for K&S algebras, assuming the KSSeparation typeclass:
 - Dedekind cut construction for Θ : α → ℝ
 - lowerRatioSet and Theta definitions
 - Additivity section (csSup_add approach)
-- ks_separation_lemma
-- ThetaFull_strictMono_on_pos
+- ThetaFull_strictMono_on_pos (using KSSeparation.separation)
 - Commutativity derived from representation
+
+**Layer Structure**:
+- This file assumes `[KSSeparation α]` - the property that we can find rational separators
+- SeparationProof.lean provides `instance : KSSeparation α` by proving it from K-S axioms
+- This clean factorization avoids circular dependencies
 -/
 
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Algebra
@@ -38,7 +42,7 @@ namespace KSAppendixA
 
 open KnuthSkillingAlgebra
 
-variable {α : Type*} [KnuthSkillingAlgebra α]
+variable {α : Type*} [KnuthSkillingAlgebra α] [KSSeparation α]
 
 /-! ### Phase 1: Cancellativity from Order (K&S lines 1344-1348)
 
@@ -880,214 +884,13 @@ theorem Theta_add (a x y : α) (ha : ident < a) (hx : ident < x) (hy : ident < y
 
 end Additivity
 
-/-- Convenience wrapper around `Nat.findGreatest_eq_iff`: it packages the
-maximality facts for a decidable predicate together with the guarantee that
-the predicate holds at the chosen index. We include `hP0 : P 0` to cover the
-corner case where the greatest witness is `0`. -/
-lemma findGreatest_crossing (P : ℕ → Prop) [DecidablePred P] (n : ℕ) (hP0 : P 0) :
-    P (Nat.findGreatest P n) ∧ Nat.findGreatest P n ≤ n ∧
-      ∀ k, Nat.findGreatest P n < k → k ≤ n → ¬ P k := by
-  -- Unpack the characterisation of `findGreatest`
-  have h := (Nat.findGreatest_eq_iff (P := P) (k := n) (m := Nat.findGreatest P n)).1 rfl
-  -- Extract the three pieces: bound, predicate (if nonzero), maximality
-  have h_le : Nat.findGreatest P n ≤ n := h.1
-  have h_pred_if_pos : Nat.findGreatest P n ≠ 0 → P (Nat.findGreatest P n) := h.2.1
-  have h_max : ∀ k, Nat.findGreatest P n < k → k ≤ n → ¬ P k := by
-    intro k hk hk_le
-    exact h.2.2 hk hk_le
-  -- Show the predicate holds at `findGreatest P n`, covering the zero case
-  have h_pred : P (Nat.findGreatest P n) := by
-    by_cases h0 : Nat.findGreatest P n = 0
-    · simpa [h0] using hP0
-    · exact h_pred_if_pos h0
-  exact ⟨h_pred, h_le, h_max⟩
+/-! ## Separation Property
 
-/-- **K&S Separation Lemma** (Paper lines 1536-1622)
+The separation property (finding rational witnesses (n,m) with x^m < a^n ≤ y^m)
+is proven in SeparationProof.lean and provided via the `KSSeparation` typeclass.
 
-For x < y (both > ident), there exist n, m such that:
-  iterate_op x m < iterate_op a n ≤ iterate_op y m
-
-This gives an element n/m that is in lowerRatioSet a y but NOT in lowerRatioSet a x.
-
-**Proof idea**: The gap between iterate_op y m and iterate_op x m grows as m increases
-(by strict monotonicity). By the Archimedean property, this gap eventually "contains"
-at least one iterate of a. -/
-theorem ks_separation_lemma (a x y : α) (ha : ident < a) (hx : ident < x)
-    (hy : ident < y) (hxy : x < y) :
-    ∃ n m : ℕ, m > 0 ∧ iterate_op x m < iterate_op a n ∧ iterate_op a n ≤ iterate_op y m := by
-  -- By Archimedean, get the minimal N such that x < iterate_op a N
-  obtain ⟨N, hN⟩ := bounded_by_iterate a ha x
-  -- Case split: either iterate_op a N ≤ y (separation at m=1) or y < iterate_op a N
-  rcases le_or_lt (iterate_op a N) y with h_sep | h_same
-  · -- Case 1: iterate_op a N ≤ y. Then n = N, m = 1 works.
-    exact ⟨N, 1, Nat.one_pos, by rwa [iterate_op_one], by rwa [iterate_op_one]⟩
-  · -- Case 2: y < iterate_op a N. Both x, y are in the same "interval" between
-    -- consecutive iterates of a.
-    --
-    -- **Proof strategy** (K&S paper lines 1536-1622):
-    -- Key insight: The gap between iterate_op y m and iterate_op x m grows unboundedly.
-    -- For large enough m, this gap "contains" a full step of a.
-    --
-    -- Step 1: By Archimedean on y, ∃ L such that iterate_op y L > a.
-    obtain ⟨L, hL⟩ := bounded_by_iterate y hy a
-    -- Step 2: We prove by induction that iterate_op y (L + m) > op (iterate_op x m) a
-    -- Then with M = L + L, we have iterate_op y M > op (iterate_op x (M - L)) a.
-    have gap_dominates : ∀ m : ℕ, m ≥ 1 → iterate_op y (L + m) > op (iterate_op x m) a := by
-      intro m hm
-      induction m with
-      | zero => omega
-      | succ m ih =>
-        cases m with
-        | zero =>
-          -- Base case: m = 1
-          -- iterate_op y (L + 1) = op y (iterate_op y L) > op y a > op x a = op (iterate_op x 1) a
-          calc iterate_op y (L + 1)
-              = op y (iterate_op y L) := by rfl
-            _ > op y a := op_strictMono_right y hL
-            _ > op x a := op_strictMono_left a hxy
-            _ = op (iterate_op x 1) a := by rw [iterate_op_one]
-        | succ n =>
-          -- Inductive step: assume holds for m = n + 1 ≥ 1, prove for m = n + 2
-          have ih' : iterate_op y (L + (n + 1)) > op (iterate_op x (n + 1)) a := ih (by omega)
-          have h_idx : L + (n + 2) = (L + (n + 1)) + 1 := by omega
-          calc iterate_op y (L + (n + 2))
-              = iterate_op y ((L + (n + 1)) + 1) := by rw [h_idx]
-            _ = op y (iterate_op y (L + (n + 1))) := rfl
-            _ > op y (op (iterate_op x (n + 1)) a) := op_strictMono_right y ih'
-            _ = op (op y (iterate_op x (n + 1))) a := (op_assoc y (iterate_op x (n + 1)) a).symm
-            _ > op (op x (iterate_op x (n + 1))) a := op_strictMono_left a (op_strictMono_left (iterate_op x (n + 1)) hxy)
-            _ = op (iterate_op x (n + 2)) a := rfl
-    -- Step 3: Use gap_dominates to find separation
-    -- From gap_dominates, the gap between y^m and x^m grows unboundedly.
-    -- For large enough m, we can fit an iterate of a in this gap.
-    --
-    -- Technical approach using Nat.findGreatest:
-    --   1. Take m = 2L (where L is from step 1)
-    --   2. Define n_x = Nat.findGreatest (λ k => iterate_op a k ≤ iterate_op x m) (upper_bound)
-    --   3. Then iterate_op x m < iterate_op a (n_x + 1) by definition of findGreatest
-    --   4. Show iterate_op a (n_x + 1) ≤ iterate_op y m using gap_dominates
-    --
-    -- This requires:
-    --   - Showing findGreatest gives a usable crossing point
-    --   - Connecting the gap from gap_dominates to the iterate bounds
-    -- By Archimedean, there is an iterate of `a` strictly above `x^L ⊕ a`
-    obtain ⟨K, hK⟩ := bounded_by_iterate a ha (op (iterate_op x L) a)
-    -- Let P k := iterate_op a k ≤ op (iterate_op x L) a. We know:
-    --   • P 0 holds (ident ≤ x^L ⊕ a)
-    --   • P K is false (since x^L ⊕ a < a^K from hK)
-    -- so `Nat.findGreatest` gives the last k ≤ K with P k.
-    let P : ℕ → Prop := fun k => iterate_op a k ≤ op (iterate_op x L) a
-    let n := Nat.findGreatest P K
-
-    have hP0 : P 0 := by
-      -- ident ≤ x^L < x^L ⊕ a because a > ident
-      have h_id_le : ident ≤ iterate_op x L := by
-        cases L with
-        | zero => simp [iterate_op_zero]
-        | succ L' =>
-            -- iterate_op_pos gives strict positivity for positive iterate
-            exact le_of_lt (iterate_op_pos x hx _ (Nat.succ_pos _))
-      have h_lt : iterate_op x L < op (iterate_op x L) a := by
-        have := (op_strictMono_right (iterate_op x L)) ha
-        simpa [op_ident_right] using this
-      have h_le : ident ≤ op (iterate_op x L) a := le_of_lt (lt_of_le_of_lt h_id_le h_lt)
-      simpa [P, iterate_op_zero] using h_le
-
-    -- Maximality facts about n
-    have h_cross := findGreatest_crossing (P := P) K hP0
-    have hPn : iterate_op a n ≤ op (iterate_op x L) a := h_cross.1
-    have hn_le_K : n ≤ K := h_cross.2.1
-
-    -- P K is false by hK, so n < K
-    have h_not_PK : ¬ P K := by
-      -- If P K held we'd contradict the strict bound hK
-      have h_gt : iterate_op a K > op (iterate_op x L) a := by
-        have := hK
-        -- hK : op (iterate_op x L) a < iterate_op a K
-        simpa [gt_iff_lt] using this
-      exact not_le_of_gt h_gt
-
-    have hn_lt_K : n < K := lt_of_le_of_ne hn_le_K (by
-      intro h_eq
-      exact h_not_PK (by simpa [P, h_eq] using hPn))
-
-    -- The next iterate of a jumps above x^L ⊕ a
-    have h_not_P_succ : ¬ P (n + 1) :=
-      h_cross.2.2 (n + 1) (Nat.lt_succ_self n) (Nat.succ_le_of_lt hn_lt_K)
-
-    have h_crossing :
-        iterate_op a n ≤ op (iterate_op x L) a ∧ op (iterate_op x L) a < iterate_op a (n + 1) := by
-      refine ⟨hPn, ?_⟩
-      exact lt_of_not_ge h_not_P_succ
-
-    -- Key observation: We have gap_dominates giving y^{2L} > x^L ⊕ a.
-    -- We'll use a larger m for witnesses where the gap is even bigger.
-    -- Take m = 2L. Then find the crossing point for x^{2L}.
-
-    have hL_pos : 0 < L := by
-      by_contra h0
-      have hL0 : L = 0 := Nat.eq_zero_of_le_zero (Nat.le_of_not_gt h0)
-      subst hL0
-      have h_ident_gt : ident > a := by simpa [iterate_op_zero] using hL
-      exact (lt_asymm ha h_ident_gt).elim
-
-    -- From gap_dominates at m = 2L: y^{3L} > x^{2L} ⊕ a
-    have h_gap_3L : iterate_op y (3 * L) > op (iterate_op x (2 * L)) a := by
-      conv_lhs => rw [show 3 * L = L + (2 * L) by omega]
-      exact gap_dominates (2 * L) (by omega)
-
-    -- Find the crossing point for x^{2L}
-    obtain ⟨K2, hK2⟩ := bounded_by_iterate a ha (op (iterate_op x (2 * L)) a)
-
-    let P2 : ℕ → Prop := fun k => iterate_op a k ≤ op (iterate_op x (2 * L)) a
-    let n2 := Nat.findGreatest P2 K2
-
-    have hP2_0 : P2 0 := by
-      have h_id_le : ident ≤ iterate_op x (2 * L) := by
-        cases L with
-        | zero => omega  -- contradicts hL_pos
-        | succ L' => exact le_of_lt (iterate_op_pos x hx _ (by omega))
-      have h_lt : iterate_op x (2 * L) < op (iterate_op x (2 * L)) a := by
-        simpa [op_ident_right] using (op_strictMono_right (iterate_op x (2 * L))) ha
-      simpa [P2, iterate_op_zero] using le_of_lt (lt_of_le_of_lt h_id_le h_lt)
-
-    have h_cross2 := findGreatest_crossing (P := P2) K2 hP2_0
-    have hP2_n2 : iterate_op a n2 ≤ op (iterate_op x (2 * L)) a := h_cross2.1
-
-    have h_not_P2_succ : ¬ P2 (n2 + 1) := by
-      have h_not_P2_K2 : ¬ P2 K2 := not_le_of_gt hK2
-      have hn2_lt_K2 : n2 < K2 := by
-        by_contra h_ge
-        push_neg at h_ge
-        have hn2_le_K2 : n2 ≤ K2 := h_cross2.2.1
-        have hn2_eq : n2 = K2 := Nat.le_antisymm hn2_le_K2 h_ge
-        exact h_not_P2_K2 (by simpa [hn2_eq] using hP2_n2)
-      exact h_cross2.2.2 (n2 + 1) (Nat.lt_succ_self n2) (Nat.succ_le_of_lt hn2_lt_K2)
-
-    have h_crossing2 :
-        iterate_op a n2 ≤ op (iterate_op x (2 * L)) a ∧ op (iterate_op x (2 * L)) a < iterate_op a (n2 + 1) :=
-      ⟨hP2_n2, lt_of_not_ge h_not_P2_succ⟩
-
-    -- Lower bound: x^{2L} < a^{n2+1}
-    have hx2L_lt : iterate_op x (2 * L) < iterate_op a (n2 + 1) := by
-      have h_lt : iterate_op x (2 * L) < op (iterate_op x (2 * L)) a := by
-        simpa [op_ident_right] using (op_strictMono_right (iterate_op x (2 * L))) ha
-      exact lt_trans h_lt h_crossing2.2
-
-    -- Upper bound: a^{n2+1} ≤ y^{2L}
-    -- We need a different approach since y^{2L} is from gap at m=L, not m=2L
-    have h_gap_2L : iterate_op y (2 * L) > op (iterate_op x L) a := by
-      conv_lhs => rw [show 2 * L = L + L by omega]
-      exact gap_dominates L hL_pos
-
-    have h_upper : iterate_op a (n2 + 1) ≤ iterate_op y (2 * L) := by
-      -- We have: y^{2L} > x^L ⊕ a and a^{n2+1} > x^{2L} ⊕ a
-      -- Since x^{2L} ⊕ a > x^L ⊕ a (by monotonicity), we can't directly compare.
-      -- Need to use Case 2 bound: y < a^N to constrain the relationship.
-      sorry  -- TODO: Bridge using y < a^N from Case 2
-
-    have h_m_pos : 0 < 2 * L := by omega
-    refine ⟨n2 + 1, 2 * L, h_m_pos, hx2L_lt, h_upper⟩
+This file assumes `[KSSeparation α]` and uses `KSSeparation.separation` directly.
+-/
 
 /-- Key consequence of separation: n/m is a strict upper bound for lowerRatioSet a x.
 If iterate_op x m < iterate_op a n, then for any (n', m') with iterate_op a n' ≤ iterate_op x m',
@@ -1154,7 +957,7 @@ theorem ThetaFull_strictMono_on_pos (a : α) (ha : ident < a) (x y : α)
   have hy_ne := lowerRatioSet_nonempty a y hy
 
   -- Get separation: n, m such that iterate_op x m < iterate_op a n ≤ iterate_op y m
-  obtain ⟨n, m, hm_pos, h_gap, h_in_y⟩ := ks_separation_lemma a x y ha hx hy hxy
+  obtain ⟨n, m, hm_pos, h_gap, h_in_y⟩ := KSSeparation.separation ha hx hy hxy
 
   -- n/m is in y's set
   have h_nm_in_y : (n : ℝ) / m ∈ lowerRatioSet a y := ⟨n, m, hm_pos, h_in_y, rfl⟩
