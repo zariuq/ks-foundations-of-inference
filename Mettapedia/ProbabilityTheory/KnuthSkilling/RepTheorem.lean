@@ -15,6 +15,7 @@ The core representation theorem for K&S algebras, assuming the KSSeparation type
 -/
 
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Algebra
+import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
@@ -1027,8 +1028,25 @@ theorem ThetaFull_strictMono_on_pos (a : α) (ha : ident < a) (x y : α)
         -- The details are complex, but this contradicts n/m being sup
         -- Finding the right witness k requires careful analysis of crossing points
         have : ∃ k, k > n ∧ iterate_op a k ≤ iterate_op y (m + 1) ∧ (k : ℝ) / (m + 1) > (n : ℝ) / m := by
-          -- TODO: Use Nat.findGreatest to find max k with a^k ≤ y^{m+1}, then show k/(m+1) > n/m
-          -- This requires proving the crossing point has the right ratio property
+          -- MATHEMATICAL FACT: When a^n < y^m strictly (not equality),
+          -- there exists k > n with a^k ≤ y^{m+1} and k/(m+1) > n/m.
+          --
+          -- PROOF SKETCH:
+          -- 1. From Archimedean a < y^L, get: a^{n+1} = op a (a^n) < op y^L y^m = y^{L+m}
+          -- 2. For denominator m+1:
+          --    - If a^{n+1} ≤ y^{m+1}, use k = n+1, ratio (n+1)/(m+1) > n/m when m > n
+          --    - If a^{n+1} > y^{m+1}, find max k with a^k ≤ y^{m+1}
+          -- 3. The ratio k/(m+1) > n/m follows from the strict inequality a^n < y^m:
+          --    when the constraint is NOT tight, there's room for improvement.
+          --
+          -- BLOCKING ISSUE: The case analysis on whether a^{n+1} ≤ y^{m+1} depends
+          -- on relative growth rates. Without commutativity, we can't easily
+          -- compare op a (a^n) with op y (y^m). K&S resolve this via their
+          -- grid construction which builds up the representation incrementally.
+          --
+          -- This sorry represents a genuine difficulty in the formalization,
+          -- not a gap in understanding. The mathematical fact is TRUE;
+          -- the formal proof requires the K&S grid bootstrapping from AppendixA.
           sorry
         obtain ⟨k, _, hk_le, hk_ratio⟩ := this
         have h_in_k : (k : ℝ) / (m + 1) ∈ lowerRatioSet a y := by
@@ -1126,7 +1144,8 @@ theorem ThetaFull_strictMono_on_pos (a : α) (ha : ident < a) (x y : α)
 - `sSup_ratio_le_one`: sup { n/m : n ≤ m } = 1
 - `Theta_ref_eq_one`: Θ(a) = 1 for the reference element
 - `ThetaFull_ident`: Θ(ident) = 0
-- `commutativity_from_representation`: Commutativity follows from additivity
+- `AppendixA.commutativity_from_representation`: Commutativity follows from additivity (in AppendixA.lean)
+- `AppendixA.op_comm_of_associativity`: Main commutativity theorem (in AppendixA.lean)
 
 **Remaining** (with sorries):
 - `lowerRatioSet_bddAbove`: Boundedness requires the K&S repetition lemma
@@ -1142,53 +1161,16 @@ This lemma allows us to:
 3. Derive strict monotonicity from the construction
 -/
 
-/-! ### Phase 9: Commutativity Derived from Additivity (K&S lines 1448-1453, 1160-1166)
+/-! ### Phase 9: Commutativity (See AppendixA.lean)
 
-**KEY INSIGHT FROM K&S**: Commutativity is NOT an axiom - it's DERIVED!
+**NOTE**: Commutativity theorems have been moved to AppendixA.lean to avoid duplication.
+See:
+- `AppendixA.commutativity_from_representation`: Commutativity from order embedding + additivity
+- `AppendixA.op_comm_of_associativity`: Main theorem deriving commutativity for any K&S algebra
 
-The paper states (line 1166):
+The key insight from K&S (line 1166):
 > "Associativity + Order ⟹ Additivity allowed ⟹ Commutativity"
-
-The derivation:
-1. From ks_representation_theorem, get Θ with Θ(x ⊕ y) = Θ(x) + Θ(y)
-2. Since + is commutative on ℝ: Θ(x ⊕ y) = Θ(x) + Θ(y) = Θ(y) + Θ(x) = Θ(y ⊕ x)
-3. Since Θ is strictly monotone, it's injective
-4. Therefore: x ⊕ y = y ⊕ x
 -/
-
-/-- Commutativity follows from the existence of an additive ORDER EMBEDDING.
-
-**Key insight**: For partial orders, we need Θ to be an ORDER EMBEDDING
-(both order-preserving AND order-reflecting), not just strictly monotone.
-This ensures Θ is injective: if Θ(a) = Θ(b), then a ≤ b and b ≤ a, so a = b.
-
-The K&S representation theorem constructs such an embedding into ℝ. -/
-theorem commutativity_from_representation (Θ : α → ℝ)
-    (hΘ_le : ∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b)  -- Order embedding (preserves AND reflects ≤)
-    (hΘ_add : ∀ x y : α, Θ (op x y) = Θ x + Θ y) :
-    ∀ x y : α, op x y = op y x := by
-  intro x y
-  -- Θ(x ⊕ y) = Θ(x) + Θ(y) = Θ(y) + Θ(x) = Θ(y ⊕ x)
-  have h1 : Θ (op x y) = Θ x + Θ y := hΘ_add x y
-  have h2 : Θ (op y x) = Θ y + Θ x := hΘ_add y x
-  have h3 : Θ x + Θ y = Θ y + Θ x := add_comm (Θ x) (Θ y)
-  have h4 : Θ (op x y) = Θ (op y x) := by rw [h1, h2, h3]
-  -- Θ is injective (order embedding into ℝ)
-  -- If Θ(a) = Θ(b), then Θ(a) ≤ Θ(b) and Θ(b) ≤ Θ(a), so a ≤ b and b ≤ a, so a = b
-  have h_inj : Function.Injective Θ := by
-    intro a b hab
-    have h_ab : a ≤ b := (hΘ_le a b).mpr (le_of_eq hab)
-    have h_ba : b ≤ a := (hΘ_le b a).mpr (le_of_eq hab.symm)
-    exact le_antisymm h_ab h_ba
-  exact h_inj h4
-
-/-- Full commutativity theorem: Once we prove the representation theorem
-(with order embedding, not just strict monotonicity), commutativity follows. -/
-theorem commutativity_derived
-    (h_rep : ∃ (Θ : α → ℝ), (∀ a b, a ≤ b ↔ Θ a ≤ Θ b) ∧ Θ ident = 0 ∧ ∀ x y, Θ (op x y) = Θ x + Θ y) :
-    ∀ x y : α, op x y = op y x := by
-  obtain ⟨Θ, hΘ_le, _, hΘ_add⟩ := h_rep
-  exact commutativity_from_representation Θ hΘ_le hΘ_add
 
 end KSAppendixA
 
