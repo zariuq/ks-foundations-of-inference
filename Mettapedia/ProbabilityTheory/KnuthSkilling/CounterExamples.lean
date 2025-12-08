@@ -1,4 +1,4 @@
-import Mettapedia.ProbabilityTheory.KnuthSkilling.FreeMonoid2Order
+import Mettapedia.ProbabilityTheory.KnuthSkilling.CounterModels.FreeMonoid2Order
 import Mathlib.Data.List.Lex
 
 /-!
@@ -81,10 +81,10 @@ GPT-5 Pro's insight: encode as (length, bits) and use LinearOrder.lift' to avoid
 manual instance hell.
 -/
 
-open Mettapedia.ProbabilityTheory.KnuthSkilling.FreeMonoid2Order
+open Mettapedia.ProbabilityTheory.KnuthSkilling.CounterModels.FreeMonoid2Order
 
 /-- The free monoid on two generators (re-exported from FreeMonoid2Order). -/
-abbrev FreeMonoid2 := Mettapedia.ProbabilityTheory.KnuthSkilling.FreeMonoid2Order.FreeMonoid2
+abbrev FreeMonoid2 := Mettapedia.ProbabilityTheory.KnuthSkilling.CounterModels.FreeMonoid2Order.FreeMonoid2
 
 /-- Concatenation operation on the free monoid. -/
 def fm_op (x y : FreeMonoid2) : FreeMonoid2 := x ++ y

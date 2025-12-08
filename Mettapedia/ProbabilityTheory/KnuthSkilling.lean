@@ -16,14 +16,16 @@ Key insight: Probability DERIVED from symmetry, not axiomatized!
   - `Theta_eq_swap`: Θ(x⊕y) = Θ(y⊕x)
   - `op_comm_of_KS`: Commutativity x⊕y = y⊕x
   - `KS_representation_theorem`: Full representation (strict mono + additive)
-- **ProbabilityDerivation.lean**: Probability calculus (Sum/Product rules) derived from K&S
-- **Independence.lean**: Independence definitions and XOR counterexample
 
 ## Layer Structure
 
 The formalization uses a two-layer design to avoid circular dependencies:
 - **Layer A (RepTheorem)**: Assumes `[KSSeparation α]`, proves representation
 - **Layer B (SeparationProof)**: Proves `instance : KSSeparation α` from K-S axioms
+
+## Countermodels (opt-in)
+- See `CounterModels/` for FreeMonoid2 constructions and no-go theorems. These are
+  intentionally not imported by the main proof chain.
 
 ## Archived (in _archive/)
 - **Counterexamples.lean**: Proofs that LinearOrder and Archimedean are necessary
@@ -37,6 +39,5 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.RepTheorem
 import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ProbabilityDerivation
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Independence
--- Counterexamples and no-go theorems
-import Mettapedia.ProbabilityTheory.KnuthSkilling.CounterExamples
-import Mettapedia.ProbabilityTheory.KnuthSkilling.NoGo
+
+-- Countermodels are parked under CounterModels/ and not imported by default.
