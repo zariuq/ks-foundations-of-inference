@@ -76,13 +76,27 @@ When converted to conditional probabilities P(B|A) = P(A ∩ B) / P(A):
   max(0, (P(A) + P(B) - 1) / P(A)) ≤ P(B|A) ≤ min(1, P(B) / P(A))
 -/
 
-/-- Smallest valid intersection probability P(A ∩ B) / P(A) given P(A) and P(B) -/
-noncomputable def smallestIntersectionProbability (pA pB : ℝ) : ℝ :=
-  clamp01 ((pA + pB - 1) / pA)
+/-- Smallest valid intersection probability P(A ∩ B) / P(A) given P(A) and P(B).
 
-/-- Largest valid intersection probability P(A ∩ B) / P(A) given P(A) and P(B) -/
+From Fréchet bounds: P(A ∩ B) ≥ max(0, P(A) + P(B) - 1)
+Dividing by P(A): P(B|A) ≥ max(0, (P(A) + P(B) - 1) / P(A))
+
+This can be negative when P(A) + P(B) < 1, so we take max with 0.
+It cannot exceed 1 (since P(B) ≤ 1 implies (P(A)+P(B)-1)/P(A) ≤ 1).
+-/
+noncomputable def smallestIntersectionProbability (pA pB : ℝ) : ℝ :=
+  max 0 ((pA + pB - 1) / pA)
+
+/-- Largest valid intersection probability P(A ∩ B) / P(A) given P(A) and P(B).
+
+From Fréchet bounds: P(A ∩ B) ≤ min(P(A), P(B))
+Dividing by P(A): P(B|A) ≤ min(1, P(B) / P(A))
+
+This can exceed 1 when P(B) > P(A), so we take min with 1.
+It cannot be negative (since P(B) ≥ 0).
+-/
 noncomputable def largestIntersectionProbability (pA pB : ℝ) : ℝ :=
-  clamp01 (pB / pA)
+  min 1 (pB / pA)
 
 /-- Consistency condition: the conditional probability sAB = P(B|A) must be
     within the valid bounds given the marginals P(A) and P(B). -/
@@ -208,19 +222,12 @@ lemma consistency_implies_product_bound
     (h_consist : conditionalProbabilityConsistency pB pC sBC) :
     pB * sBC ≤ pC := by
   obtain ⟨_, _, h_upper⟩ := h_consist
-  unfold largestIntersectionProbability clamp01 at h_upper
-  -- sBC ≤ max 0 (min (pC/pB) 1)
-  -- Since sBC ≥ 0, we have sBC ≤ min (pC/pB) 1
-  have h_div_nonneg : 0 ≤ pC / pB := by positivity
-  have h_min_nonneg : 0 ≤ min (pC / pB) 1 := by
-    apply le_min h_div_nonneg; norm_num
-  have h_sBC_le_min : sBC ≤ min (pC / pB) 1 := by
-    calc sBC ≤ max 0 (min (pC / pB) 1) := h_upper
-         _ = min (pC / pB) 1 := by simp [max_eq_right h_min_nonneg]
-  -- sBC ≤ pC / pB
+  unfold largestIntersectionProbability at h_upper
+  -- sBC ≤ min 1 (pC/pB)
+  -- Therefore sBC ≤ pC/pB
   have h_ratio : sBC ≤ pC / pB :=
-    calc sBC ≤ min (pC / pB) 1 := h_sBC_le_min
-         _ ≤ pC / pB := min_le_left _ _
+    calc sBC ≤ min 1 (pC / pB) := h_upper
+         _ ≤ pC / pB := min_le_right _ _
   -- Multiply both sides by pB
   calc pB * sBC ≤ pB * (pC / pB) := by nlinarith
        _ = pC := by field_simp
@@ -277,38 +284,14 @@ lemma consistency_implies_complement_bound
     push_neg at h_case
     -- Extract the bound from consistency
     have h_from_consist : (pB + pC - 1) / pB ≤ sBC := by
-      have h_unfold : smallestIntersectionProbability pB pC = clamp01 ((pB + pC - 1) / pB) := rfl
-      rw [h_unfold, clamp01] at h_lower
-      -- h_lower: max 0 (min ((pB + pC - 1) / pB) 1) ≤ sBC
+      unfold smallestIntersectionProbability at h_lower
+      -- h_lower: max 0 ((pB + pC - 1) / pB) ≤ sBC
       have h_pos_ratio : 0 < (pB + pC - 1) / pB := by
-        apply div_pos
-        · linarith
-        · exact h_pos
-      -- Since ratio > 0, max 0 x = x
-      have h_max_simp : max 0 (min ((pB + pC - 1) / pB) 1) = min ((pB + pC - 1) / pB) 1 := by
-        rw [max_eq_right]
-        exact le_min (le_of_lt h_pos_ratio) (by norm_num)
-      rw [h_max_simp] at h_lower
-      -- h_lower: min ((pB + pC - 1) / pB) 1 ≤ sBC
-      -- We know: (pB + pC - 1)/pB ≥ min ((pB + pC - 1)/pB) 1
-      -- No wait, min x y ≤ x, so we want to show x ≤ sBC given min x y ≤ sBC
-      -- That's not always true! We need: x ≤ min x y ≤ sBC
-      -- But min x y ≤ x, not x ≤ min x y...
-      --
-      -- Actually: if min ((pB + pC - 1)/pB) 1 ≤ sBC
-      -- then we want (pB + pC - 1)/pB ≤ sBC
-      -- But min ((pB + pC - 1)/pB) 1 could be 1 (if ratio > 1), and then we don't get ratio ≤ sBC!
-      --
-      -- However, we know pC ≤ 1, so pB + pC ≤ pB + 1
-      -- Thus (pB + pC - 1)/pB ≤ pB/pB = 1
-      -- So min ((pB + pC - 1)/pB) 1 = (pB + pC - 1)/pB
-      have h_ratio_le_one : (pB + pC - 1) / pB ≤ 1 := by
-        rw [div_le_one h_pos]
-        linarith [hpC.2]
-      have : min ((pB + pC - 1) / pB) 1 = (pB + pC - 1) / pB := by
-        rw [min_eq_left h_ratio_le_one]
-      rw [this] at h_lower
-      exact h_lower
+        apply div_pos; linarith; exact h_pos
+      -- Since ratio > 0, max 0 ratio = ratio
+      calc (pB + pC - 1) / pB = max 0 ((pB + pC - 1) / pB) := by
+            rw [max_eq_right]; exact le_of_lt h_pos_ratio
+           _ ≤ sBC := h_lower
     -- Now use: pB * sBC ≥ pB * ((pB + pC - 1) / pB) = pB + pC - 1
     have h_mul : pB * ((pB + pC - 1) / pB) = pB + pC - 1 := by field_simp
     nlinarith [mul_le_mul_of_nonneg_left h_from_consist (le_of_lt h_pos), h_mul]

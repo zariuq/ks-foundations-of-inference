@@ -3141,14 +3141,150 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
         by_cases hB_global : ∃ r u, 0 < u ∧ r ∈ extensionSetB F d u
 
         · -- B is globally non-empty, but s_old ∉ B
-          -- In this case, there's another element that IS a B-witness.
-          -- The trade equation μ r_old = μ s_old ⊕ d^Δ combined with
-          -- the existence of some B-witness should give us constraints.
+          -- Key insight: The trade μ r_old = μ s_old ⊕ d^Δ combined with
+          -- B non-empty implies d^Δ is in the k-grid (as a μ value).
           --
-          -- **STRUCTURAL ISSUE**: This case requires k-grid commutativity
-          -- to relate the trade to the B-witness. Without it, we can't proceed.
-          -- In many K&S algebras, this case is actually VACUOUS.
-          sorry -- INDUCTIVE HYPOTHESIS: k-grid commutativity needed
+          -- Proof strategy:
+          -- 1. Get B-witness (rB, uB) with μ rB = d^{uB}
+          -- 2. Show d^Δ ∈ k-grid: It must equal some μ rΔ (otherwise trade impossible)
+          -- 3. Use R.add: θr = θs + Θ(rΔ) = θs + Δ·δ
+
+          obtain ⟨rB, uB, huB, hrB_in_B⟩ := hB_global
+          have hrB_eq : mu F rB = iterate_op d uB := hrB_in_B
+
+          -- The trade says: μ r_old = μ s_old ⊕ d^Δ
+          -- Since μ r_old ∈ k-grid and μ s_old ∈ k-grid, we need d^Δ to be
+          -- compatible with the k-grid structure.
+
+          -- Case split: Is d^Δ itself in B(Δ)?
+          by_cases hdΔ_in_B : ∃ rΔ : Multi k, mu F rΔ = iterate_op d Δ
+
+          · -- d^Δ is in the k-grid as μ rΔ = d^Δ
+            obtain ⟨rΔ, hrΔ_eq⟩ := hdΔ_in_B
+
+            -- rΔ ∈ B(Δ)
+            have hrΔ_in_B : rΔ ∈ extensionSetB F d Δ := by
+              simp only [extensionSetB, Set.mem_setOf_eq, hrΔ_eq]
+
+            -- From hδB: Θ(rΔ)/Δ = δ, so Θ(rΔ) = Δ·δ
+            have hΘrΔ : R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ = Δ * δ := by
+              have hstat := hδB rΔ Δ hΔ hrΔ_in_B
+              simp only [separationStatistic] at hstat
+              have hΔ_pos : (0 : ℝ) < (Δ : ℕ) := Nat.cast_pos.mpr hΔ
+              have hΔ_ne : (Δ : ℝ) ≠ 0 := by linarith
+              field_simp [hΔ_ne] at hstat
+              linarith
+
+            -- The trade: mu F r_old = op (mu F s_old) (mu F rΔ)
+            have htrade' : mu F r_old = op (mu F s_old) (mu F rΔ) := by
+              rw [hrΔ_eq]; exact htrade
+
+            -- By mu_add_of_comm: op (mu F s_old) (mu F rΔ) = mu F (s_old + rΔ)
+            have h_add : op (mu F s_old) (mu F rΔ) = mu F (s_old + rΔ) :=
+              (mu_add_of_comm H s_old rΔ).symm
+
+            -- So mu F r_old = mu F (s_old + rΔ)
+            have h_mu_eq : mu F r_old = mu F (s_old + rΔ) := by rw [htrade', h_add]
+
+            -- Since Θ is defined on α (not Multi k), equal μ values give equal Θ values
+            have h_Θ_eq : R.Θ_grid ⟨mu F r_old, mu_mem_kGrid F r_old⟩ =
+                          R.Θ_grid ⟨mu F (s_old + rΔ), mu_mem_kGrid F (s_old + rΔ)⟩ := by
+              congr 1
+              ext; exact h_mu_eq
+
+            -- By R.add: Θ(μ(s_old + rΔ)) = Θ(μ s_old) + Θ(μ rΔ)
+            have h_R_add := R.add s_old rΔ
+            -- h_R_add : Θ(μ(s_old + rΔ)) = Θ(μ s_old) + Θ(μ rΔ)
+
+            -- Combine: θr = Θ(μ r_old) = Θ(μ(s_old + rΔ)) = θs + Θ(rΔ) = θs + Δ·δ
+            have hθr_eq_sum : θr = θs + Δ * δ := by
+              calc θr = R.Θ_grid ⟨mu F r_old, mu_mem_kGrid F r_old⟩ := rfl
+                _ = R.Θ_grid ⟨mu F (s_old + rΔ), mu_mem_kGrid F (s_old + rΔ)⟩ := h_Θ_eq
+                _ = R.Θ_grid ⟨mu F s_old, mu_mem_kGrid F s_old⟩ +
+                    R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ := h_R_add
+                _ = θs + Δ * δ := by rw [hΘrΔ]
+            linarith
+
+          · -- d^Δ is NOT in the k-grid - Show this case is impossible
+            -- If d^Δ ∉ k-grid, then the trade μ r_old = μ s_old ⊕ d^Δ implies
+            -- that op (μ s_old) (d^Δ) lands in the k-grid despite d^Δ not being there.
+            --
+            -- With B non-empty, the k-grid contains d^{n·uB} for all n.
+            -- The key constraint: for the trade to hold, μ s_old and d^Δ must
+            -- "align" to produce a k-grid element.
+            --
+            -- This requires careful analysis of the grid structure.
+            -- For now, we use the A/C bounds to show the upper bound holds anyway.
+            --
+            -- The strict bounds give: (Δ-1)·δ < θr - θs < (Δ+1)·δ
+            -- For θr - θs ≤ Δ·δ, we need to show θr - θs < (Δ+1)·δ implies ≤ Δ·δ
+            -- when grid values are properly constrained.
+            --
+            -- TODO: This case may actually be vacuous (impossible) - needs proof.
+            -- For now, use the floor-bracket upper bound.
+
+            -- Use Archimedean to find crossing levels for s_old
+            obtain ⟨Us, hUs⟩ := bounded_by_iterate d hd (mu F s_old)
+            have hs_in_A : s_old ∈ extensionSetA F d Us := hUs
+            have hUs_pos : 0 < Us := by
+              by_contra h; push_neg at h; interval_cases Us
+              simp only [iterate_op_zero] at hUs
+              exact not_lt.mpr (ident_le (mu F s_old)) hUs
+
+            -- By trade_shift_A: r_old ∈ A(Us + Δ)
+            have hr_in_A : r_old ∈ extensionSetA F d (Us + Δ) := trade_shift_A hd hΔ htrade hs_in_A
+
+            -- A-bounds (strict because B non-empty):
+            -- stat(s_old, Us) < stat(rB, uB) = δ ⟹ θs < Us·δ
+            -- stat(r_old, Us+Δ) < stat(rB, uB) = δ ⟹ θr < (Us+Δ)·δ
+
+            -- First establish that stat(rB, uB) = δ
+            have hδ_eq_statB : δ = separationStatistic R rB uB huB := by
+              exact (hδB rB uB huB hrB_in_B).symm
+
+            have hθs_A : θs < Us * δ := by
+              have hstat := separation_property_A_B R H hd hUs_pos hs_in_A huB hrB_in_B
+              simp only [separationStatistic] at hstat
+              have hUs_pos_real : (0 : ℝ) < Us := Nat.cast_pos.mpr hUs_pos
+              rw [div_lt_iff₀ hUs_pos_real] at hstat
+              -- hstat : θs < stat(rB, uB) * Us = (Θ(rB)/uB) * Us
+              -- Need: θs < Us * δ
+              have hstat' := hδB rB uB huB hrB_in_B
+              simp only [separationStatistic] at hstat'
+              -- hstat' : Θ(rB) / uB = δ
+              rw [hstat'] at hstat
+              linarith
+
+            have hUsΔ_pos : 0 < Us + Δ := by omega
+            have hθr_A : θr < (Us + Δ) * δ := by
+              have hstat := separation_property_A_B R H hd hUsΔ_pos hr_in_A huB hrB_in_B
+              simp only [separationStatistic] at hstat
+              have hUsΔ_pos_real : (0 : ℝ) < (Us + Δ : ℕ) := Nat.cast_pos.mpr hUsΔ_pos
+              rw [div_lt_iff₀ hUsΔ_pos_real] at hstat
+              simp only [Nat.cast_add] at hstat
+              -- hstat : θr < stat(rB, uB) * (Us+Δ)
+              have hstat' := hδB rB uB huB hrB_in_B
+              simp only [separationStatistic] at hstat'
+              rw [hstat'] at hstat
+              linarith
+
+            -- **FLOOR-BRACKET ISSUE** (K&S Appendix A):
+            --
+            -- We have A-bounds: θs < Us*δ and θr < (Us+Δ)*δ
+            -- But these don't give θr - θs ≤ Δ*δ directly.
+            --
+            -- The A/C separation gives a 2δ-width bracket:
+            --   (Δ-1)*δ < θr - θs < (Δ+1)*δ
+            --
+            -- To close this to exact equality, K&S use the RATIONAL STRUCTURE:
+            -- When B ≠ ∅, δ is rationally determined by the B-witness.
+            -- The inductive hypothesis ensures all k-grid Θ-values are
+            -- rational multiples of the base unit. Combined with the 2δ bracket,
+            -- this forces θr - θs = Δ*δ exactly.
+            --
+            -- This sorry represents the gap between the floor-bracket bounds
+            -- and exact equality. It requires the full K&S inductive machinery.
+            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
 
         · -- B is globally empty: Use accuracy_lemma to squeeze bounds
           push_neg at hB_global
@@ -3261,20 +3397,10 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
             -- From A-bound on r and C-bound on s:
             -- θr - θs ≤ (U_s + Δ)*δ - 1*δ = (U_s + Δ - 1)*δ
 
-            -- The issue: This gives upper bound (U_s + Δ - 1)*δ, not exactly Δ*δ
-            -- For contradiction, we need θr - θs ≤ Δ*δ but we only get ≤ (U_s + Δ - 1)*δ
-
-            -- **KEY INSIGHT**: The floor-bracket gives us width ~2δ centered around Δ*δ.
-            -- The accuracy_lemma tightens δ arbitrarily, but doesn't eliminate the bracket width.
-
-            -- For now, we observe this case requires the INDUCTIVE HYPOTHESIS:
-            -- With k-grid commutativity, we could express the trade more directly
-            -- and eliminate the floor-bracket gap.
-            --
-            -- Use delta_cut_tight to close the gap via ε/4 argument
-            -- TODO: The ε/4 argument requires delta_cut_tight which needs hB_empty
-            -- Since we're in the case where B is globally non-empty, we need a different approach
-            sorry -- TODO: Complete using separation bounds or inductive hypothesis
+            -- **FLOOR-BRACKET ISSUE**: Same as at line 3271.
+            -- The A/C bounds give a 2δ-width bracket centered at Δ*δ.
+            -- Closing to exact equality requires rational structure.
+            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
 
           · -- s_old ≤ d: Use ident < s_old ≤ d
             push_neg at hs_above_d
@@ -3388,10 +3514,10 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
             -- The bracket width is 2δ, centered at Δ*δ
             -- Since h_not_le claims θr - θs > Δ*δ, we have θr - θs ∈ (Δ*δ, (Δ+1)*δ]
 
-            -- This IS consistent with our bounds! The issue is that without further
-            -- constraints (like GridComm on the k-grid), we cannot tighten the bracket.
-            -- The K&S construction requires the inductive hypothesis here.
-            sorry -- INDUCTIVE: Requires k-grid GridComm to resolve floor-bracket
+            -- **FLOOR-BRACKET ISSUE**: Same as at line 3271.
+            -- The bounds are consistent with θr - θs ∈ (Δ*δ, (Δ+1)*δ].
+            -- Closing to exact equality requires rational structure.
+            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
 
   · -- Lower bound: Δ * δ ≤ θr - θs
 
@@ -3488,8 +3614,54 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
         by_cases hB_global : ∃ r u, 0 < u ∧ r ∈ extensionSetB F d u
 
         · -- B is globally non-empty, but s_old ∉ B
-          -- Same structural issue as upper bound: needs k-grid commutativity.
-          sorry -- INDUCTIVE HYPOTHESIS: k-grid commutativity needed
+          -- Same structure as upper bound: case split on whether d^Δ is in the k-grid.
+          obtain ⟨rB, uB, huB, hrB_in_B⟩ := hB_global
+          have hrB_eq : mu F rB = iterate_op d uB := hrB_in_B
+
+          by_cases hdΔ_in_B : ∃ rΔ : Multi k, mu F rΔ = iterate_op d Δ
+
+          · -- d^Δ is in the k-grid as μ rΔ = d^Δ
+            obtain ⟨rΔ, hrΔ_eq⟩ := hdΔ_in_B
+
+            -- rΔ ∈ B(Δ)
+            have hrΔ_in_B : rΔ ∈ extensionSetB F d Δ := by
+              simp only [extensionSetB, Set.mem_setOf_eq, hrΔ_eq]
+
+            -- From hδB: Θ(rΔ) = Δ·δ
+            have hΘrΔ : R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ = Δ * δ := by
+              have hstat := hδB rΔ Δ hΔ hrΔ_in_B
+              simp only [separationStatistic] at hstat
+              have hΔ_pos : (0 : ℝ) < (Δ : ℕ) := Nat.cast_pos.mpr hΔ
+              have hΔ_ne : (Δ : ℝ) ≠ 0 := by linarith
+              field_simp [hΔ_ne] at hstat
+              linarith
+
+            -- Same as upper bound: use mu_add_of_comm and R.add
+            have htrade' : mu F r_old = op (mu F s_old) (mu F rΔ) := by
+              rw [hrΔ_eq]; exact htrade
+
+            have h_add : op (mu F s_old) (mu F rΔ) = mu F (s_old + rΔ) :=
+              (mu_add_of_comm H s_old rΔ).symm
+
+            have h_mu_eq : mu F r_old = mu F (s_old + rΔ) := by rw [htrade', h_add]
+
+            have h_Θ_eq : R.Θ_grid ⟨mu F r_old, mu_mem_kGrid F r_old⟩ =
+                          R.Θ_grid ⟨mu F (s_old + rΔ), mu_mem_kGrid F (s_old + rΔ)⟩ := by
+              congr 1; ext; exact h_mu_eq
+
+            have h_R_add := R.add s_old rΔ
+
+            have hθr_eq_sum : θr = θs + Δ * δ := by
+              calc θr = R.Θ_grid ⟨mu F r_old, mu_mem_kGrid F r_old⟩ := rfl
+                _ = R.Θ_grid ⟨mu F (s_old + rΔ), mu_mem_kGrid F (s_old + rΔ)⟩ := h_Θ_eq
+                _ = R.Θ_grid ⟨mu F s_old, mu_mem_kGrid F s_old⟩ +
+                    R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ := h_R_add
+                _ = θs + Δ * δ := by rw [hΘrΔ]
+            linarith
+
+          · -- d^Δ NOT in k-grid - Same floor-bracket issue as upper bound
+            -- See comment at line 3271 for full explanation.
+            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
 
         · -- B is globally empty: Use accuracy_lemma for lower bound
           push_neg at hB_global
@@ -3508,13 +3680,10 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
           -- With U = V+1 (tightest when B is empty):
           -- θr - θs ≥ (V+Δ-V-1)*δ = (Δ-1)*δ
           --
-          -- This only gives θr - θs ≥ (Δ-1)*δ, not ≥ Δ*δ!
-          -- The floor-bracket width 2δ cannot be eliminated without additional structure.
-          --
-          -- **STRUCTURAL LIMITATION**: Same as upper bound case.
-          -- The pure A/C case requires k-grid commutativity (inductive hypothesis)
-          -- to close the bracket to exact equality.
-          sorry -- FLOOR-BRACKET: Pure A/C lower bound requires inductive hypothesis
+          -- **FLOOR-BRACKET ISSUE**: Same as at line 3271.
+          -- The A/C bounds give θr - θs ≥ (Δ-1)*δ, not ≥ Δ*δ.
+          -- Closing to exact equality requires rational structure.
+          sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
 
 /-! ### Θ' Infrastructure: Well-Definedness on μ-Fibers
 
@@ -4239,19 +4408,20 @@ theorem extend_grid_rep_with_atom
             -- we CANNOT directly conclude op (mu F r_old_x) (d^{t_x}) ? op (mu F r_old_y) (d^{t_y})
             -- without knowing the relative magnitudes of the "gaps".
             --
-            -- TODO: The issue is we can't directly compare across both dimensions
-            -- without commutativity or a quantitative bound. This case genuinely
-            -- needs either:
-            -- (a) Full separation/accuracy analysis to bound the gaps, OR
+            -- **MIXED COMPARISON ISSUE** (t_x < t_y case):
+            -- Need: Θ(r_old_y) + t_y*δ > Θ(r_old_x) + t_x*δ
+            -- i.e., Θ(r_old_y) - Θ(r_old_x) > (t_x - t_y)*δ = -Δ*δ where Δ = t_y - t_x > 0
+            -- i.e., Θ(r_old_y) > Θ(r_old_x) - Δ*δ (always true if Θ(r_old_y) ≥ Θ(r_old_x))
+            --
+            -- The constraint x < y tells us combined values satisfy the ordering,
+            -- but extracting a quantitative bound requires either:
+            -- (a) delta_shift_equiv to bound the gap, OR
             -- (b) GridComm on the (k+1)-grid to rearrange terms
             --
-            -- For now, defer this case as it requires the full K&S machinery.
-            -- Per GPT-5 Pro: This genuinely needs the quantitative bounds from
-            -- delta_cut_tight and delta_shift_equiv, but those require δ to be
-            -- already chosen, which happens in the Θ' construction phase.
-            -- This creates a dependency cycle that K&S resolve by deferring
-            -- these "mixed" comparisons to the top-level assembly.
-            sorry -- DEFERRED: Requires δ quantitative bounds from Θ' construction
+            -- This creates a dependency: delta_shift_equiv needs δ, but δ is
+            -- being constructed here. K&S resolve by the INDUCTIVE structure:
+            -- at step k→k+1, the k-grid already has the rational structure.
+            sorry -- MIXED-COMPARISON: Needs quantitative bounds from delta_shift_equiv
 
       · -- Case: t_x = t_y
         -- Since x < y and t_x = t_y, we have mu F r_old_x ⊕ d^t < mu F r_old_y ⊕ d^t
@@ -4357,19 +4527,18 @@ theorem extend_grid_rep_with_atom
         -- This requires showing that the old-part advantage (Θ(r_old_y) > Θ(r_old_x))
         -- is large enough to overcome the vertical disadvantage (Δ*δ).
         --
-        -- **Why this is hard**: The ordering constraint x < y tells us the combined
-        -- effect satisfies the inequality, but extracting a quantitative bound on the
-        -- θ-gap requires either:
-        -- (a) Using commutativity to isolate d^Δ and cancel, giving:
-        --     op (mu F r_old_x) (d^Δ) < mu F r_old_y
-        --     which would yield the needed bound via separation, OR
-        -- (b) Using accuracy/separation lemmas directly on the (r_old_x, t_y) vs (r_old_y, t_y)
-        --     comparison to show the gap exceeds Δ*δ
+        -- **MIXED COMPARISON ISSUE** (t_x > t_y case):
+        -- Need: Θ(r_old_y) - Θ(r_old_x) > Δ*δ where Δ = t_x - t_y > 0
         --
-        -- Approach (a) is cleaner but needs commutativity.
-        -- Approach (b) might be provable but requires careful separation analysis.
-        -- Per GPT-5 Pro: Same dependency issue as the t_x < t_y case.
-        sorry -- DEFERRED: Requires δ quantitative bounds from Θ' construction
+        -- The ordering x < y on combined values doesn't directly give us
+        -- a quantitative bound on the Θ-gap. Approaches:
+        -- (a) Use commutativity: op (mu F r_old_x) (d^Δ) < mu F r_old_y,
+        --     then apply separation to get Θ-bound
+        -- (b) Use delta_shift_equiv directly on the trade structure
+        --
+        -- Same dependency issue as t_x < t_y case: both need the inductive
+        -- rational structure that delta_shift_equiv provides.
+        sorry -- MIXED-COMPARISON: Needs quantitative bounds from delta_shift_equiv
 
     -- Property 3: Additivity (componentwise on multiplicities)
     --
@@ -4486,5 +4655,59 @@ theorem extend_grid_rep_with_atom
 -- **WARNING**: The lemma `mu_scale_eq_iterate` is FALSE as stated (see CounterExamples.lean).
 -- All lemmas that use it (separation_property, separation_property_A_B, separation_property_B_C)
 -- are therefore building on quicksand. The correct approach requires the full Θ extension.
+
+/-! ## Summary of Remaining Sorries
+
+This file contains 8 sorries as of 2025-12-10:
+
+### 1. Main Theorem (Line 98)
+`associativity_representation` - Top-level theorem stating that any KnuthSkillingAlgebra admits
+an additive strictly-monotone representation Θ : α → ℝ.
+
+### 2. Floor-Bracket Sorries (Lines 3287, 3403, 3520, 3664, 3686)
+These all stem from the same mathematical issue in `delta_shift_equiv`:
+
+**The Problem**: When proving θr - θs = Δ*δ for a trade equation μ(r) = μ(s) ⊕ d^Δ,
+the A/C separation bounds give only a 2δ-width bracket:
+  (Δ-1)*δ < θr - θs < (Δ+1)*δ
+
+**Why it's hard**: Closing the bracket to exact equality requires showing that all k-grid
+Θ-values are rational multiples of some base unit. This is the INDUCTIVE HYPOTHESIS in K&S
+Appendix A - at step k→k+1, the k-grid already has this rational structure because it was
+built in previous steps.
+
+**Resolution path**: The full K&S construction proves rational structure inductively:
+- Base case k=1: Single atom, Θ(a^n) = n (trivially rational)
+- Inductive step: If k-grid has rational structure, extend to (k+1)-grid preserving it
+
+### 3. Mixed-Comparison Sorries (Lines 4424, 4541)
+These are in the strict monotonicity proof for Θ' and involve comparing elements with
+different t-values (the new atom's multiplicity).
+
+**The Problem**: Given x < y where x and y have different t-components, we need to show
+Θ'(x) < Θ'(y). This requires quantitative bounds on the Θ-gap that depend on δ.
+
+**Why it's hard**: There's a circular dependency - delta_shift_equiv needs δ, but δ is
+being constructed here using chooseδ which depends on the separation structure.
+
+**Resolution path**: K&S resolve this by the inductive structure - at step k→k+1,
+the k-grid's Θ values are already determined, so delta_shift_equiv can be applied.
+
+### Key Dependencies
+```
+Main Theorem (line 98)
+    ↓
+extend_grid_rep_with_atom
+    ↓
+Θ' strict monotonicity (mixed comparison sorries)
+    ↓
+delta_shift_equiv (floor-bracket sorries)
+    ↓
+Inductive rational structure hypothesis
+```
+
+All sorries ultimately reduce to proving the inductive rational structure, which is the
+core content of K&S Appendix A's "separation argument".
+-/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA
