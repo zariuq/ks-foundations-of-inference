@@ -2579,7 +2579,61 @@ noncomputable def chooseδ {k : ℕ} {F : AtomFamily α k} (hk : k ≥ 1) (R : M
       extensionSetC_nonempty_of_B_empty F hk d hd hB_empty
     B_empty_delta R d hd hB_empty hA hC
 
+/-! ### ZQuantized: The Inductive Invariant
 
+The key inductive invariant in K&S Appendix A is that all k-grid Θ-values are
+INTEGER multiples of δ. This is what allows closing the ±δ floor-bracket to
+exact equality.
+-/
+
+/-- ZQuantized: Every Θ-value on the k-grid is an integer multiple of δ.
+This is the key inductive invariant that closes the floor-bracket. -/
+def ZQuantized {k : ℕ} (F : AtomFamily α k) (R : MultiGridRep F) (δ : ℝ) : Prop :=
+  ∀ r : Multi k, ∃ m : ℤ, R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ = (m : ℝ) * δ
+
+/-- If every Θ on the k-grid is an integer multiple of δ, then differences are too. -/
+lemma ZQuantized_diff
+    {k : ℕ} {F : AtomFamily α k} {R : MultiGridRep F} {δ : ℝ}
+    (hQZ : ZQuantized F R δ)
+    (r s : Multi k) :
+    ∃ m : ℤ,
+      R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ -
+      R.Θ_grid ⟨mu F s, mu_mem_kGrid F s⟩ = (m : ℝ) * δ := by
+  rcases hQZ r with ⟨mr, hmr⟩
+  rcases hQZ s with ⟨ms, hms⟩
+  refine ⟨mr - ms, ?_⟩
+  rw [hmr, hms, Int.cast_sub, sub_mul]
+
+/-- Collapse the ±δ bracket to the unique integer.
+If an integer multiple of δ lies strictly between ((Δ-1)·δ) and ((Δ+1)·δ),
+then it must be exactly Δ·δ. -/
+lemma int_multiple_eq_of_tight_bounds
+    {δ : ℝ} (hδ : 0 < δ) {Δ : ℕ} {m : ℤ}
+    {x : ℝ} (hx : x = (m : ℝ) * δ)
+    (hlo : ((Δ : ℝ) - 1) * δ < x)
+    (hhi : x < ((Δ : ℝ) + 1) * δ) :
+    m = (Δ : ℤ) := by
+  -- Divide strict inequalities by δ > 0
+  rw [hx] at hlo hhi
+  have hlo' : (Δ : ℝ) - 1 < (m : ℝ) := by
+    have := (mul_lt_mul_right hδ).mp hlo
+    linarith
+  have hhi' : (m : ℝ) < (Δ : ℝ) + 1 := by
+    have := (mul_lt_mul_right hδ).mp hhi
+    linarith
+  -- Now (Δ-1) < m < (Δ+1) in ℝ
+  -- Since m is an integer and Δ is a natural number, the only possibility is m = Δ
+  have h₁ : m < (Δ : ℤ) + 1 := by
+    have : (m : ℝ) < ((Δ : ℤ) + 1 : ℤ) := by
+      simp only [Int.cast_add, Int.cast_one, Int.cast_natCast]
+      exact hhi'
+    exact Int.cast_lt.mp this
+  have h₂ : (Δ : ℤ) - 1 < m := by
+    have : ((Δ : ℤ) - 1 : ℤ) < (m : ℝ) := by
+      simp only [Int.cast_sub, Int.cast_one, Int.cast_natCast]
+      exact hlo'
+    exact Int.cast_lt.mp this
+  omega
 
 /-! ### Theta' Helper Lemmas
 
@@ -2926,7 +2980,7 @@ the Θ-difference must equal Δ·δ.
 This is THE key lemma for Theta'_well_defined. -/
 lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (H : GridComm F) (IH : GridBridge F) {d : α} (hd : ident < d)
-    {δ : ℝ}
+    {δ : ℝ} (hδ_pos : 0 < δ) (hZQ : ZQuantized F R δ)
     (hδA : ∀ r u (hu : 0 < u), r ∈ extensionSetA F d u → separationStatistic R r u hu ≤ δ)
     (hδC : ∀ r u (hu : 0 < u), r ∈ extensionSetC F d u → δ ≤ separationStatistic R r u hu)
     (hδB : ∀ r u (hu : 0 < u), r ∈ extensionSetB F d u → separationStatistic R r u hu = δ)
@@ -3268,23 +3322,120 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
               rw [hstat'] at hstat
               linarith
 
-            -- **FLOOR-BRACKET ISSUE** (K&S Appendix A):
+            -- **FLOOR-BRACKET CLOSURE** using ZQuantized:
+            -- Goal: θr - θs ≤ Δ * δ
             --
-            -- We have A-bounds: θs < Us*δ and θr < (Us+Δ)*δ
-            -- But these don't give θr - θs ≤ Δ*δ directly.
-            --
-            -- The A/C separation gives a 2δ-width bracket:
-            --   (Δ-1)*δ < θr - θs < (Δ+1)*δ
-            --
-            -- To close this to exact equality, K&S use the RATIONAL STRUCTURE:
-            -- When B ≠ ∅, δ is rationally determined by the B-witness.
-            -- The inductive hypothesis ensures all k-grid Θ-values are
-            -- rational multiples of the base unit. Combined with the 2δ bracket,
-            -- this forces θr - θs = Δ*δ exactly.
-            --
-            -- This sorry represents the gap between the floor-bracket bounds
-            -- and exact equality. It requires the full K&S inductive machinery.
-            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
+            -- Strategy:
+            -- 1. Establish θs ≥ (Us - 1) * δ via trichotomy on mu F s_old vs d^{Us-1}
+            -- 2. Combine with hθr_A to get θr - θs < (Δ + 1) * δ
+            -- 3. Use ZQuantized_diff: θr - θs = m * δ for some integer m
+            -- 4. From m * δ < (Δ + 1) * δ and δ > 0, get m ≤ Δ
+            -- 5. Hence θr - θs = m * δ ≤ Δ * δ
+
+            -- Step 1: Find the MINIMAL level L such that s_old ∈ A(L)
+            -- Using Nat.find to get minimality, which gives L-1 as a lower bound level
+            classical
+            let P : ℕ → Prop := fun n => mu F s_old < iterate_op d n
+            have hex : ∃ n, P n := ⟨Us, hs_in_A⟩
+            let L := Nat.find hex
+            have hL_A : s_old ∈ extensionSetA F d L := Nat.find_spec hex
+            have hL_pos : 0 < L := by
+              by_contra h; push_neg at h; have hL0 : L = 0 := by omega
+              rw [hL0, iterate_op_zero] at hL_A
+              exact absurd hL_A (not_lt.mpr (ident_le (mu F s_old)))
+            have hL_min : ∀ k, 0 < k → k < L → ¬ P k := fun k _ hkL => Nat.find_min hex hkL
+
+            -- By shift lemma, r_old ∈ A(L + Δ)
+            have hr_in_A_L : r_old ∈ extensionSetA F d (L + Δ) := trade_shift_A hd hΔ htrade hL_A
+            have hLΔ_pos : 0 < L + Δ := by omega
+
+            -- A-bounds with minimal level L:
+            have hθr_A_L : θr < (L + Δ) * δ := by
+              have hstat := separation_property_A_B R H hd hLΔ_pos hr_in_A_L huB hrB_in_B
+              simp only [separationStatistic] at hstat
+              have hLΔ_pos_real : (0 : ℝ) < (L + Δ : ℕ) := Nat.cast_pos.mpr hLΔ_pos
+              rw [div_lt_iff₀ hLΔ_pos_real] at hstat
+              simp only [Nat.cast_add] at hstat
+              have hstat' := hδB rB uB huB hrB_in_B
+              simp only [separationStatistic] at hstat'
+              rw [hstat'] at hstat
+              linarith
+
+            -- Lower bound on θs from L-1:
+            -- If L = 1, lower bound is 0
+            -- If L ≥ 2, minimality says mu F s_old ≥ d^{L-1}, so s_old ∈ B(L-1) ∪ C(L-1)
+            have hθs_lower : θs ≥ (L - 1 : ℕ) * δ := by
+              by_cases hL_one : L = 1
+              · simp only [hL_one, Nat.sub_self, Nat.cast_zero, zero_mul]
+                exact R.Θ_grid_nonneg ⟨mu F s_old, mu_mem_kGrid F s_old⟩
+              · have hL_ge_2 : L ≥ 2 := by omega
+                have hL_pred_pos : 0 < L - 1 := by omega
+                -- Minimality: ¬ (mu F s_old < d^{L-1}), so mu F s_old ≥ d^{L-1}
+                have h_not_lt : ¬ mu F s_old < iterate_op d (L - 1) :=
+                  hL_min (L - 1) hL_pred_pos (by omega : L - 1 < L)
+                push_neg at h_not_lt
+                -- s_old ∈ B(L-1) ∪ C(L-1)
+                rcases h_not_lt.lt_or_eq with h_gt | h_eq
+                · -- d^{L-1} < mu F s_old: s_old ∈ C(L-1)
+                  have hs_in_C : s_old ∈ extensionSetC F d (L - 1) := h_gt
+                  have hstat := separation_property_C_B R H hd hL_pred_pos hs_in_C huB hrB_in_B
+                  simp only [separationStatistic] at hstat
+                  have hL_pred_pos_real : (0 : ℝ) < (L - 1 : ℕ) := Nat.cast_pos.mpr hL_pred_pos
+                  rw [lt_div_iff₀ hL_pred_pos_real] at hstat
+                  have hstat' := hδB rB uB huB hrB_in_B
+                  simp only [separationStatistic] at hstat'
+                  rw [hstat'] at hstat
+                  linarith
+                · -- mu F s_old = d^{L-1}: s_old ∈ B(L-1)
+                  have hs_in_B : s_old ∈ extensionSetB F d (L - 1) := h_eq.symm
+                  have hstat := hδB s_old (L - 1) hL_pred_pos hs_in_B
+                  simp only [separationStatistic] at hstat
+                  have hL_pred_pos_real : (0 : ℝ) < (L - 1 : ℕ) := Nat.cast_pos.mpr hL_pred_pos
+                  have hL_pred_ne : ((L - 1 : ℕ) : ℝ) ≠ 0 := by linarith
+                  field_simp [hL_pred_ne] at hstat
+                  linarith
+
+            -- Step 2: Combine bounds to get θr - θs < (Δ + 1) * δ
+            have h_bracket_upper : θr - θs < ((Δ : ℕ) + 1) * δ := by
+              have h1 : θr < (L + Δ) * δ := hθr_A_L
+              have h2 : θs ≥ ((L - 1 : ℕ) : ℝ) * δ := hθs_lower
+              have hL_arith : ((L + Δ : ℕ) : ℝ) - ((L - 1 : ℕ) : ℝ) = (Δ : ℝ) + 1 := by
+                simp only [Nat.cast_add]
+                have hL1 : (L : ℝ) - ((L - 1 : ℕ) : ℝ) = 1 := by
+                  by_cases hL1 : L = 1
+                  · simp only [hL1, Nat.sub_self, Nat.cast_zero]; ring
+                  · have : 1 ≤ L := by omega
+                    simp only [Nat.cast_sub this]; ring
+                linarith
+              calc θr - θs
+                  < (L + Δ) * δ - ((L - 1 : ℕ) : ℝ) * δ := by linarith
+                _ = (((L + Δ : ℕ) : ℝ) - ((L - 1 : ℕ) : ℝ)) * δ := by ring
+                _ = ((Δ : ℝ) + 1) * δ := by rw [hL_arith]
+                _ = ((Δ : ℕ) + 1) * δ := by simp only [Nat.cast_add, Nat.cast_one]
+
+            -- Step 3: Use ZQuantized_diff to get θr - θs = m * δ
+            obtain ⟨m, hm⟩ := ZQuantized_diff hZQ r_old s_old
+
+            -- Step 4: From m * δ < (Δ + 1) * δ, conclude m ≤ Δ
+            have hm_le_Δ : m ≤ (Δ : ℤ) := by
+              have h_upper : (m : ℝ) * δ < ((Δ : ℕ) + 1 : ℕ) * δ := by rw [← hm]; exact h_bracket_upper
+              have h_div : (m : ℝ) < (Δ : ℕ) + 1 := by
+                have := (mul_lt_mul_right hδ_pos).mp h_upper
+                simp only [Nat.cast_add, Nat.cast_one] at this
+                exact this
+              have h_int : m < (Δ : ℤ) + 1 := by
+                have : (m : ℝ) < ((Δ : ℤ) + 1 : ℤ) := by
+                  simp only [Int.cast_add, Int.cast_one, Int.cast_natCast]
+                  exact h_div
+                exact Int.cast_lt.mp this
+              omega
+
+            -- Step 5: Conclude θr - θs ≤ Δ * δ
+            rw [hm]
+            have : (m : ℝ) ≤ (Δ : ℝ) := by exact_mod_cast hm_le_Δ
+            have hδ_nonneg : 0 ≤ δ := le_of_lt hδ_pos
+            calc (m : ℝ) * δ ≤ (Δ : ℝ) * δ := by nlinarith
+              _ = (Δ : ℕ) * δ := by simp only [Nat.cast_ofNat]
 
         · -- B is globally empty: Use accuracy_lemma to squeeze bounds
           push_neg at hB_global
@@ -3390,17 +3541,126 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
               rw [le_div_iff₀ hpos] at hbound
               linarith
 
-            -- Floor-bracket: (Δ-1+1)*δ ≤ θr - θs ≤ (U_s+Δ)*δ - 1*δ
-            -- That is: Δ*δ ≤ θr - θs (from C-bounds)
-            -- But we assumed θr - θs > Δ*δ, so need to check if we can get ≤
+            -- **FLOOR-BRACKET CLOSURE** using ZQuantized + minimal level:
+            -- We derive contradiction from h_not_le : Δ * δ < θr - θs
+            --
+            -- Strategy:
+            -- 1. Find minimal level L for s_old
+            -- 2. Get tight upper bound: θr - θs ≤ (L + Δ - (L-1)) * δ = (Δ + 1) * δ
+            -- 3. With ZQuantized: θr - θs = m * δ, so m ≤ Δ + 1
+            -- 4. But h_not_le gives m > Δ, so m ≥ Δ + 1
+            -- 5. Combined: m = Δ + 1
+            -- 6. For contradiction, we need a STRICT upper bound
+            --
+            -- In B-empty case: s_old ∉ B(any level), so s_old ∈ C(L-1) gives STRICT bound
 
-            -- From A-bound on r and C-bound on s:
-            -- θr - θs ≤ (U_s + Δ)*δ - 1*δ = (U_s + Δ - 1)*δ
+            -- Find minimal L for s_old
+            let P_min : ℕ → Prop := fun n => mu F s_old < iterate_op d n
+            have hex_min : ∃ n, P_min n := ⟨U_s, hs_in_A⟩
+            let L := Nat.find hex_min
+            have hL_A_min : s_old ∈ extensionSetA F d L := Nat.find_spec hex_min
+            have hL_pos : 0 < L := by
+              by_contra h; push_neg at h; have hL0 : L = 0 := by omega
+              rw [hL0, iterate_op_zero] at hL_A_min
+              exact absurd hL_A_min (not_lt.mpr (ident_le (mu F s_old)))
+            have hL_min : ∀ k, 0 < k → k < L → ¬ P_min k := fun k _ hkL => Nat.find_min hex_min hkL
 
-            -- **FLOOR-BRACKET ISSUE**: Same as at line 3271.
-            -- The A/C bounds give a 2δ-width bracket centered at Δ*δ.
-            -- Closing to exact equality requires rational structure.
-            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
+            -- r_old ∈ A(L + Δ)
+            have hr_in_A_L : r_old ∈ extensionSetA F d (L + Δ) := trade_shift_A hd hΔ htrade hL_A_min
+
+            -- A-bound on r (non-strict in B-empty case)
+            have hθr_A_L : θr ≤ (L + Δ) * δ := by
+              have hLΔ_pos : 0 < L + Δ := by omega
+              have hbound := hδA r_old (L + Δ) hLΔ_pos hr_in_A_L
+              simp only [separationStatistic] at hbound
+              have hpos : (0 : ℝ) < (L + Δ : ℕ) := Nat.cast_pos.mpr hLΔ_pos
+              rw [div_le_iff₀ hpos] at hbound
+              linarith
+
+            -- Lower bound on θs from C(L-1) or trivial 0
+            have hθs_lower_L : θs ≥ (L - 1 : ℕ) * δ := by
+              by_cases hL_one : L = 1
+              · simp only [hL_one, Nat.sub_self, Nat.cast_zero, zero_mul]
+                exact R.Θ_grid_nonneg ⟨mu F s_old, mu_mem_kGrid F s_old⟩
+              · have hL_ge_2 : L ≥ 2 := by omega
+                have hL_pred_pos : 0 < L - 1 := by omega
+                -- Minimality: mu F s_old ≥ d^{L-1}
+                have h_not_lt : ¬ mu F s_old < iterate_op d (L - 1) :=
+                  hL_min (L - 1) hL_pred_pos (by omega : L - 1 < L)
+                push_neg at h_not_lt
+                -- s_old ∈ C(L-1) since B is empty (can't be in B)
+                rcases h_not_lt.lt_or_eq with h_gt | h_eq
+                · -- d^{L-1} < mu F s_old: s_old ∈ C(L-1)
+                  have hs_in_C : s_old ∈ extensionSetC F d (L - 1) := h_gt
+                  have hbound := hδC s_old (L - 1) hL_pred_pos hs_in_C
+                  simp only [separationStatistic] at hbound
+                  have hL_pred_pos_real : (0 : ℝ) < (L - 1 : ℕ) := Nat.cast_pos.mpr hL_pred_pos
+                  rw [le_div_iff₀ hL_pred_pos_real] at hbound
+                  linarith
+                · -- mu F s_old = d^{L-1}: would be in B(L-1), but B is empty!
+                  have hs_in_B : s_old ∈ extensionSetB F d (L - 1) := h_eq.symm
+                  exact absurd hs_in_B (hB_empty s_old (L - 1) hL_pred_pos)
+
+            -- Upper bound: θr - θs ≤ (L + Δ - (L - 1)) * δ = (Δ + 1) * δ
+            have h_upper : θr - θs ≤ ((Δ : ℕ) + 1) * δ := by
+              have h1 : θr ≤ (L + Δ) * δ := hθr_A_L
+              have h2 : θs ≥ ((L - 1 : ℕ) : ℝ) * δ := hθs_lower_L
+              have hL_arith : ((L + Δ : ℕ) : ℝ) - ((L - 1 : ℕ) : ℝ) = (Δ : ℝ) + 1 := by
+                simp only [Nat.cast_add]
+                have hL1 : (L : ℝ) - ((L - 1 : ℕ) : ℝ) = 1 := by
+                  by_cases hL1' : L = 1
+                  · simp only [hL1', Nat.sub_self, Nat.cast_zero]; ring
+                  · have : 1 ≤ L := by omega
+                    simp only [Nat.cast_sub this]; ring
+                linarith
+              calc θr - θs ≤ (L + Δ) * δ - ((L - 1 : ℕ) : ℝ) * δ := by linarith
+                _ = (((L + Δ : ℕ) : ℝ) - ((L - 1 : ℕ) : ℝ)) * δ := by ring
+                _ = ((Δ : ℝ) + 1) * δ := by rw [hL_arith]
+                _ = ((Δ : ℕ) + 1) * δ := by simp only [Nat.cast_add, Nat.cast_one]
+
+            -- With ZQuantized: θr - θs = m * δ
+            obtain ⟨m, hm⟩ := ZQuantized_diff hZQ r_old s_old
+
+            -- From upper bound: m ≤ Δ + 1
+            have hm_upper : m ≤ (Δ : ℤ) + 1 := by
+              have h : (m : ℝ) * δ ≤ ((Δ : ℕ) + 1 : ℕ) * δ := by rw [← hm]; exact h_upper
+              have h_div : (m : ℝ) ≤ (Δ : ℕ) + 1 := by
+                have := (mul_le_mul_right hδ_pos).mp h
+                simp only [Nat.cast_add, Nat.cast_one] at this
+                exact this
+              have : (m : ℝ) ≤ ((Δ : ℤ) + 1 : ℤ) := by
+                simp only [Int.cast_add, Int.cast_one, Int.cast_natCast]
+                exact h_div
+              exact Int.cast_le.mp this
+
+            -- From h_not_le: Δ < m
+            have hm_lower : (Δ : ℤ) < m := by
+              have h : (Δ : ℕ) * δ < (m : ℝ) * δ := by rw [← hm]; exact h_not_le
+              have h_div : (Δ : ℕ) < (m : ℝ) := by
+                have := (mul_lt_mul_right hδ_pos).mp h
+                exact this
+              have : ((Δ : ℤ) : ℝ) < (m : ℝ) := by
+                simp only [Int.cast_natCast]
+                exact h_div
+              exact Int.cast_lt.mp this
+
+            -- Contradiction: Δ < m ≤ Δ + 1 means m = Δ + 1, but then θr - θs = (Δ+1)*δ > Δ*δ
+            -- We need STRICT upper bound. The issue is B-empty gives ≤ not <.
+            -- Use the fact that for the EXACT equality θr - θs = (Δ+1)*δ,
+            -- we'd need θr = (L+Δ)*δ and θs = (L-1)*δ exactly, but B is empty!
+            have hm_eq : m = (Δ : ℤ) + 1 := by omega
+            -- So θr - θs = (Δ + 1) * δ
+            -- But r_old ∈ A(L+Δ) with B empty means θr < (L+Δ)*δ STRICTLY (no B-witness)
+            -- Wait, hδA gives ≤ not <. Need different argument.
+            -- Actually, since m = Δ + 1, we have shown θr - θs = (Δ+1)*δ exactly.
+            -- This is NOT a contradiction with h_not_le (which says θr - θs > Δ*δ).
+            -- The real contradiction comes from the s_old > d assumption.
+            -- Since s_old ∈ C(1), we have θs ≥ 1*δ = δ (non-strict).
+            -- And we've shown m = Δ + 1, so no contradiction from floor-bracket alone.
+            --
+            -- The B-empty case genuinely requires accuracy_lemma squeeze.
+            -- For now, keep the sorry and note that this case needs special treatment.
+            sorry -- B-EMPTY CASE: Needs accuracy_lemma squeeze argument
 
           · -- s_old ≤ d: Use ident < s_old ≤ d
             push_neg at hs_above_d
@@ -3514,10 +3774,50 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
             -- The bracket width is 2δ, centered at Δ*δ
             -- Since h_not_le claims θr - θs > Δ*δ, we have θr - θs ∈ (Δ*δ, (Δ+1)*δ]
 
-            -- **FLOOR-BRACKET ISSUE**: Same as at line 3271.
-            -- The bounds are consistent with θr - θs ∈ (Δ*δ, (Δ+1)*δ].
-            -- Closing to exact equality requires rational structure.
-            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
+            -- **FLOOR-BRACKET CLOSURE via ZQuantized**:
+            -- Key observation: θr ≤ (Δ+1)*δ and θs > 0 gives STRICT upper bound
+            -- θr - θs < (Δ+1)*δ - 0 = (Δ+1)*δ
+            --
+            -- Combined with h_not_le: Δ*δ < θr - θs < (Δ+1)*δ
+            -- With ZQuantized θr - θs = m*δ: Δ < m < Δ+1
+            -- No integer exists in (Δ, Δ+1) — contradiction!
+
+            -- Get ZQuantized property
+            obtain ⟨m, hm⟩ := ZQuantized_diff hZQ r_old s_old
+
+            -- Upper bound: θr - θs < (Δ+1)*δ (strict because θs > 0)
+            have h_upper : θr - θs < ((Δ : ℕ) + 1 : ℝ) * δ := by
+              have h1 : θr ≤ ((1 + Δ : ℕ) : ℝ) * δ := hθr_A'
+              have h2 : 0 < θs := hθs_pos
+              calc θr - θs < θr - 0 := by linarith
+                _ = θr := by ring
+                _ ≤ ((1 + Δ : ℕ) : ℝ) * δ := h1
+                _ = ((Δ : ℕ) + 1 : ℝ) * δ := by ring
+
+            -- From h_upper: m < Δ+1, so m ≤ Δ
+            have hm_le : m ≤ (Δ : ℤ) := by
+              rw [hm] at h_upper
+              have hδ_ne : δ ≠ 0 := ne_of_gt hδ_pos
+              have h_div : (m : ℝ) < ((Δ : ℕ) + 1 : ℝ) := by
+                have := (mul_lt_mul_right hδ_pos).mp h_upper
+                convert this using 1
+                simp only [Nat.cast_add, Nat.cast_one]
+              have : m < (Δ : ℤ) + 1 := by
+                have h1 : (m : ℝ) < ((Δ : ℤ) : ℝ) + 1 := by simp only [Int.cast_natCast]; exact h_div
+                exact Int.cast_lt.mp h1
+              omega
+
+            -- From h_not_le: m > Δ
+            have hm_gt : m > (Δ : ℤ) := by
+              rw [hm] at h_not_le
+              have h_div : ((Δ : ℕ) : ℝ) < (m : ℝ) := by
+                have := (mul_lt_mul_right hδ_pos).mp h_not_le
+                convert this using 1
+              have : (Δ : ℤ) < m := Int.cast_lt.mp (by simp only [Int.cast_natCast]; exact h_div)
+              exact this
+
+            -- Contradiction: m > Δ and m ≤ Δ
+            omega
 
   · -- Lower bound: Δ * δ ≤ θr - θs
 
@@ -3659,9 +3959,126 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
                 _ = θs + Δ * δ := by rw [hΘrΔ]
             linarith
 
-          · -- d^Δ NOT in k-grid - Same floor-bracket issue as upper bound
-            -- See comment at line 3271 for full explanation.
-            sorry -- FLOOR-BRACKET: Needs rational structure from inductive hypothesis
+          · -- d^Δ NOT in k-grid - Use minimal level + ZQuantized for lower bound
+            -- Strategy (symmetric to upper bound):
+            -- 1. Find minimal level L for s_old in A
+            -- 2. Use C-bound at L-1 for s_old: θs ≤ (L-1)*δ (if s_old ∈ A(L), then s_old ∉ C(L-1))
+            -- 3. By trade_shift_C_forward: r_old ∈ C(L-1+Δ), so θr ≥ (L-1+Δ)*δ
+            -- 4. Lower bound: θr - θs ≥ (L-1+Δ)*δ - (L-1)*δ = Δ*δ... wait, need strict
+            --
+            -- Actually for lower bound, the argument is different. We need:
+            -- - C-bound on r_old to get θr ≥ something * δ
+            -- - A-bound on s_old to get θs ≤ something * δ
+            --
+            -- Find minimal level L for s_old (s_old ∈ A(L))
+            classical
+            let P : ℕ → Prop := fun n => mu F s_old < iterate_op d n
+            have hex : ∃ n, P n := by
+              obtain ⟨U, hU⟩ := bounded_by_iterate d hd (mu F s_old)
+              exact ⟨U, hU⟩
+            let L := Nat.find hex
+            have hL_A : s_old ∈ extensionSetA F d L := Nat.find_spec hex
+            have hL_pos : 0 < L := by
+              by_contra h; push_neg at h; have hL0 : L = 0 := by omega
+              rw [hL0, iterate_op_zero] at hL_A
+              exact absurd hL_A (not_lt.mpr (ident_le (mu F s_old)))
+            have hL_min : ∀ k, 0 < k → k < L → ¬ P k := fun k _ hkL => Nat.find_min hex hkL
+
+            -- A-bound on s_old: θs < L * δ (STRICT because B-non-empty)
+            have hθs_A : θs < L * δ := by
+              have hstat := separation_property_A_B R H hd hL_pos hL_A huB hrB_in_B
+              simp only [separationStatistic] at hstat
+              have hL_pos_real : (0 : ℝ) < L := Nat.cast_pos.mpr hL_pos
+              rw [div_lt_iff₀ hL_pos_real] at hstat
+              have hstat' := hδB rB uB huB hrB_in_B
+              simp only [separationStatistic] at hstat'
+              rw [hstat'] at hstat
+              linarith
+
+            -- By trade_shift_C_forward: r_old ∈ C(V + Δ) where s_old ∈ C(V)
+            -- Since s_old ∈ A(L) is minimal, and hs_pos says ident < mu F s_old,
+            -- s_old ∈ C(L-1) (for L ≥ 2) or s_old ∈ C(0) = above ident (for L = 1)
+            --
+            -- For L = 1: s_old ∈ C(0), so r_old ∈ C(0 + Δ) = C(Δ)
+            -- For L ≥ 2: s_old ∈ C(L-1), so r_old ∈ C(L-1 + Δ)
+
+            have hθr_lower : θr ≥ (L - 1 + Δ : ℕ) * δ := by
+              by_cases hL_one : L = 1
+              · -- L = 1: s_old ∈ C(0) since ident < mu F s_old
+                have hs_in_C_0 : s_old ∈ extensionSetC F d 0 := by
+                  simp only [extensionSetC, Set.mem_setOf_eq, iterate_op_zero]
+                  exact hs_pos
+                have hr_in_C_Δ : r_old ∈ extensionSetC F d (0 + Δ) := trade_shift_C_forward hd hΔ htrade hs_in_C_0
+                simp only [zero_add] at hr_in_C_Δ
+                have hstat := separation_property_C_B R H hd hΔ hr_in_C_Δ huB hrB_in_B
+                simp only [separationStatistic] at hstat
+                have hΔ_pos_real : (0 : ℝ) < Δ := Nat.cast_pos.mpr hΔ
+                rw [lt_div_iff₀ hΔ_pos_real] at hstat
+                have hstat' := hδB rB uB huB hrB_in_B
+                simp only [separationStatistic] at hstat'
+                rw [hstat'] at hstat
+                simp only [hL_one, Nat.sub_self, zero_add, Nat.cast_zero, zero_mul]
+                linarith
+              · -- L ≥ 2: s_old ∈ C(L-1) by minimality
+                have hL_ge_2 : L ≥ 2 := by omega
+                have hL_pred_pos : 0 < L - 1 := by omega
+                have h_not_lt : ¬ mu F s_old < iterate_op d (L - 1) :=
+                  hL_min (L - 1) hL_pred_pos (by omega : L - 1 < L)
+                push_neg at h_not_lt
+                rcases h_not_lt.lt_or_eq with h_gt | h_eq
+                · -- d^{L-1} < mu F s_old: s_old ∈ C(L-1)
+                  have hs_in_C : s_old ∈ extensionSetC F d (L - 1) := h_gt
+                  have hr_in_C : r_old ∈ extensionSetC F d (L - 1 + Δ) :=
+                    trade_shift_C_forward hd hΔ htrade hs_in_C
+                  have hL1Δ_pos : 0 < L - 1 + Δ := by omega
+                  have hstat := separation_property_C_B R H hd hL1Δ_pos hr_in_C huB hrB_in_B
+                  simp only [separationStatistic] at hstat
+                  have hL1Δ_pos_real : (0 : ℝ) < (L - 1 + Δ : ℕ) := Nat.cast_pos.mpr hL1Δ_pos
+                  rw [lt_div_iff₀ hL1Δ_pos_real] at hstat
+                  have hstat' := hδB rB uB huB hrB_in_B
+                  simp only [separationStatistic] at hstat'
+                  rw [hstat'] at hstat
+                  linarith
+                · -- mu F s_old = d^{L-1}: s_old ∈ B(L-1), exact equality
+                  have hs_in_B : s_old ∈ extensionSetB F d (L - 1) := h_eq.symm
+                  -- But hB_witness says s_old is NOT in any B(V) - contradiction!
+                  exact absurd hs_in_B (hB_witness (L - 1) hL_pred_pos)
+
+            -- Lower bracket: θr - θs > (L-1+Δ)*δ - L*δ = (Δ-1)*δ
+            have h_bracket_lower : θr - θs > ((Δ : ℕ) - 1) * δ := by
+              have h1 : θr ≥ (L - 1 + Δ : ℕ) * δ := hθr_lower
+              have h2 : θs < L * δ := hθs_A
+              have hL_arith : ((L - 1 + Δ : ℕ) : ℝ) - (L : ℝ) = (Δ : ℝ) - 1 := by
+                simp only [Nat.cast_add, Nat.cast_sub (by omega : 1 ≤ L)]
+                ring
+              calc θr - θs > (L - 1 + Δ : ℕ) * δ - L * δ := by linarith
+                _ = (((L - 1 + Δ : ℕ) : ℝ) - (L : ℝ)) * δ := by ring
+                _ = ((Δ : ℝ) - 1) * δ := by rw [hL_arith]
+                _ = ((Δ : ℕ) - 1) * δ := by simp only [Nat.cast_sub (by omega : 1 ≤ Δ)]
+
+            -- With ZQuantized: θr - θs = m * δ
+            obtain ⟨m, hm⟩ := ZQuantized_diff hZQ r_old s_old
+
+            -- From lower bracket: m > Δ - 1, so m ≥ Δ
+            have hm_ge_Δ : m ≥ (Δ : ℤ) := by
+              have h_lower : ((Δ : ℕ) - 1 : ℕ) * δ < (m : ℝ) * δ := by rw [← hm]; exact h_bracket_lower
+              have h_div : ((Δ : ℕ) - 1 : ℕ) < (m : ℝ) := by
+                have := (mul_lt_mul_right hδ_pos).mp h_lower
+                exact this
+              have h_int : ((Δ : ℤ) - 1 : ℤ) < m := by
+                have : (((Δ : ℕ) - 1 : ℕ) : ℝ) < (m : ℝ) := h_div
+                have h_cast : (((Δ : ℕ) - 1 : ℕ) : ℝ) = ((Δ : ℤ) - 1 : ℤ) := by
+                  simp only [Nat.cast_sub (by omega : 1 ≤ Δ), Int.cast_sub, Int.cast_natCast, Int.cast_one]
+                rw [h_cast] at this
+                exact Int.cast_lt.mp this
+              omega
+
+            -- Conclude θr - θs ≥ Δ * δ
+            rw [hm]
+            have : (Δ : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm_ge_Δ
+            have hδ_nonneg : 0 ≤ δ := le_of_lt hδ_pos
+            calc (Δ : ℕ) * δ = (Δ : ℝ) * δ := by simp only [Nat.cast_ofNat]
+              _ ≤ (m : ℝ) * δ := by nlinarith
 
         · -- B is globally empty: Use accuracy_lemma for lower bound
           push_neg at hB_global
@@ -3716,7 +4133,7 @@ The δ bounds (hδA, hδC) are precisely what make this work.
 lemma Theta'_well_defined
   {k} {F : AtomFamily α k} (R : MultiGridRep F)
   (H : GridComm F) (IH : GridBridge F) (d : α) (hd : ident < d)
-  (δ : ℝ)
+  (δ : ℝ) (hδ_pos : 0 < δ) (hZQ : ZQuantized F R δ)
   (hδA : ∀ r u (hu : 0 < u), r ∈ extensionSetA F d u → separationStatistic R r u hu ≤ δ)
   (hδC : ∀ r u (hu : 0 < u), r ∈ extensionSetC F d u → δ ≤ separationStatistic R r u hu)
   (hδB : ∀ r u (hu : 0 < u), r ∈ extensionSetB F d u → separationStatistic R r u hu = δ)
@@ -3806,7 +4223,7 @@ lemma Theta'_well_defined
     -- Equivalently: Θ(r_old) - Θ(s_old) = (u - t)*δ = Δ*δ
 
     -- Apply the delta_shift_equiv lemma!
-    have h_trade_eq := delta_shift_equiv R H IH hd hδA hδC hδB hΔ_pos hμ_trade
+    have h_trade_eq := delta_shift_equiv R H IH hd hδ_pos hZQ hδA hδC hδB hΔ_pos hμ_trade
     -- h_trade_eq: Θ(r_old) - Θ(s_old) = Δ * δ
 
     -- Rearrange to get: Θ(r_old) + t*δ = Θ(s_old) + u*δ
@@ -3918,7 +4335,7 @@ lemma Theta'_well_defined
     -- Equivalently: Θ(s_old) - Θ(r_old) = (t - u)*δ = Δ*δ
 
     -- Apply delta_shift_equiv with s_old as the "larger" element
-    have h_trade_eq := delta_shift_equiv R H IH hd hδA hδC hδB hΔ_pos hμ_trade
+    have h_trade_eq := delta_shift_equiv R H IH hd hδ_pos hZQ hδA hδC hδB hΔ_pos hμ_trade
     -- h_trade_eq: Θ(s_old) - Θ(r_old) = Δ * δ
 
     -- Rearrange to get: Θ(r_old) + t*δ = Θ(s_old) + u*δ
@@ -4408,20 +4825,118 @@ theorem extend_grid_rep_with_atom
             -- we CANNOT directly conclude op (mu F r_old_x) (d^{t_x}) ? op (mu F r_old_y) (d^{t_y})
             -- without knowing the relative magnitudes of the "gaps".
             --
-            -- **MIXED COMPARISON ISSUE** (t_x < t_y case):
-            -- Need: Θ(r_old_y) + t_y*δ > Θ(r_old_x) + t_x*δ
-            -- i.e., Θ(r_old_y) - Θ(r_old_x) > (t_x - t_y)*δ = -Δ*δ where Δ = t_y - t_x > 0
-            -- i.e., Θ(r_old_y) > Θ(r_old_x) - Δ*δ (always true if Θ(r_old_y) ≥ Θ(r_old_x))
+            -- **MIXED COMPARISON (t_x < t_y, mu r_old_x > mu r_old_y case)**:
+            -- Goal: Θ(r_old_x) + t_x*δ < Θ(r_old_y) + t_y*δ
+            -- i.e., Θ(r_old_x) - Θ(r_old_y) < (t_y - t_x)*δ = Δ*δ
             --
-            -- The constraint x < y tells us combined values satisfy the ordering,
-            -- but extracting a quantitative bound requires either:
-            -- (a) delta_shift_equiv to bound the gap, OR
-            -- (b) GridComm on the (k+1)-grid to rearrange terms
+            -- Key derivation from x < y:
+            -- (mu F r_old_x) ⊕ d^{t_x} < (mu F r_old_y) ⊕ d^{t_y}
+            -- = (mu F r_old_y) ⊕ d^{t_x} ⊕ d^Δ  (by iterate_op_add)
+            -- By left-cancellation-like argument: mu F r_old_x < (mu F r_old_y) ⊕ d^Δ
             --
-            -- This creates a dependency: delta_shift_equiv needs δ, but δ is
-            -- being constructed here. K&S resolve by the INDUCTIVE structure:
-            -- at step k→k+1, the k-grid already has the rational structure.
-            sorry -- MIXED-COMPARISON: Needs quantitative bounds from delta_shift_equiv
+            -- So the gap between r_old_x and r_old_y is bounded by d^Δ.
+            -- This should give Θ(r_old_x) - Θ(r_old_y) < Δ*δ.
+
+            let Δ := t_y - t_x
+            have hΔ_pos : 0 < Δ := Nat.sub_pos_of_lt h_t_lt
+            have hΔ_eq : t_y = t_x + Δ := (Nat.add_sub_cancel' (le_of_lt h_t_lt)).symm
+
+            -- Derive: mu F r_old_x < (mu F r_old_y) ⊕ d^Δ
+            have h_gap_bound : mu F r_old_x < op (mu F r_old_y) (iterate_op d Δ) := by
+              -- From x < y: (mu F r_old_x) ⊕ d^{t_x} < (mu F r_old_y) ⊕ d^{t_y}
+              have h1 : op (mu F r_old_x) (iterate_op d t_x) <
+                        op (mu F r_old_y) (iterate_op d t_y) := by
+                rw [← hx_eq, ← hy_eq]; exact hxy
+              -- Rewrite t_y = t_x + Δ
+              rw [hΔ_eq, ← iterate_op_add] at h1
+              -- h1 : (mu F r_old_x) ⊕ d^{t_x} < (mu F r_old_y) ⊕ d^Δ ⊕ d^{t_x}
+              -- Use associativity: (mu F r_old_y) ⊕ d^Δ ⊕ d^{t_x} = ((mu F r_old_y) ⊕ d^Δ) ⊕ d^{t_x}
+              rw [op_assoc (mu F r_old_y)] at h1
+              -- Now use "left cancellation": if a ⊕ c < b ⊕ c then a < b
+              -- This follows from strict monotonicity being injective
+              by_contra h_not_lt
+              push_neg at h_not_lt
+              have h2 : op (op (mu F r_old_y) (iterate_op d Δ)) (iterate_op d t_x) ≤
+                        op (mu F r_old_x) (iterate_op d t_x) := by
+                rcases eq_or_lt_of_le h_not_lt with h_eq | h_lt
+                · rw [h_eq]
+                · exact le_of_lt (op_strictMono_left (iterate_op d t_x) h_lt)
+              exact not_lt_of_le h2 h1
+
+            -- Now: mu F r_old_x > mu F r_old_y (h_gt) but mu F r_old_x < (mu F r_old_y) ⊕ d^Δ
+            -- The Θ-gap is bounded: Θ(r_old_x) - Θ(r_old_y) < Δ * δ
+            --
+            -- Strategy: Use the A-bound. Since mu F r_old_x < (mu F r_old_y) ⊕ d^Δ,
+            -- and we need Θ(r_old_x) - Θ(r_old_y) < Δ*δ.
+
+            -- We have θx := Θ(r_old_x) and θy := Θ(r_old_y)
+            let θx := R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩
+            let θy := R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩
+
+            -- From h_gt: μ r_old_x > μ r_old_y, so θx > θy (by R.strictMono)
+            have hθx_gt_θy : θx > θy := R.strictMono h_gt
+
+            -- Goal: θx + t_x*δ < θy + t_y*δ, i.e., θx - θy < Δ*δ
+            -- Using iterate_op_add:
+            have h_Δ_decomp : iterate_op d t_y = op (iterate_op d t_x) (iterate_op d Δ) := by
+              rw [hΔ_eq, iterate_op_add]
+
+            -- The key bound: θx - θy < Δ * δ
+            -- This follows from h_gap_bound and the separation structure.
+            --
+            -- Specifically, since mu F r_old_x < (mu F r_old_y) ⊕ d^Δ and mu F r_old_x > mu F r_old_y,
+            -- r_old_x is in A(Δ) relative to r_old_y (in a shifted sense).
+            -- The A-bound gives: (θx - θy) / Δ ≤ δ (approximately).
+            -- But we need STRICT inequality.
+            --
+            -- Use ZQuantized: θx - θy = m * δ for some integer m.
+            -- From h_gap_bound: m < Δ (because r_old_x is STRICTLY below r_old_y ⊕ d^Δ)
+            -- So θx - θy ≤ (Δ-1) * δ < Δ * δ.
+
+            -- Since strict inequality requires careful handling, use the order directly:
+            -- We need: θx + t_x*δ < θy + t_y*δ
+            -- Rearranging: θx - θy < (t_y - t_x)*δ = Δ*δ
+
+            -- Direct approach: combine the bounds we have
+            have h_t_ineq : ((t_x : ℕ) : ℝ) * δ < ((t_y : ℕ) : ℝ) * δ := by
+              have h_delta_pos : 0 < δ := delta_pos
+              have h_tx_lt_ty : (t_x : ℝ) < (t_y : ℝ) := Nat.cast_lt.mpr h_t_lt
+              exact (mul_lt_mul_right h_delta_pos).mpr h_tx_lt_ty
+
+            -- The gap θx - θy is positive (from hθx_gt_θy) but bounded by Δ*δ
+            -- This follows from h_gap_bound: r_old_x < r_old_y ⊕ d^Δ
+            -- Using the representation being order-preserving on extensions:
+            --
+            -- Consider in the (k+1)-grid: r_old_y ⊕ d^Δ has Θ' = θy + Δ*δ
+            -- r_old_x (viewed in k+1 grid with t=0) has Θ' = θx + 0 = θx
+            -- From r_old_x < r_old_y ⊕ d^Δ in the algebra, we expect θx < θy + Δ*δ
+            --
+            -- Since we're constructing Θ' to be strictly monotone, this should hold
+            -- by the way δ was chosen (satisfying A/C bounds).
+
+            -- The A/C bounds ensure: for any x in A(u), θ(x)/u ≤ δ
+            -- Here, r_old_x < (mu F r_old_y) ⊕ d^Δ is like A-membership relative to r_old_y.
+
+            -- For now, use the fact that the goal reduces to showing θx - θy < Δ*δ
+            -- which should follow from h_gap_bound and the separation structure.
+            -- The complete proof requires showing the A-bound applies in this relative setting.
+
+            -- Simplified proof using just the ordering structure:
+            -- From hθx_gt_θy: θx > θy, so θx - θy > 0
+            -- From h_t_ineq: t_x*δ < t_y*δ
+            -- Together: θx + t_x*δ ? θy + t_y*δ
+            --
+            -- The ordering x < y encodes that the "t advantage" outweighs the "θ disadvantage".
+            -- In the representation framework, this is captured by the A/C separation bounds.
+
+            -- Since the detailed proof requires additional infrastructure (relative A-bounds),
+            -- keep a TODO marker but with more context:
+            suffices h_bound : θx - θy < Δ * δ by linarith
+            -- **TODO**: Prove from h_gap_bound using relative A-separation.
+            -- The bound follows from: r_old_x < r_old_y ⊕ d^Δ with both in k-grid.
+            -- With ZQuantized, θx - θy = m*δ for integer m. The strict inequality
+            -- r_old_x < r_old_y ⊕ d^Δ gives m < Δ, hence θx - θy < Δ*δ.
+            sorry -- MIXED-COMPARISON: Needs relative A-bound from h_gap_bound
 
       · -- Case: t_x = t_y
         -- Since x < y and t_x = t_y, we have mu F r_old_x ⊕ d^t < mu F r_old_y ⊕ d^t
