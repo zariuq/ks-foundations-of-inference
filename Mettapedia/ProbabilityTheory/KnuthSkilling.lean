@@ -27,8 +27,17 @@ The formalization uses a two-layer design to avoid circular dependencies:
 - See `CounterModels/` for FreeMonoid2 constructions and no-go theorems. These are
   intentionally not imported by the main proof chain.
 
-## Archived (in _archive/)
-- **Counterexamples.lean**: Proofs that LinearOrder and Archimedean are necessary
+## Archived (not imported)
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/Counterexamples.lean`: Proofs that LinearOrder and Archimedean are necessary
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/legacy/`: historical snapshots (may not compile)
+  - `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/legacy/RepTheorem_before_layering.lean`
+  - `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/legacy/RepTheorem_backup_before_refactor.lean`
+  - `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/legacy/SeparationProof_backup_before_filling.lean`
+  - `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/legacy/NoGo_BACKUP.lean`
+  - `Mettapedia/ProbabilityTheory/KnuthSkilling/_archive/legacy/KnuthSkilling_lean_gemini_attempt.bak`
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/ProofDraft.lean`: archived monolithic Appendix A draft
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/_archive/AppendixA_experimental_20251201.lean`: older experimental Appendix A attempt
+- `Mettapedia/ProbabilityTheory/_archive/AssociativityTheorem_Aczel_backup.lean`: Aczél-style exploratory file
 -/
 
 -- Import all submodules

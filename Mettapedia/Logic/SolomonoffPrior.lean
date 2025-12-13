@@ -547,8 +547,8 @@ theorem complexity_probability_bound (U : PrefixFreeMachine)
 /-! ## Part 6: Invariance Theorem -/
 
 /-- Invariance: universal machines agree up to a constant -/
-theorem invariance (U V : PrefixFreeMachine) [hU : UniversalPFM U] [hV : UniversalPFM V] :
-    ∃ c : ℕ, ∀ x : BinString, ∀ (hx : ∃ p, V.compute p = some x),
+theorem invariance (U V : PrefixFreeMachine) [hU : UniversalPFM U] [_hV : UniversalPFM V] :
+    ∃ c : ℕ, ∀ x : BinString, ∀ (_hx : ∃ p, V.compute p = some x),
       kolmogorovComplexity U x ≤ kolmogorovComplexity V x + c := by
   -- U can simulate V with constant overhead c
   obtain ⟨c, hc⟩ := hU.universal V
@@ -598,10 +598,15 @@ Two formulations exist:
 Both are valuable: (1) for computational theory, (2) for prediction theory.
 -/
 
-/-- A semimeasure on binary strings (classical definition for infinite strings)
+/-- A semimeasure on binary strings (for INFINITE sequence interpretation).
 
-    For finite strings with prefix-free machines, we get additional structure:
-    the sum over all strings equals 1, making it a proper probability measure.
+    **IMPORTANT**: This structure is appropriate for MONOTONE machines producing
+    infinite sequences, NOT prefix-free machines producing exact finite outputs!
+
+    - The subadditivity property captures that cylinders partition:
+      [x] = [x++0] ∪ [x++1], so μ([x]) ≥ μ([x++0]) + μ([x++1])
+    - For finite outputs, this property doesn't make sense
+    - See `universal_semimeasure` in Part 8 for the correct theorem
 -/
 structure Semimeasure where
   μ : BinString → ℝ
@@ -609,56 +614,45 @@ structure Semimeasure where
   root_le_one : μ [] ≤ 1
   subadditive : ∀ x, μ x ≥ μ (x ++ [false]) + μ (x ++ [true])
 
-/-- Algorithmic probability forms a semimeasure (requires Kraft inequality) -/
-theorem algorithmicProbability_semimeasure (U : PrefixFreeMachine)
+/-! ### Why Prefix-Free Machines Don't Give Semimeasures
+
+**The Council's Wisdom**: Prefix-free machines produce EXACT finite outputs.
+A program that outputs "011" does NOT output "0110" or "0111" - these are
+different, disjoint events. Therefore:
+
+- μ(x) = Σ{p | output(p) = x} 2^{-|p|} (sum over programs outputting exactly x)
+- μ(x++0) and μ(x++1) have NOTHING to do with μ(x)
+- Subadditivity doesn't apply to this setting
+
+**What the finite version DOES satisfy**:
+- Non-negativity: μ(x) ≥ 0 ✅
+- Kraft bound: Σ_x μ(x) ≤ 1 ✅ (for any finite set of outputs)
+
+**For PLN prediction, use the infinite version** (`MonotoneMachine` + `universal_semimeasure`)!
+-/
+
+/-- Partial semimeasure properties for finite outputs.
+
+    Prefix-free machines satisfy non-negativity and the Kraft bound,
+    but NOT subadditivity (which requires the infinite interpretation).
+-/
+theorem algorithmicProbability_partial_properties (U : PrefixFreeMachine)
     (programs : Finset BinString)
-    (hpf : PrefixFree { p ∈ programs | U.compute p ≠ none }) :
-    ∃ sm : Semimeasure, ∀ x, sm.μ x ≤ algorithmicProbability U programs x := by
-  -- Construct the semimeasure using algorithmic probability itself
-  -- The key is showing it satisfies the semimeasure axioms via Kraft inequality
-  refine ⟨⟨algorithmicProbability U programs, ?nonneg, ?root, ?sub⟩, fun x => le_refl _⟩
-  case nonneg => exact algorithmicProbability_nonneg U programs
-  case root =>
-    -- μ([]) ≤ 1 follows from Kraft inequality
+    (hpf : PrefixFree (↑programs : Set BinString)) :
+    (∀ x, 0 ≤ algorithmicProbability U programs x) ∧
+    algorithmicProbability U programs [] ≤ 1 := by
+  constructor
+  · exact algorithmicProbability_nonneg U programs
+  · -- μ([]) ≤ 1 follows from Kraft inequality on programs
     unfold algorithmicProbability
-    have h_halting := hpf
-    -- The set of halting programs is prefix-free
-    have programs_pf : PrefixFree { p ∈ programs | U.compute p ≠ none } := hpf
-    -- Filter to halting programs
-    let halting := programs.filter (fun p => U.compute p ≠ none)
-    have halting_pf : PrefixFree (↑halting : Set BinString) := by
-      intro s hs t ht hst hpref
-      exact programs_pf s hs t ht hst hpref
-    -- Apply Kraft inequality
-    have kraft := kraft_inequality halting halting_pf
-    -- The sum over programs computing [] is ≤ the sum over all halting programs
-    calc (halting.filter (fun p => U.compute p = some [])).sum (fun p => (2 : ℝ)^(-(p.length : ℤ)))
-        ≤ halting.sum (fun p => (2 : ℝ)^(-(p.length : ℤ))) := by
+    have kraft := kraft_inequality programs hpf
+    calc (programs.filter (fun p => U.compute p = some [])).sum (fun p => (2 : ℝ)^(-(p.length : ℤ)))
+        ≤ programs.sum (fun p => (2 : ℝ)^(-(p.length : ℤ))) := by
           apply Finset.sum_le_sum_of_subset_of_nonneg
           · exact Finset.filter_subset _ _
-          · intro p _ _
-            exact zpow_nonneg (by norm_num) _
-      _ = kraftSum halting := rfl
+          · intro p _ _; exact zpow_nonneg (by norm_num) _
+      _ = kraftSum programs := rfl
       _ ≤ 1 := kraft
-  case sub =>
-    -- μ(x) ≥ μ(x++[false]) + μ(x++[true])
-    intro x
-    -- NOTE: Subadditivity is subtle for finite strings with prefix-free machines!
-    --
-    -- Two interpretations:
-    -- 1. INFINITE SEQUENCES (classical Solomonoff): Programs output infinite bitstrings,
-    --    μ(x) = Σ{p | output(p) starts with x} 2^{-|p|}
-    --    Then subadditivity holds naturally: strings starting with x split into
-    --    those starting with x++[0] and x++[1]
-    --
-    -- 2. FINITE OUTPUTS (our current definition): Programs output exact finite strings,
-    --    μ(x) = Σ{p | output(p) = x} 2^{-|p|}
-    --    Here the relationship is different: a program outputting x cannot output x++[b]
-    --    So we need a different formulation or switch to interpretation (1)
-    --
-    -- For the PLN hypercube, interpretation (1) is more natural.
-    -- TODO: Add infinite sequence formulation alongside finite one
-    sorry
 
 /-! ## Summary
 
@@ -719,25 +713,23 @@ as explicit limits of finite approximations.
 - Weihrauch (2000): "Computable Analysis" (on constructive topology)
 -/
 
-/-- Infinite binary sequences (coinductive/lazy streams)
+/-- Infinite binary sequences as functions ℕ → Bool
 
-In Lean, we use coinductive types to represent potentially infinite data.
-This is constructive: we can observe any finite prefix, but the full sequence
-may be infinite.
+This is the standard representation in constructive mathematics:
+- Each bit is computable given its index
+- Finite prefixes can be observed
+- Compatible with Bishop's constructive analysis
 -/
-coinductive InfBinString : Type where
-  | cons : Bool → InfBinString → InfBinString
+abbrev InfBinString := ℕ → Bool
 
 namespace InfBinString
 
 /-- Extract the n-th bit (0-indexed) from an infinite sequence -/
-def nth : InfBinString → ℕ → Bool
-  | cons b _, 0 => b
-  | cons _ tail, n+1 => nth tail n
+def nth (ω : InfBinString) (n : ℕ) : Bool := ω n
 
 /-- Check if a finite string is a prefix of an infinite sequence -/
 def isPrefixOf (x : BinString) (ω : InfBinString) : Prop :=
-  ∀ i : Fin x.length, x[i] = ω.nth i
+  ∀ i : Fin x.length, x[i] = ω i
 
 /-- The cylinder set [x] = {ω ∈ {0,1}^ℕ : x is a prefix of ω}
 
@@ -755,10 +747,11 @@ theorem cylinder_mono {x y : BinString} (h : y <+: x) :
   unfold Cylinder isPrefixOf at *
   intro i
   obtain ⟨suffix, rfl⟩ := h
-  simp only [List.getElem_append]
-  have : (i : ℕ) < y.length := i.isLt
-  rw [List.getElem_append_left this]
-  exact hω ⟨i, by simp only [List.length_append]; omega⟩
+  have hi' : (i : ℕ) < (y ++ suffix).length := by simp; omega
+  have step := hω (Fin.mk i hi')
+  -- Convert using getElem_append_left directly in the goal
+  convert step using 1
+  exact (List.getElem_append_left i.isLt).symm
 
 /-- Cylinders are disjoint if the strings differ at the last bit -/
 theorem cylinder_disjoint_bit (x : BinString) :
@@ -766,13 +759,23 @@ theorem cylinder_disjoint_bit (x : BinString) :
   rw [Set.disjoint_iff_inter_eq_empty, Set.eq_empty_iff_forall_notMem]
   intro ω ⟨h0, h1⟩
   unfold Cylinder isPrefixOf at h0 h1
-  have : x.length < (x ++ [false]).length := by simp [List.length_append]
-  have eq0 : false = ω.nth x.length := h0 ⟨x.length, this⟩
-  have eq1 : true = ω.nth x.length := h1 ⟨x.length, by simp [List.length_append]⟩
-  simp only [List.getElem_append_right (le_refl x.length),
-             Nat.sub_self, List.getElem_cons_zero] at eq0 eq1
-  rw [←eq0] at eq1
-  exact Bool.false_ne_true eq1
+  have hlen0 : x.length < (x ++ [false]).length := by simp
+  have hlen1 : x.length < (x ++ [true]).length := by simp
+  have eq0 := h0 (Fin.mk x.length hlen0)
+  have eq1 := h1 (Fin.mk x.length hlen1)
+  -- Prove that (x ++ [false])[x.length]'hlen0 = false
+  have eq0_simp : (x ++ [false])[x.length]'hlen0 = false := by simp
+  have eq0' : (x ++ [false])[Fin.mk x.length hlen0] = false := eq0_simp
+  rw [eq0'] at eq0
+  -- Prove that (x ++ [true])[x.length]'hlen1 = true
+  have eq1_simp : (x ++ [true])[x.length]'hlen1 = true := by simp
+  have eq1' : (x ++ [true])[Fin.mk x.length hlen1] = true := eq1_simp
+  rw [eq1'] at eq1
+  -- Now we have false = ω ↑⟨x.length, hlen0⟩ and true = ω ↑⟨x.length, hlen1⟩
+  simp only at eq0 eq1
+  -- Both are ω x.length, so we get false = true
+  have : false = true := by rw [eq0, ←eq1]
+  exact Bool.false_ne_true this
 
 /-- The cylinders form a partition: [x] = [x++0] ∪ [x++1] -/
 theorem cylinder_partition (x : BinString) :
@@ -781,33 +784,57 @@ theorem cylinder_partition (x : BinString) :
   constructor
   · intro h
     unfold Cylinder isPrefixOf at *
-    by_cases hb : ω.nth x.length = false
+    by_cases hb : ω x.length = false
     · left
-      intro ⟨i, hi⟩
-      simp only [List.length_append, List.length_cons, List.length_nil] at hi
-      by_cases hi' : i < x.length
-      · rw [List.getElem_append_left hi']
-        exact h ⟨i, hi'⟩
-      · have : i = x.length := by omega
-        subst this
-        simpa [List.getElem_append_right (le_refl _), Nat.sub_self]
+      intro i
+      by_cases hi' : i.val < x.length
+      · have eq := h (Fin.mk i.val hi')
+        calc (x ++ [false])[i]
+            = x[i.val]'hi' := List.getElem_append_left hi'
+          _ = ω (i.val) := eq
+      · have heq : i.val = x.length := by have := i.isLt; simp at this; omega
+        have hlen : i.val < (x ++ [false]).length := i.isLt
+        have aux : (x ++ [false])[i.val]'hlen = false := by simp [heq]
+        have : (x ++ [false])[i] = false := by convert aux using 1
+        calc (x ++ [false])[i]
+            = false := this
+          _ = ω x.length := hb.symm
+          _ = ω i.val := by rw [heq]
     · right
       push_neg at hb
-      cases Bool.eq_false_or_eq_true (ω.nth x.length) with
-      | inl h' => contradiction
-      | inr h' =>
-        intro ⟨i, hi⟩
-        simp only [List.length_append, List.length_cons, List.length_nil] at hi
-        by_cases hi' : i < x.length
-        · rw [List.getElem_append_left hi']
-          exact h ⟨i, hi'⟩
-        · have : i = x.length := by omega
-          subst this
-          simpa [List.getElem_append_right (le_refl _), Nat.sub_self]
+      have h' : ω x.length = true := Bool.eq_true_of_not_eq_false hb
+      intro i
+      by_cases hi' : i.val < x.length
+      · have eq := h (Fin.mk i.val hi')
+        calc (x ++ [true])[i]
+            = x[i.val]'hi' := List.getElem_append_left hi'
+          _ = ω (i.val) := eq
+      · have heq : i.val = x.length := by have := i.isLt; simp at this; omega
+        have hlen : i.val < (x ++ [true]).length := i.isLt
+        have aux : (x ++ [true])[i.val]'hlen = true := by simp [heq]
+        have : (x ++ [true])[i] = true := by convert aux using 1
+        calc (x ++ [true])[i]
+            = true := this
+          _ = ω x.length := h'.symm
+          _ = ω i.val := by rw [heq]
   · intro h
     cases h with
-    | inl h0 => exact fun i => h0 ⟨i, by simp at i; omega⟩
-    | inr h1 => exact fun i => h1 ⟨i, by simp at i; omega⟩
+    | inl h0 =>
+      unfold Cylinder isPrefixOf at h0
+      intro i
+      have hi' : i.val < (x ++ [false]).length := by simp; omega
+      have step := h0 (Fin.mk i.val hi')
+      calc x[i]
+          = (x ++ [false])[i.val]'hi' := (List.getElem_append_left i.isLt).symm
+        _ = ω (i.val) := step
+    | inr h1 =>
+      unfold Cylinder isPrefixOf at h1
+      intro i
+      have hi' : i.val < (x ++ [true]).length := by simp; omega
+      have step := h1 (Fin.mk i.val hi')
+      calc x[i]
+          = (x ++ [true])[i.val]'hi' := (List.getElem_append_left i.isLt).symm
+        _ = ω (i.val) := step
 
 end InfBinString
 
@@ -886,24 +913,35 @@ theorem produces_append_implies_produces (U : MonotoneMachine) (p x : BinString)
   intro h
   unfold MonotoneMachine.produces at *
   intro i
-  have : i.val < (x ++ [b]).length := by simp; omega
-  have := h ⟨i.val, this⟩
-  simp only [List.length_append, List.length_cons, List.length_nil,
-             List.getElem_append_left i.isLt] at this
-  exact this
+  have hi' : i.val < (x ++ [b]).length := by simp; omega
+  have step := h (Fin.mk i.val hi')
+  -- step : U.step p i.val = some (x ++ [b])[i.val]'hi'
+  -- goal : U.step p i.val = some x[i]
+  convert step using 2
+  exact (List.getElem_append_left i.isLt).symm
 
 /-- Programs producing x++0 and x++1 are disjoint -/
 theorem produces_append_disjoint (U : MonotoneMachine) (p x : BinString) :
     ¬(U.produces p (x ++ [false]) ∧ U.produces p (x ++ [true])) := by
   intro ⟨h0, h1⟩
   unfold MonotoneMachine.produces at h0 h1
-  have : x.length < (x ++ [false]).length := by simp
-  have eq0 := h0 ⟨x.length, this⟩
-  have eq1 := h1 ⟨x.length, by simp⟩
-  simp only [List.getElem_append_right (le_refl _), Nat.sub_self,
-             List.getElem_cons_zero] at eq0 eq1
-  rw [←eq0] at eq1
-  exact Bool.false_ne_true eq1
+  have hlen0 : x.length < (x ++ [false]).length := by simp
+  have hlen1 : x.length < (x ++ [true]).length := by simp
+  have eq0 := h0 (Fin.mk x.length hlen0)
+  have eq1 := h1 (Fin.mk x.length hlen1)
+  -- Prove (x ++ [false])[x.length]'hlen0 = false
+  have eq0_simp : (x ++ [false])[x.length]'hlen0 = false := by simp
+  have eq0' : (x ++ [false])[Fin.mk x.length hlen0] = false := eq0_simp
+  rw [eq0'] at eq0
+  -- Prove (x ++ [true])[x.length]'hlen1 = true
+  have eq1_simp : (x ++ [true])[x.length]'hlen1 = true := by simp
+  have eq1' : (x ++ [true])[Fin.mk x.length hlen1] = true := eq1_simp
+  rw [eq1'] at eq1
+  -- Simplify Fin coercion
+  simp only at eq0 eq1
+  -- Now eq0 : U.step p x.length = some false, eq1 : U.step p x.length = some true
+  rw [eq0] at eq1
+  cases eq1
 
 /-- The subadditivity property for monotone machines -/
 theorem cylinderMeasure_subadditive (U : MonotoneMachine) (programs : Finset BinString) (x : BinString) :
@@ -927,7 +965,7 @@ theorem cylinderMeasure_subadditive (U : MonotoneMachine) (programs : Finset Bin
                        (programs.filter (fun p => U.produces p (x ++ [true]))) := by
     rw [Finset.disjoint_iff_inter_eq_empty]
     ext p
-    simp only [Finset.mem_inter, Finset.mem_filter, Finset.not_mem_empty, iff_false]
+    simp only [Finset.mem_inter, Finset.mem_filter, Finset.notMem_empty, iff_false]
     intro ⟨⟨_, h0⟩, ⟨_, h1⟩⟩
     exact produces_append_disjoint U p x ⟨h0, h1⟩
   -- Therefore the sum over x is ≥ sum over x++0 plus sum over x++1
@@ -956,8 +994,31 @@ theorem cylinderMeasure_subadditive (U : MonotoneMachine) (programs : Finset Bin
           | inr h => exact Or.inr ⟨hmem, h⟩
         · intro h
           cases h with
-          | inl ⟨hmem, h⟩ => exact ⟨hmem, Or.inl h⟩
-          | inr ⟨hmem, h⟩ => exact ⟨hmem, Or.inr h⟩
+          | inl h0 => exact ⟨h0.1, Or.inl h0.2⟩
+          | inr h1 => exact ⟨h1.1, Or.inr h1.2⟩
+
+/-- The cylinder measure for the empty string is bounded by 1.
+
+    This follows from the Kraft inequality: all programs produce the empty prefix,
+    so cylinderMeasure programs [] = ∑_{p ∈ programs} 2^(-|p|) ≤ 1.
+-/
+theorem cylinderMeasure_le_one (U : MonotoneMachine) (programs : Finset BinString)
+    (hpf : PrefixFree (↑programs : Set BinString)) :
+    U.cylinderMeasure programs [] ≤ 1 := by
+  unfold MonotoneMachine.cylinderMeasure
+  -- All programs produce the empty prefix
+  have : programs.filter (fun p => U.produces p []) = programs := by
+    ext p
+    simp only [Finset.mem_filter, and_iff_left_iff_imp]
+    intro _
+    unfold MonotoneMachine.produces
+    intro ⟨i, hi⟩
+    simp at hi
+  rw [this]
+  -- Sum over all programs ≤ 1 by Kraft inequality
+  have kraft := kraft_inequality programs hpf
+  unfold kraftSum at kraft
+  exact kraft
 
 /-- The main semimeasure theorem for infinite sequences -/
 theorem universal_semimeasure (U : MonotoneMachine) (programs : Finset BinString)
