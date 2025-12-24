@@ -5,16 +5,16 @@ import Mathlib.Algebra.Order.Group.Cone
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 
 /-!
-# Desirable Gambles: The Most Minimal Foundation for Credal Sets
+# Desirable Gambles: A Minimal Foundation for Credal Sets
 
-This file formalizes **desirable gambles** as the most minimal axiomatic foundation
+This file formalizes **desirable gambles** as a standard minimal axiomatic foundation
 for imprecise probability (credal sets), and shows how K&S axioms relate to this
 more fundamental structure.
 
 ## The Hierarchy
 
 ```
-Desirable Gambles (D1-D4)  ←― MOST MINIMAL
+Desirable Gambles (D1-D4)  ←― minimal axioms (one common choice)
         ↓
 Lower Previsions (Walley)
         ↓ (Envelope Theorem)
@@ -43,8 +43,9 @@ Primary sources:
 Stanford Encyclopedia of Philosophy:
 - https://plato.stanford.edu/entries/imprecise-probabilities/
 
-Key insight: The D1-D4 axioms are MORE MINIMAL than K&S for deriving credal sets.
-K&S adds algebraic structure (associativity, lattice) beyond what's needed.
+Key insight (informal): The D1-D4 axioms are a lean way to axiomatize coherent imprecise
+probability. K&S adds additional algebraic structure (associativity, lattice/grid machinery)
+aimed at exact additivity / representation.
 -/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.DesirableGambles
@@ -71,7 +72,7 @@ def Gamble.StrictlyNegative {Ω : Type*} (f : Gamble Ω) : Prop := ∀ ω, f ω 
 /-!
 ### The D1-D4 Axioms for Coherent Sets of Desirable Gambles
 
-These are the MOST MINIMAL axioms for imprecise probability!
+These are a widely used minimal axiom set for imprecise probability.
 -/
 
 /-- A set of desirable gambles satisfying the D1-D4 coherence axioms -/
@@ -310,8 +311,8 @@ The progression of foundational work:
 - **Walley (1991)**: Envelope theorem → credal sets as fundamental
 - **Knuth-Skilling (2012)**: Lattice symmetries → probability (but needs ℝ!)
 
-The D1-D4 axioms (Williams/Walley) are now recognized as the most minimal
-foundation for uncertainty quantification that doesn't assume ℝ.
+The D1-D4 axioms (Williams/Walley) are a widely used minimal foundation for uncertainty
+quantification; proving a precise “minimality” theorem is out of scope here.
 -/
 
 /-!

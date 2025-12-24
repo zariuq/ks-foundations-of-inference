@@ -57,7 +57,7 @@ lemma findGreatest_crossing (P : ℕ → Prop) [DecidablePred P] (n : ℕ) (hP0 
 /-- Helper: Find minimal N ≥ 1 with x < a^N.
 This ensures N has the minimality property needed for the separation proof. -/
 private lemma exists_minimal_N_for_x_lt_iterate
-    (a x : α) (ha : ident < a) (hx : ident < x) :
+    (a x : α) (ha : ident < a) (_hx : ident < x) :
     ∃ N : ℕ, 1 ≤ N ∧
       x < iterate_op a N ∧
       ∀ k : ℕ, 1 ≤ k → k < N → ¬ x < iterate_op a k := by
@@ -87,7 +87,7 @@ private lemma exists_minimal_N_for_x_lt_iterate
 
 /-- If x < a¹ and N is minimal with x < a^N, then N ≤ 1. -/
 private lemma N_le_one_of_x_lt_a {a x : α} {N : ℕ}
-    (hN_ge1 : 1 ≤ N)
+    (_hN_ge1 : 1 ≤ N)
     (hN_min : ∀ k : ℕ, 1 ≤ k → k < N → ¬ x < iterate_op a k)
     (hx_lt_a1 : x < iterate_op a 1) :
     N ≤ 1 := by
@@ -100,7 +100,7 @@ private lemma N_le_one_of_x_lt_a {a x : α} {N : ℕ}
 
 /-- Find minimal L ≥ 1 with a < y^L (for separation lemma) -/
 private lemma exists_minimal_L_for_a_lt_iterate
-    (y a : α) (hy : ident < y) (ha : ident < a) :
+    (y a : α) (hy : ident < y) (_ha : ident < a) :
     ∃ L : ℕ, 1 ≤ L ∧
       a < iterate_op y L ∧
       ∀ k : ℕ, 1 ≤ k → k < L → ¬ a < iterate_op y k := by
@@ -129,8 +129,21 @@ private lemma exists_minimal_L_for_a_lt_iterate
 When a ≤ x < y, the gap y^m - x^m grows unboundedly. Eventually this exceeds
 any interval [a^k, a^{k+1}), allowing separation. -/
 
+/-- **Explicit blocker**: large-regime separation (`a ≤ x < y`).
+
+This is the remaining hard step in the current `SeparationProof.lean` development. To avoid
+leaving an unfinished proof term in the library, we package the statement as a `Prop`-class and
+treat it as an explicit assumption for now. -/
+class LargeRegimeSeparationSpec (α : Type*) [KnuthSkillingAlgebra α] : Prop where
+  /-- When `a ≤ x < y`, there exist witnesses `(n,m)` with `x^m < a^n ≤ y^m`. -/
+  exists_power_separation_of_ge :
+      ∀ a x y : α, ident < a → x < y → a ≤ x →
+        ∃ n m : ℕ, 0 < m ∧
+          iterate_op x m < iterate_op a n ∧
+          iterate_op a n ≤ iterate_op y m
+
 /-- **Large-regime separation lemma**: When a ≤ x < y, there exist witnesses (n, m)
-that separate powers of x and y by a power of a.
+	that separate powers of x and y by a power of a.
 
 This is the key lemma for the "large" regime where a ≤ x, which includes:
 - The L = M subcase in N = 1 (where a ≤ x^M < y^M)
@@ -140,10 +153,14 @@ This is the key lemma for the "large" regime where a ≤ x, which includes:
 y^m - x^m grows with m. Eventually this gap exceeds the step size from a^k to a^{k+1},
 allowing us to fit a power of a between x^m and y^m. -/
 theorem exists_power_separation_of_ge
-    (a x y : α) (ha : ident < a) (hxy : x < y) (hax : a ≤ x) :
+    (a x y : α) (ha : ident < a) (hxy : x < y) (hax : a ≤ x)
+    [LargeRegimeSeparationSpec α] :
     ∃ n m : ℕ, 0 < m ∧
       iterate_op x m < iterate_op a n ∧
       iterate_op a n ≤ iterate_op y m := by
+  simpa using
+    (LargeRegimeSeparationSpec.exists_power_separation_of_ge (α := α) a x y ha hxy hax)
+/- 
   -- Prerequisites
   have hx : ident < x := lt_of_lt_of_le ha hax
   have hy : ident < y := lt_trans hx hxy
@@ -182,7 +199,7 @@ theorem exists_power_separation_of_ge
     push_neg at h_ge
     have hf₁_eq_K : f₁ = K := le_antisymm hf₁_le_K h_ge
     have : iterate_op a K ≤ x := by rw [← hf₁_eq_K]; exact hP_xf₁
-    exact not_lt_of_le this hK
+    exact not_lt_of_ge this hK
 
   have h_not_Px_f₁succ : ¬ P_x (f₁ + 1) :=
     h_cross_x.2.2 (f₁ + 1) (Nat.lt_succ_self f₁) (Nat.succ_le_of_lt hf₁_lt_K)
@@ -192,7 +209,7 @@ theorem exists_power_separation_of_ge
   -- Since x < y, also a^{f₁} ≤ x < y.
   -- The key question: is a^{f₁+1} ≤ y?
 
-  rcases le_or_lt (iterate_op a (f₁ + 1)) y with h_sep | h_same
+  rcases le_or_gt (iterate_op a (f₁ + 1)) y with h_sep | h_same
 
   · -- **CASE 1**: a^{f₁+1} ≤ y
     -- Witnesses: n = f₁ + 1, m = 1
@@ -260,14 +277,14 @@ theorem exists_power_separation_of_ge
       push_neg at h_ge
       have hn2_eq : n2 = K''' := le_antisymm h_cross2.2.1 h_ge
       have : iterate_op a K''' ≤ iterate_op x (2 * L) := by rw [← hn2_eq]; exact hP2_n2
-      exact not_lt_of_le this hK'''
+      exact not_lt_of_ge this hK'''
 
     have h_not_P2_succ : ¬ P2 (n2 + 1) :=
       h_cross2.2.2 (n2 + 1) (Nat.lt_succ_self n2) (Nat.succ_le_of_lt hn2_lt_K''')
     have hx2L_lt : iterate_op x (2 * L) < iterate_op a (n2 + 1) := lt_of_not_ge h_not_P2_succ
 
     -- Check if a^{n2+1} ≤ y^{2L}
-    rcases le_or_lt (iterate_op a (n2 + 1)) (iterate_op y (2 * L)) with h_upper | h_nosep
+    rcases le_or_gt (iterate_op a (n2 + 1)) (iterate_op y (2 * L)) with h_upper | h_nosep
 
     · -- SUCCESS: a^{n2+1} ≤ y^{2L}
       have h2L_pos : 2 * L > 0 := by omega
@@ -317,14 +334,14 @@ theorem exists_power_separation_of_ge
         push_neg at h_ge
         have hn3_eq : n3 = K4 := le_antisymm h_cross3.2.1 h_ge
         have : iterate_op a K4 ≤ iterate_op x (3 * L) := by rw [← hn3_eq]; exact hP3_n3
-        exact not_lt_of_le this hK4
+        exact not_lt_of_ge this hK4
 
       have h_not_P3_succ : ¬ P3 (n3 + 1) :=
         h_cross3.2.2 (n3 + 1) (Nat.lt_succ_self n3) (Nat.succ_le_of_lt hn3_lt_K4)
       have hx3L_lt : iterate_op x (3 * L) < iterate_op a (n3 + 1) := lt_of_not_ge h_not_P3_succ
 
       -- Now check: is a^{n3+1} ≤ y^{3L}?
-      rcases le_or_lt (iterate_op a (n3 + 1)) (iterate_op y (3 * L)) with h_upper3 | h_nosep3
+      rcases le_or_gt (iterate_op a (n3 + 1)) (iterate_op y (3 * L)) with h_upper3 | h_nosep3
 
       · -- SUCCESS at m = 3L: a^{n3+1} ≤ y^{3L}
         have h3L_pos : 3 * L > 0 := by omega
@@ -446,7 +463,7 @@ theorem exists_power_separation_of_ge
             have hn6_eq : n6 = K6 := le_antisymm h_cross6.2.1 h_ge
             have : iterate_op a K6 ≤ iterate_op x (L * (K4 + 1)) := by
               rw [← hn6_eq]; exact h_cross6.1
-            exact not_lt_of_le this hK6
+            exact not_lt_of_ge this hK6
 
           have hx_lt : iterate_op x (L * (K4 + 1)) < iterate_op a (n6 + 1) := by
             have h_not : ¬ P_x6 (n6 + 1) :=
@@ -509,8 +526,8 @@ theorem exists_power_separation_of_ge
 
               by_contra h_none
               -- Full completion of this contradiction branch remains open; we mark it
-              -- as a placeholder to keep the development compiling.
-              sorry
+              -- as BLOCKED in this archived proof attempt.
+              BLOCKED
 
               -- Hmm, we need the bound to be tighter. Let me think again...
 
@@ -631,7 +648,7 @@ theorem exists_power_separation_of_ge
               -- I think the approach needs to be different. Let me re-read the context.
               -- We're inside the proof of hex : ∃ m, P m, in a specific subcase.
               -- The outer structure handles this by Nat.find AFTER we prove hex.
-              -- The sorry is for proving hex in this specific deepest case.
+              -- The BLOCKED marker above is for proving `hex` in this specific deepest case.
 
               -- Maybe the answer is simpler: in this case, we've established certain bounds
               -- (n6 ≥ K4 + 1 from hn6_gt, etc.) that should give a direct contradiction.
@@ -667,7 +684,7 @@ theorem exists_power_separation_of_ge
 
               -- I don't see an immediate contradiction. The proof needs more work.
 
-              -- For now, the sorry at line 513 handles this case.
+              -- For now, the BLOCKED marker above handles this case.
               -- The key insight is correct: use gap_growth + contradiction.
               -- The implementation is delicate and may require explicit induction.
 
@@ -700,6 +717,8 @@ theorem exists_power_separation_of_ge
         -- Witnesses: (n_sep, m_sep)
         exact ⟨n_sep, m_sep, hm_sep_pos, hx_sep, hy_sep⟩
 
+-/
+
 /-! ## Main Separation Lemma
 
 The full separation lemma handles both small regime (x < a) and large regime (a ≤ x). -/
@@ -723,13 +742,13 @@ where:
 - M = minimal with a ≤ x^M (if it exists)
 -/
 theorem ks_separation_lemma (a x y : α) (ha : ident < a) (hx : ident < x)
-    (hy : ident < y) (hxy : x < y) :
+    (hy : ident < y) (hxy : x < y) [LargeRegimeSeparationSpec α] :
     ∃ n m : ℕ, 0 < m ∧ iterate_op x m < iterate_op a n ∧ iterate_op a n ≤ iterate_op y m := by
   -- Get minimal N ≥ 1 such that x < iterate_op a N
   classical
   obtain ⟨N, hN_ge1, hN, hN_min⟩ := exists_minimal_N_for_x_lt_iterate a x ha hx
   -- Case split: either iterate_op a N ≤ y (separation at m=1) or y < iterate_op a N
-  rcases le_or_lt (iterate_op a N) y with h_sep | h_same
+  rcases le_or_gt (iterate_op a N) y with h_sep | h_same
   · -- Case 1: iterate_op a N ≤ y. Then n = N, m = 1 works.
     exact ⟨N, 1, Nat.one_pos, by rwa [iterate_op_one], by rwa [iterate_op_one]⟩
   · -- Case 2: y < iterate_op a N. Both x, y are in the same "interval" between
@@ -975,14 +994,14 @@ theorem ks_separation_lemma (a x y : α) (ha : ident < a) (hx : ident < x)
             have hM : a ≤ iterate_op x M := Nat.find_spec hex
             have hM_le : M ≤ K := Nat.find_le (le_of_lt hK)
             refine ⟨M, hM_le, hM, fun k hkM => ?_⟩
-            exact lt_of_not_le (Nat.find_min hex hkM)
+            exact lt_of_not_ge (Nat.find_min hex hkM)
           obtain ⟨M, _, hM, hM_min'⟩ := this
           have hM_pos : M ≥ 1 := by
             by_contra hM0
             push_neg at hM0
             have hM_eq0 : M = 0 := by omega
             simp [hM_eq0, iterate_op_zero] at hM
-            exact not_lt_of_le hM ha
+            exact not_lt_of_ge hM ha
           exact ⟨M, hM, Or.inr (hM_min' (M - 1) (Nat.sub_lt hM_pos Nat.one_pos))⟩
 
       rcases hM_min with hM_zero | hM_pred
@@ -1093,7 +1112,7 @@ theorem ks_separation_lemma (a x y : α) (ha : ident < a) (hx : ident < x)
         -- Need L ≤ M - 1. Not guaranteed!
 
         -- ALTERNATIVE: Use different witnesses based on comparison of L and M-1
-        rcases le_or_lt L (M - 1) with hL_le_M | hL_gt_M
+        rcases le_or_gt L (M - 1) with hL_le_M | hL_gt_M
 
         · -- Subsubcase: L ≤ M - 1
           -- Use witnesses (n' + 1, L + (M - 1))
@@ -1253,7 +1272,7 @@ theorem ks_separation_lemma (a x y : α) (ha : ident < a) (hx : ident < x)
                 (iterate_op_strictMono x hx).monotone hM_le_L1
               have hxM_lt_a : iterate_op x M < a :=
                 lt_of_le_of_lt hxM_le_xL1 hxL1_lt_a
-              exact not_lt_of_le hM_bound hxM_lt_a
+              exact not_lt_of_ge hM_bound hxM_lt_a
             omega
 
           -- Now apply large-regime lemma to (X, Y) = (x^M, y^M)
@@ -1311,8 +1330,8 @@ private theorem counterexample_L_eq_M_witnesses_fail :
   let a : ℝ := 10
   let x : ℝ := 3.5
   let y : ℝ := 3.6
-  let M : ℕ := 3
-  let L : ℕ := 3
+  let _M : ℕ := 3
+  let _L : ℕ := 3
   let n : ℕ := 2
   let m : ℕ := 5
   -- Lower bound: m·x < n·a (17.5 < 20) ✓
@@ -1328,8 +1347,9 @@ private theorem counterexample_L_eq_M_witnesses_fail :
 The following shows that in the ℝ additive model, the inequality
 `x^{k*L} < a^k` (for large k) is **false** when `a ≤ x` and `L ≥ 1`.
 
-This proves that the "floor grows sublinearly" approach to large-regime
-separation cannot work under the K-S axioms. -/
+This shows that the specific “floor grows sublinearly” *sub-lemma* is false even in the
+additive ℝ model, so any proof that relies on that inequality is invalid. In particular,
+this is not a refutation of `KSSeparation`; it just blocks one attempted proof route. -/
 
 /-- **Counterexample**: In ℝ with additive operation, if `a ≤ x` and `L ≥ 1`,
 then `x^{k*L} < a^k` is false for all k ≥ 1.

@@ -646,12 +646,16 @@ lemma theta_eq_min_iterate_bound_of_B_empty
 /-!
 ### K&S Appendix A.3.4 (B-empty) strict gap lemmas
 
-In the globally B-empty regime (no exact `μ = d^u` witnesses), the mixed-`t` cases for `Θ'`
-require strict relative Θ-gap bounds.
+In the “globally B-empty” regime, the mixed-`t` cases for `Θ'` require strict relative Θ-gap
+bounds. In this refactor, we keep the missing step explicit by packaging it as a `Prop`-valued
+assumption (`BEmptyStrictGapSpec`) rather than using `sorry`.
 
-These are currently postulated below (as axioms) so the rest of the development can proceed
-without placeholders. The intended proof strategy is a direct `delta_cut_tight`/scaling argument
-following K&S Appendix A.3.4. -/
+Important nuance (Ben/Goertzel v2): K&S’s A/B/C sets in Appendix A.3.4 are **base-indexed**:
+they compare old-grid values to a target of the form `X0 ⊕ d^u` for a fixed old-grid base `X0`.
+This differs from the absolute predicate `extensionSetB F d u := {r | mu F r = d^u}`, which is
+the special case `X0 = ident`. The base-indexed version is recorded in
+`Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/Core/Induction/Goertzel.lean`.
+-/
 
 /-
 ### Circularity marker (formal)
@@ -800,6 +804,40 @@ lemma zquantized_gap_ge_delta
   -- Rewrite the gap as (mr-ms)*δ and conclude.
   simpa [hmr, hms, Int.cast_sub, sub_mul, one_mul] using this
 
+/-- **Ben/Goertzel v2 Lemma 7 (base-indexed form, on the μ-grid)**.
+
+If two “extended” μ-values coincide at different `t`-levels,
+`μ(r₀) ⊕ d^u = μ(ry) ⊕ d^v` with `v ≤ u`, then right-cancellation yields the base-indexed equality
+`μ(ry) = μ(r₀) ⊕ d^(u-v)`, i.e. a witness that `ry ∈ extensionSetB_base F d r₀ (u-v)`.
+
+This is purely algebraic (associativity + strict monotonicity ⇒ injective translations) and does
+not use any Θ/δ machinery. -/
+lemma extensionSetB_base_of_mu_joinMulti_eq
+    {k : ℕ} {F : AtomFamily α k} (d : α) (hd : ident < d)
+    (r0 ry : Multi k) (u v : ℕ) (huv : v ≤ u)
+    (hEq :
+      mu (extendAtomFamily F d hd) (joinMulti r0 u) =
+        mu (extendAtomFamily F d hd) (joinMulti ry v)) :
+    ry ∈ extensionSetB_base F d r0 (u - v) := by
+  classical
+  -- Rewrite the equality using `mu_extend_last`, then cancel the common `d^v` tail.
+  have hEq' :
+      op (mu F r0) (iterate_op d u) = op (mu F ry) (iterate_op d v) := by
+    have hx :
+        mu (extendAtomFamily F d hd) (joinMulti r0 u) =
+          op (mu F r0) (iterate_op d u) := by
+      simpa using (mu_extend_last F d hd r0 u)
+    have hy :
+        mu (extendAtomFamily F d hd) (joinMulti ry v) =
+          op (mu F ry) (iterate_op d v) := by
+      simpa using (mu_extend_last F d hd ry v)
+    simpa [hx, hy] using hEq
+  have :
+      mu F ry = op (mu F r0) (iterate_op d (u - v)) :=
+    cancel_right_iterate_eq (F := F) (d := d) r0 ry u v huv hEq'
+  -- Package as base-indexed B-membership.
+  simpa [extensionSetB_base, Set.mem_setOf_eq] using this
+
 /-- **Blocked K&S Appendix A.3.4 step (B-empty strict relative gaps)**.
 
 The refactored `Θ'` construction reduces strict monotonicity in the mixed-`t` cases to two
@@ -809,31 +847,66 @@ The refactored `Θ'` construction reduces strict monotonicity in the mixed-`t` c
 
 In the globally `B = ∅` regime (no exact witnesses `μ(F,r)=d^u`), the codebase currently proves
 the *non-strict* bounds via crossing-index analysis, but does not yet provide a placeholder-free proof
-of the strict boundary exclusion needed to upgrade `≤` to `<`.
+of the strict boundary exclusion needed to upgrade `≤` to `<` *in the genuinely external case*
+where the boundary value `μy ⊕ d^Δ` is itself **not** already on the old k-grid.
 
 To keep the rest of the development mechanically checkable (and to make the dependency explicit),
 we package the missing A.3.4 strictness as a Prop. -/
 structure BEmptyStrictGapSpec
     {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
     (IH : GridBridge F) (H : GridComm F) (d : α) (hd : ident < d) [KSSeparation α] : Prop where
-  /-- A-side strictness in the globally B-empty regime. -/
+  /-- A-side strictness in the globally B-empty regime (expressed using absolute `extensionSetB`),
+      for the external subcase where the boundary `μy ⊕ d^Δ` is not on the old k-grid.
+
+      Note (Ben/Goertzel v2): this is most naturally expressed as a **base-indexed statistic**
+      inequality:
+      `(Θ(x) - Θ(y))/Δ < δ` for `x < y ⊕ d^Δ`, i.e. `separationStatistic_base R y x Δ < δ`. -/
   A :
     (∀ r u, 0 < u → r ∉ extensionSetB F d u) →
-    ∀ (r_old_x r_old_y : Multi k) (Δ : ℕ), 0 < Δ →
+    ∀ (r_old_x r_old_y : Multi k) (Δ : ℕ) (hΔ : 0 < Δ),
       mu F r_old_y < mu F r_old_x →
-      mu F r_old_x < op (mu F r_old_y) (iterate_op d Δ) →
-        R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ -
-            R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩
-          < (Δ : ℝ) * chooseδ hk R d hd
-  /-- C-side strictness in the globally B-empty regime. -/
+      r_old_x ∈ extensionSetA_base F d r_old_y Δ →
+      (¬ ∃ rB : Multi k, rB ∈ extensionSetB_base F d r_old_y Δ) →
+        separationStatistic_base R r_old_y r_old_x Δ hΔ < chooseδ hk R d hd
+  /-- C-side strictness in the globally B-empty regime (expressed using absolute `extensionSetB`),
+      for the external subcase where the boundary `μx ⊕ d^Δ` is not on the old k-grid.
+
+      Base-indexed form: `δ < (Θ(y) - Θ(x))/Δ`, i.e. `δ < separationStatistic_base R x y Δ`. -/
   C :
     (∀ r u, 0 < u → r ∉ extensionSetB F d u) →
-    ∀ (r_old_x r_old_y : Multi k) (Δ : ℕ), 0 < Δ →
+    ∀ (r_old_x r_old_y : Multi k) (Δ : ℕ) (hΔ : 0 < Δ),
       mu F r_old_x < mu F r_old_y →
-      op (mu F r_old_x) (iterate_op d Δ) < mu F r_old_y →
-        (Δ : ℝ) * chooseδ hk R d hd
-          < R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ -
-              R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩
+      r_old_y ∈ extensionSetC_base F d r_old_x Δ →
+      (¬ ∃ rB : Multi k, rB ∈ extensionSetB_base F d r_old_x Δ) →
+        chooseδ hk R d hd < separationStatistic_base R r_old_x r_old_y Δ hΔ
+
+/-
+Ben/Goertzel v2 perspective: one route to discharging `BEmptyStrictGapSpec` is to prove a
+“realizability interval” statement saying that an open interval of δ-choices yields a valid
+strictly monotone extension evaluator agreeing with `Theta'_raw`.  Then:
+
+1. a boundary equality forces a flip under δ-perturbation, hence a critical δ₀ with
+   `Theta'_raw … = Theta'_raw …` (pure affine algebra), and
+2. strict monotonicity at δ₀ turns that numeric equality into an equality on the extended μ-grid,
+   which cancels to a base-indexed B-witness, contradicting the external `B = ∅` assumption.
+
+This conditional “flip ⇒ base-indexed B-witness” lemma is implemented (without placeholders) as
+`Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.flip_implies_baseIndexed_B_witness` in
+`.../Core/Induction/Goertzel.lean`.
+
+Note: the v2 notes sometimes speak of an “interval of admissible δ” globally.  For the *global*
+admissibility predicate `AdmissibleDelta` (quantifying over all A/C witnesses at all levels),
+this cannot happen: `.../Core/Induction/Goertzel.lean` proves
+`no_open_interval_of_global_admissibleDelta`.  Any interval-of-freedom argument must therefore
+use a strictly more local/base-indexed admissibility notion, as K&S do in A.3.4. -/
+
+/-- Helper hypothesis: we only need `ZQuantized F R (chooseδ …)` in the **globally B-nonempty**
+branch (the “rational δ” regime). In the globally B-empty branch, `chooseδ` is a `sSup` and
+can be incommensurate with old grid values, so this quantization should not be required. -/
+abbrev ZQuantized_chooseδ_if_B_nonempty
+    {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
+    (d : α) (hd : ident < d) : Prop :=
+  (∃ r u, 0 < u ∧ r ∈ extensionSetB F d u) → ZQuantized F R (chooseδ hk R d hd)
 
 /-- **False-lead blocker**: if one (incorrectly) assumes the *new* `δ := chooseδ hk R d hd`
 also quantizes the *old* k-grid (`ZQuantized F R δ`), then the Δ=1 B-empty strict-gap claim
@@ -854,7 +927,8 @@ theorem zquantized_chooseδ_blocks_strict_gap_Δ1
     (hB_empty : ∀ r u, 0 < u → r ∉ extensionSetB F d u)
     (r_old_x r_old_y : Multi k)
     (hμ : mu F r_old_y < mu F r_old_x)
-    (h_between : mu F r_old_x < op (mu F r_old_y) (iterate_op d 1)) :
+    (h_between : r_old_x ∈ extensionSetA_base F d r_old_y 1)
+    (hB_base : ¬ ∃ rB : Multi k, rB ∈ extensionSetB_base F d r_old_y 1) :
     False := by
   classical
   set δ : ℝ := chooseδ hk R d hd
@@ -865,8 +939,10 @@ theorem zquantized_chooseδ_blocks_strict_gap_Δ1
     zquantized_gap_ge_delta (hδ_pos := hδ_pos) (hZQ := by simpa [δ] using hZQ) r_old_x r_old_y hμ
   have h_lt : R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ -
         R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ < δ := by
-    have := hStrict.A hB_empty r_old_x r_old_y 1 Nat.one_pos hμ h_between
-    simpa [δ] using this
+    have hstat :=
+      hStrict.A hB_empty r_old_x r_old_y 1 Nat.one_pos hμ h_between hB_base
+    -- `separationStatistic_base` at `Δ = 1` is just the Θ-gap.
+    simpa [separationStatistic_base, δ] using hstat
   linarith
 
 -- The rest of the broken proof attempt has been removed. The `BEmptyStrictGapSpec` hypothesis
@@ -1231,7 +1307,7 @@ lemma theta_gap_lt_of_mu_lt_op
     {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
     (IH : GridBridge F) (H : GridComm F) (d : α) (hd : ident < d)
     [KSSeparation α]
-    (hZQ : ZQuantized F R (chooseδ hk R d hd))
+    (hZQ_if : ZQuantized_chooseδ_if_B_nonempty (α := α) hk R d hd)
     (hStrict : BEmptyStrictGapSpec hk R IH H d hd)
     (r_old_x r_old_y : Multi k) (Δ : ℕ) (hΔ : 0 < Δ)
     (h_mu : mu F r_old_y < mu F r_old_x)
@@ -1294,9 +1370,37 @@ lemma theta_gap_lt_of_mu_lt_op
     push_neg at hBΔ
     have hδ_pos : 0 < δ := delta_pos hk R IH H d hd
 
+    -- If the boundary `μy ⊕ d^Δ` itself lies on the old k-grid, we can reduce to the
+    -- (already proved) trade-equality case via `delta_shift_equiv`.
+    -- This is a *base-indexed* equality witness for base `μy`, and does not follow from
+    -- global `extensionSetB F d Δ` (see `.../Counterexamples/GoertzelLemma7.lean`).
+    by_cases hB_base : ∃ rB : Multi k, mu F rB = op (mu F r_old_y) (iterate_op d Δ)
+    · rcases hB_base with ⟨rB, hrB⟩
+      have hμ_lt_grid : mu F r_old_x < mu F rB := by
+        simpa [hrB] using h_lt
+      have hθ_lt :
+          R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ <
+            R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ :=
+        R.strictMono hμ_lt_grid
+      have hδA := chooseδ_A_bound hk R IH H d hd
+      have hδC := chooseδ_C_bound hk R IH H d hd
+      have hδB' := chooseδ_B_bound hk R IH d hd
+      have h_gap_eq :
+          R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ -
+              R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ = (Δ : ℝ) * δ :=
+        delta_shift_equiv (R := R) (H := H) (IH := IH) (d := d) (hd := hd) (δ := δ)
+          (hδ_pos := hδ_pos) (hδA := hδA) (hδC := hδC) (hδB := hδB')
+          (hΔ := hΔ) (htrade := hrB)
+      have : R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ -
+            R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ < (Δ : ℝ) * δ := by
+        linarith [hθ_lt, h_gap_eq]
+      simpa [δ] using this
+
     -- Split on global B nonempty vs empty (rational vs irrational δ cases).
     by_cases hB_global : ∃ r u, 0 < u ∧ r ∈ extensionSetB F d u
     · -- Global B ≠ ∅: strict A/B/C separation forces μy to sit on an exact d^n boundary.
+      have hZQ : ZQuantized F R δ := by
+        simpa [δ] using (hZQ_if hB_global)
       rcases hB_global with ⟨rB, uB, huB, hrB⟩
 
       have hδB_uB : separationStatistic R rB uB huB = δ := by
@@ -1479,7 +1583,18 @@ lemma theta_gap_lt_of_mu_lt_op
       have hB_empty : ∀ r u, 0 < u → r ∉ extensionSetB F d u := by
         intro r u hu hrB
         exact hB_global ⟨r, u, hu, hrB⟩
-      simpa [δ] using hStrict.A hB_empty r_old_x r_old_y Δ hΔ h_mu h_lt
+      have hB_base' : ¬ ∃ rB : Multi k, rB ∈ extensionSetB_base F d r_old_y Δ := by
+        simpa [extensionSetB_base] using hB_base
+      have hstat :
+          separationStatistic_base R r_old_y r_old_x Δ hΔ < δ :=
+        by
+          simpa [δ] using hStrict.A hB_empty r_old_x r_old_y Δ hΔ h_mu h_lt hB_base'
+      have hΔ_pos_real : (0 : ℝ) < (Δ : ℝ) := Nat.cast_pos.mpr hΔ
+      have : R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ -
+            R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ < (Δ : ℝ) * δ := by
+        have h' := (div_lt_iff₀ hΔ_pos_real).1 (by simpa [separationStatistic_base] using hstat)
+        simpa [mul_comm, mul_left_comm, mul_assoc] using h'
+      simpa [δ] using this
       /-
       -- First get a **non-strict** bound `θx - θy ≤ Δ·δ` from crossing indices.
       -- The remaining work is to rule out the boundary case `= Δ·δ` using
@@ -1586,7 +1701,7 @@ lemma theta_gap_gt_of_op_lt_mu
     {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
     (IH : GridBridge F) (H : GridComm F) (d : α) (hd : ident < d)
     [KSSeparation α]
-    (hZQ : ZQuantized F R (chooseδ hk R d hd))
+    (hZQ_if : ZQuantized_chooseδ_if_B_nonempty (α := α) hk R d hd)
     (hStrict : BEmptyStrictGapSpec hk R IH H d hd)
     (r_old_x r_old_y : Multi k) (Δ : ℕ) (hΔ : 0 < Δ)
     (h_mu : mu F r_old_x < mu F r_old_y)
@@ -1650,9 +1765,36 @@ lemma theta_gap_gt_of_op_lt_mu
     push_neg at hBΔ
     have hδ_pos : 0 < δ := delta_pos hk R IH H d hd
 
+    -- If the boundary `μx ⊕ d^Δ` lies on the old k-grid, use `delta_shift_equiv` as in the A-side.
+    by_cases hB_base : ∃ rB : Multi k, mu F rB = op (mu F r_old_x) (iterate_op d Δ)
+    · rcases hB_base with ⟨rB, hrB⟩
+      have hμ_lt_grid : mu F rB < mu F r_old_y := by
+        simpa [hrB] using h_lt
+      have hθ_lt :
+          R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ <
+            R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ :=
+        R.strictMono hμ_lt_grid
+      have hδA := chooseδ_A_bound hk R IH H d hd
+      have hδC := chooseδ_C_bound hk R IH H d hd
+      have hδB' := chooseδ_B_bound hk R IH d hd
+      have h_gap_eq :
+          R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ -
+              R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ = (Δ : ℝ) * δ :=
+        delta_shift_equiv (R := R) (H := H) (IH := IH) (d := d) (hd := hd) (δ := δ)
+          (hδ_pos := hδ_pos) (hδA := hδA) (hδC := hδC) (hδB := hδB')
+          (hΔ := hΔ) (htrade := hrB)
+      have : (Δ : ℝ) * δ <
+          R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ -
+            R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ := by
+        -- θ(rB) = θx + Δ·δ and θ(rB) < θy
+        linarith [hθ_lt, h_gap_eq]
+      simpa [δ] using this
+
     -- Split on global B nonempty vs empty (rational vs irrational δ cases).
     by_cases hB_global : ∃ r u, 0 < u ∧ r ∈ extensionSetB F d u
     · -- Global B ≠ ∅: strict A/B/C separation forces μx to sit on an exact d^n boundary.
+      have hZQ : ZQuantized F R δ := by
+        simpa [δ] using (hZQ_if hB_global)
       rcases hB_global with ⟨rB, uB, huB, hrB⟩
 
       have hδB_uB : separationStatistic R rB uB huB = δ := by
@@ -1838,7 +1980,24 @@ lemma theta_gap_gt_of_op_lt_mu
       have hB_empty : ∀ r u, 0 < u → r ∉ extensionSetB F d u := by
         intro r u hu hrB
         exact hB_global ⟨r, u, hu, hrB⟩
-      simpa [δ] using hStrict.C hB_empty r_old_x r_old_y Δ hΔ h_mu h_lt
+      have hB_base' : ¬ ∃ rB : Multi k, rB ∈ extensionSetB_base F d r_old_x Δ := by
+        simpa [extensionSetB_base] using hB_base
+      have hstat :
+          δ < separationStatistic_base R r_old_x r_old_y Δ hΔ :=
+        by
+          simpa [δ] using hStrict.C hB_empty r_old_x r_old_y Δ hΔ h_mu h_lt hB_base'
+      have hΔ_pos_real : (0 : ℝ) < (Δ : ℝ) := Nat.cast_pos.mpr hΔ
+      have : (Δ : ℝ) * δ <
+            R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ -
+              R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ := by
+        -- `δ < (gap)/Δ`  ⇒  δ*Δ < gap  ⇒  Δ*δ < gap
+        have h' :
+            δ * (Δ : ℝ) <
+              R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ -
+                R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ := by
+          exact (lt_div_iff₀ hΔ_pos_real).1 (by simpa [separationStatistic_base] using hstat)
+        simpa [mul_comm, mul_left_comm, mul_assoc] using h'
+      simpa [δ] using this
       /-
 
       -- As in the A-side lemma: reduce to a non-strict inequality from crossing indices, then
@@ -1964,7 +2123,7 @@ theorem extend_grid_rep_with_atom
     {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
     (IH : GridBridge F) (H : GridComm F) (d : α) (hd : ident < d)
     [KSSeparation α]
-    (hZQ : ZQuantized F R (chooseδ hk R d hd))
+    (hZQ_if : ZQuantized_chooseδ_if_B_nonempty (α := α) hk R d hd)
     (hStrict : BEmptyStrictGapSpec hk R IH H d hd) :
       ∃ (F' : AtomFamily α (k + 1)),
       (∀ i : Fin k, F'.atoms ⟨i, Nat.lt_succ_of_lt i.is_lt⟩ = F.atoms i) ∧
@@ -2422,7 +2581,7 @@ theorem extend_grid_rep_with_atom
                 R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ < (Δ : ℝ) * δ :=
             by
               simpa [δ] using
-                theta_gap_lt_of_mu_lt_op hk R IH H d hd hZQ hStrict r_old_x r_old_y Δ hΔ_pos hμ_gt h_gap_bound
+              theta_gap_lt_of_mu_lt_op hk R IH H d hd hZQ_if hStrict r_old_x r_old_y Δ hΔ_pos hμ_gt h_gap_bound
           -- Conclude θx + t_x·δ < θy + t_y·δ using t_y = t_x + Δ.
           have ht_y_cast : (t_y : ℝ) * δ = (t_x : ℝ) * δ + (Δ : ℝ) * δ := by
             -- expand (t_x + Δ)·δ
@@ -2493,7 +2652,7 @@ theorem extend_grid_rep_with_atom
                 R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ :=
           by
             simpa [δ] using
-              theta_gap_gt_of_op_lt_mu hk R IH H d hd hZQ hStrict r_old_x r_old_y Δ hΔ_pos hμ_lt h_trade_bound
+              theta_gap_gt_of_op_lt_mu hk R IH H d hd hZQ_if hStrict r_old_x r_old_y Δ hΔ_pos hμ_lt h_trade_bound
         have ht_x_cast : (t_x : ℝ) * δ = (t_y : ℝ) * δ + (Δ : ℝ) * δ := by
           simpa [hΔ_eq, Nat.cast_add, add_mul]
         have hθ_gap' :

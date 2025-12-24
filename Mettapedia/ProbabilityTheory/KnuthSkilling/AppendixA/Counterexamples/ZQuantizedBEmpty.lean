@@ -168,7 +168,8 @@ The previous lemma is intentionally conservative: it only needs to show that **s
 B-empty scenario exists. For the `ZQuantized` refutation below, we only need B-empty
 as a hypothesis to force `chooseδ` into its B-empty branch.
 
-The next result is the actual “untenable invariant” witness: `chooseδ` is forced to be ≥ 2
+The next result is the actual “do not treat this as an invariant” witness:
+`chooseδ` is forced to be ≥ 2
 (since `2 ∈ A` at level `u=1`), so `ZQuantized` cannot hold because `Θ(1)=1` is not an
 integer multiple of any `δ ≥ 2`.
 -/
@@ -221,7 +222,8 @@ theorem not_ZQuantized_chooseδ_in_B_empty_example :
   have h2_le : (2 : ℝ) ≤ δ := by
     -- In the B-empty branch, `chooseδ` is the sSup of AStats (definition of `B_empty_delta`).
     -- `le_csSup` gives any member is ≤ sSup.
-    -- We don't need to compute δ exactly; this lower bound is enough to refute ZQuantized.
+  -- We don't need to compute δ exactly; this lower bound is enough to refute
+  -- `ZQuantized F1 R1 (chooseδ …)` in this B-empty example.
     -- Unfold `chooseδ` and reduce to the B-empty branch.
     -- Note: here we avoid proving B-empty for all u; it's sufficient to show the branch selector is false.
     -- We show there is no B-witness for u=1 by irrationality; this implies the global `hB` is false.

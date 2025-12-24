@@ -3,18 +3,23 @@ import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 /-!
-# Interval Approach: Collapse Theorem
+# Interval Approach: Two Basic Facts (not a refutation)
 
 This file proves:
-1. **Weak interval axioms cannot prove commutativity** (separation theorem)
-2. **Strong interval axioms reintroduce completion** (collapse theorem)
+1. **Weak interval axioms do not imply commutativity**: there is an associative noncommutative
+   operation supporting trivial interval bounds.
+2. **Extracting point values from nested intervals uses `sSup`**: a standard “intervals shrink to a
+   point” construction can define a point selector `θ` using `sSup`, which is an explicit use of
+   (conditional) completeness of `ℝ`.
 
 ## The Core Dichotomy
 
-- **Weak axioms**: Allow "fat" intervals, non-injective μ → cannot distinguish x⊕y from y⊕x
-- **Strong axioms**: Force "thin" intervals (width → 0) → requires completion to achieve
-
-Either way, the interval approach doesn't escape K&S's fundamental issue.
+This file does **not** claim “K&S is impossible”. It only records two sanity checks about
+interval-valued approaches:
+- if the interval axioms are too weak, they cannot *force* commutativity (models exist where ⊕ is
+  noncommutative);
+- if one wants to *name a point* from a nested family of intervals, the common “take the supremum of
+  lower bounds” construction uses `sSup` on `ℝ`.
 -/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Counterexamples.IntervalCollapse
@@ -226,26 +231,17 @@ theorem point_extraction_needs_completeness :
 We can now state the fundamental dichotomy:
 -/
 
-/-! **COLLAPSE THEOREM** (informal):
+/-! **COLLAPSE PATTERN** (informal, clarified):
 
-Let μₙ : α → Interval be a sequence of interval measures with shrinking widths.
+Let `μₙ : α → Interval` be a nested sequence of intervals (lower bounds increase, upper bounds
+decrease). If the widths converge to 0, then there is a *unique* point in the intersection.
 
-IF the intervals converge (width → 0), THEN:
-1. There exists a point-valued θ : α → ℝ (requires completeness to define)
-2. θ satisfies exact additivity: θ(x⊕y) = θ(x) + θ(y)
-3. θ reflects order: x < y ↔ θ(x) < θ(y)
+In Lean, one common way to *define* such a point is:
+`θ(x) := sSup {Lₙ(x)}`.
 
-So "strong" interval axioms (with convergence) collapse to point-valued
-representations, which requires completeness.
-
-PROOF SKETCH:
-- Let θ(x) = lim_{n→∞} (μₙ x).lower = lim_{n→∞} (μₙ x).upper
-- This limit exists by completeness (nested interval theorem)
-- Additivity: θ(x⊕y) = lim (μₙ(x⊕y)).lower
-              ∈ [lim (μₙ x).lower + lim (μₙ y).lower, ...]
-              = [θ(x) + θ(y), θ(x) + θ(y)]  (as width → 0)
-              = θ(x) + θ(y)
-- Order: similar argument using interval separation
+This file only formalizes the “point lies in every interval” property (using `sSup`). Any further
+claims (e.g. additivity of `θ`, commutativity of ⊕) would require additional hypotheses relating
+the interval data to the algebraic operations, and are **not** proved here.
 -/
 
 /-- **COLLAPSE THEOREM**: Strong interval axioms (nested + converging) collapse to point values.
@@ -275,18 +271,12 @@ theorem strong_axioms_collapse_to_points (α : Type*) :
       rw [← hm]; exact L_le_U_all (h_valid x) (h_L_inc x) (h_U_dec x) m n)
 
 /-!
-## Summary: The Fundamental Dichotomy
+## Summary (for this file)
 
-| Axiom Strength | Commutativity | Completeness |
-|----------------|---------------|--------------|
-| Weak intervals | CANNOT prove  | Not needed   |
-| Strong intervals (converging) | CAN prove | REQUIRED |
-
-**Conclusion**: The interval approach doesn't escape K&S's fundamental issue.
-- If axioms are weak enough to avoid completeness, they can't prove commutativity.
-- If axioms are strong enough to prove commutativity, they require completeness.
-
-The "interval approach" is just the completion step made explicit, not avoided.
+| Ingredient | What is shown here |
+|---|---|
+| Weak interval bounds | Consistent with noncommutativity (so do not imply commutativity) |
+| Nested intervals + `θ := sSup Lₙ` | Produces a point in every interval, using completeness of `ℝ` |
 -/
 
 /-!

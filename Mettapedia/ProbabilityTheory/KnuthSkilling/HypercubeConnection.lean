@@ -340,7 +340,7 @@ When hB_empty: ∀r u, 0 < u → r ∉ B(d, u), this says:
 
   ⟨exact_equality⟩_{d::Positive, u::ℕ₊} ⊥ = True
 
-"For all positive d and u, it's impossible to find r with μ(r) = d^u exactly"
+"For all positive d and u, there is **no witness** r with μ(r) = d^u exactly"
 
 This is the **Heyting negation** of the B-witness proposition!
 
@@ -355,8 +355,10 @@ In modal terms:
 
 The δ value is **inaccessible** - it lives in the gap!
 
-This explains why the B-empty strict gap proofs (ThetaPrime.lean:584, 655) are hard:
-they require showing the boundary case is excluded via the Heyting negation of witnesses.
+This explains why the B-empty strict-gap step is hard in the Appendix A development:
+the boundary case must be excluded in a way compatible with the “no witnesses” hypothesis.
+In the refactored codebase, this dependency is made explicit via the blocker
+`Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/Core/Induction/ThetaPrime.lean`:`BEmptyStrictGapSpec`.
 -/
 
 /-! ## Section 10: Summary - The Hypercube Perspective

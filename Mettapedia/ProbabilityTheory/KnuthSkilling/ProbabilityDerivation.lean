@@ -10,7 +10,7 @@ Key structures:
 - Probability rules (sum rule, product rule, Bayes' theorem, complement rule)
 -/
 
-import Mettapedia.ProbabilityTheory.KnuthSkilling.RepTheorem
+import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Main
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
@@ -51,44 +51,28 @@ The Born rule, probability calculus, and measure theory all follow from this.
 
 Note: The full constructive proof (grid extension) is in WeakRegraduation + density
 arguments below. Here we state the existence theorem cleanly. -/
-theorem ks_representation_theorem [KnuthSkillingAlgebra α] :
-    ∃ (Θ : α → ℝ), StrictMono Θ ∧
-      Θ KnuthSkillingAlgebra.ident = 0 ∧
-      (∀ x y : α, Θ (KnuthSkillingAlgebra.op x y) = Θ x + Θ y) := by
-  /-
-  **K&S Appendix A Proof Strategy** (lines 1290-1922):
-
-  **Step 1**: Choose reference element a with ident < a (from Archimedean, exists by non-triviality)
-
-  **Step 2**: Define Θ on iterates (lines 1350-1409)
-    Θ(iterate_op a n) := n
-    This is well-defined by iterate_op_strictMono.
-
-  **Step 3**: Extend to all of α using Dedekind cuts (lines 1536-1895)
-    For x ∈ α, define:
-      Θ(x) := sup { n/m : iterate_op a n ≤ op (iterate_op a m) x, m > 0 }
-    The Archimedean property ensures this is finite.
-
-  **Step 4**: Prove the three properties
-    (a) StrictMono Θ: From order-preservation of the construction
-    (b) Θ ident = 0: From iterate_op a 0 = ident
-    (c) Θ(x⊕y) = Θx + Θy: From the "repetition lemma" (lines 1497-1534) which shows
-        if μ(r,...) ≤ μ(r₀,...), then μ(n·r,...) ≤ μ(n·r₀,...)
-
-  **Key Lemmas Proven Above**:
-  - iterate_op_strictMono: iterates form a chain
-  - bounded_by_iterate: every element bounded by some iterate
-  - op_cancel_left_strict/op_cancel_right_strict: cancellativity from order
-
-  **What Remains**:
-  - The supremum construction for Θ on non-iterate elements
-  - Proof that the supremum respects addition (using repetition lemma)
-  - Proof of strict monotonicity of the extended Θ
-
-  The commutativity derivation (commutativity_from_representation above) shows that
-  once this theorem is proven, commutativity follows automatically.
-  -/
-  sorry -- TODO: Implement the full supremum construction from K&S Appendix A
+theorem ks_representation_theorem
+    [KnuthSkillingAlgebra α] [KSSeparation α]
+    [Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.AppendixAGlobalization α] :
+    ∃ (Θ : α → ℝ),
+      StrictMono Θ ∧
+        Θ KnuthSkillingAlgebra.ident = 0 ∧
+          (∀ x y : α, Θ (KnuthSkillingAlgebra.op x y) = Θ x + Θ y) := by
+  classical
+  obtain ⟨Θ, hΘ_order, hΘ_ident, hΘ_add⟩ :=
+    Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.associativity_representation (α := α)
+  refine ⟨Θ, ?_, hΘ_ident, ?_⟩
+  · intro x y hxy
+    have hx_le : x ≤ y := le_of_lt hxy
+    have hy_not_le : ¬ y ≤ x := not_le.mpr hxy
+    have hΘ_le : Θ x ≤ Θ y := (hΘ_order x y).1 hx_le
+    have hΘ_ne : Θ x ≠ Θ y := by
+      intro hEq
+      have : Θ y ≤ Θ x := by simp [hEq]
+      have : y ≤ x := (hΘ_order y x).2 this
+      exact hy_not_le this
+    exact lt_of_le_of_ne hΘ_le hΘ_ne
+  · exact hΘ_add
 
 /-! ## Connection to Probability: WeakRegraduation IS the Grid Construction
 

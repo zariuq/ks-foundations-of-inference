@@ -333,6 +333,61 @@ lemma mu_unitMulti {k : ℕ} (F : AtomFamily α k) (i : Fin k) (n : ℕ) :
   have hnd : (List.finRange k).Nodup := List.nodup_finRange _
   rw [foldl_unitMulti_aux F i n (List.finRange k) hnd ident, if_pos hi_in, op_ident_left]
 
+/-- Each coordinate iterate is bounded above by the full grid value. -/
+lemma iterate_le_mu (F : AtomFamily α k) (r : Multi k) (i : Fin k) :
+    iterate_op (F.atoms i) (r i) ≤ mu F r := by
+  -- Compare `r` to the unit vector at `i`, using coordinatewise monotonicity of `mu`.
+  have h_le : mu F (unitMulti i (r i)) ≤ mu F r := by
+    refine mu_mono (F := F) (r := unitMulti i (r i)) (s := r) ?_
+    intro j
+    by_cases hji : j = i
+    · subst hji
+      simp [unitMulti]
+    · simp [unitMulti, hji]
+  simpa [mu_unitMulti] using h_le
+
+/-- For a fixed threshold `x`, only finitely many grid points satisfy `μ(F,r) ≤ x`.
+
+This finiteness fact is used in the Goertzel-v2 “admissible interval” reformulation:
+because each atom type is strictly positive, each coordinate multiplicity is bounded above by a
+finite iterate threshold, hence there are only finitely many multi-indices under any fixed bound. -/
+lemma finite_set_mu_le {k : ℕ} (F : AtomFamily α k) (x : α) :
+    ({r : Multi k | mu F r ≤ x} : Set (Multi k)).Finite := by
+  classical
+  -- For each coordinate `i`, pick an exponent bound `N i` with `x < (F.atoms i)^(N i)`.
+  let N : Fin k → ℕ := fun i =>
+    Classical.choose (bounded_by_iterate (F.atoms i) (F.pos i) x)
+  have hN : ∀ i : Fin k, x < iterate_op (F.atoms i) (N i) := fun i =>
+    Classical.choose_spec (bounded_by_iterate (F.atoms i) (F.pos i) x)
+
+  -- Any `r` with `mu F r ≤ x` has each coordinate `r i < N i`.
+  have hcoord :
+      ∀ {r : Multi k}, mu F r ≤ x → ∀ i : Fin k, r i < N i := by
+    intro r hrle i
+    have hiter_le : iterate_op (F.atoms i) (r i) ≤ mu F r := iterate_le_mu (F := F) r i
+    have hiter_lt : iterate_op (F.atoms i) (r i) < iterate_op (F.atoms i) (N i) :=
+      lt_of_le_of_lt (le_trans hiter_le hrle) (hN i)
+    have hmono : Monotone (iterate_op (F.atoms i)) :=
+      (grid_strictMono (F.atoms i) (F.pos i)).monotone
+    exact hmono.reflect_lt hiter_lt
+
+  -- Encode bounded multi-indices as functions into finite types.
+  let β : Type := ∀ i : Fin k, Fin (N i)
+  let toMulti : β → Multi k := fun b i => (b i).val
+  have hfin : (Set.range toMulti).Finite := Set.finite_range toMulti
+  refine hfin.subset ?_
+  intro r hrle
+  refine ⟨fun i => ⟨r i, hcoord hrle i⟩, ?_⟩
+  rfl
+
+/-- For a fixed threshold `x`, only finitely many grid points satisfy `μ(F,r) < x`. -/
+lemma finite_set_mu_lt {k : ℕ} (F : AtomFamily α k) (x : α) :
+    ({r : Multi k | mu F r < x} : Set (Multi k)).Finite := by
+  -- Strict inequality implies the weak inequality; use `finite_set_mu_le`.
+  refine (finite_set_mu_le (F := F) x).subset ?_
+  intro r hr
+  exact le_of_lt hr
+
 /-- Helper: strict inequality of folds when one input differs at a specific index.
     The fold diverges at that index, and strict monotonicity of subsequent steps preserves it.
 
@@ -1004,6 +1059,101 @@ def extensionSetA {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) : Set (Mult
 /-- C-set for the extension: old multiplicities r such that μ(F, r) > d^u. -/
 def extensionSetC {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) : Set (Multi k) :=
   {r | iterate_op d u < mu F r}
+
+/-
+## Base-indexed separation sets (Goertzel v2 / KS A.3.2–A.3.4)
+
+Ben Goertzel’s `Foundations-of-inference-new-proofs_v2.pdf` emphasizes a subtlety that matters
+when using cancellation arguments in the `B = ∅` regime:
+
+The sets `A`, `B`, `C` (and “B is empty”) are *defined relative to a fixed base* old-grid value
+`X0 := μ(F, r0)`, by comparing other old-grid values to the “target family”
+`X0 ⊕ d^u` (for u = 1,2,3,…).
+
+Our original `extensionSetA/B/C` are the special case `X0 = ident` (i.e. `r0 = 0`).
+-/
+
+/-- Base-indexed B-set: old multiplicities `r` such that `μ(F,r) = μ(F,r0) ⊕ d^u`. -/
+def extensionSetB_base {k : ℕ} (F : AtomFamily α k) (d : α) (r0 : Multi k) (u : ℕ) :
+    Set (Multi k) :=
+  {r | mu F r = op (mu F r0) (iterate_op d u)}
+
+/-- Base-indexed A-set: old multiplicities `r` such that `μ(F,r) < μ(F,r0) ⊕ d^u`. -/
+def extensionSetA_base {k : ℕ} (F : AtomFamily α k) (d : α) (r0 : Multi k) (u : ℕ) :
+    Set (Multi k) :=
+  {r | mu F r < op (mu F r0) (iterate_op d u)}
+
+/-- Base-indexed C-set: old multiplicities `r` such that `μ(F,r0) ⊕ d^u < μ(F,r)`. -/
+def extensionSetC_base {k : ℕ} (F : AtomFamily α k) (d : α) (r0 : Multi k) (u : ℕ) :
+    Set (Multi k) :=
+  {r | op (mu F r0) (iterate_op d u) < mu F r}
+
+/-- Base-indexed statistic: slope candidate `(Θ(r) - Θ(r0)) / u`. -/
+noncomputable def separationStatistic_base {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
+    (r0 r : Multi k) (u : ℕ) (hu : 0 < u) : ℝ :=
+  (R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ - R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩) / u
+
+/-!
+### Ben/Goertzel v2 “Lemma 7” cancellation (base-indexed)
+
+If an equality involves two different iterates of the *same* `d`, then one can rewrite the larger
+iterate as a product `d^(u-v) ⊕ d^v` and cancel the common `d^v` tail on the right.
+
+This is the purely algebraic core needed to turn an equality
+`X₀ ⊕ d^u = Y ⊕ d^v` (with `v ≤ u`) into the base-indexed equality `Y = X₀ ⊕ d^(u-v)`.
+
+Important: this yields a **base-indexed** `B`-witness for base `X₀`; it does *not* imply an
+absolute witness of the form `Y = d^n` unless `X₀ = ident`.
+-/
+
+lemma cancel_right_iterate_eq
+    {k : ℕ} (F : AtomFamily α k) (d : α)
+    (r0 ry : Multi k) (u v : ℕ) (huv : v ≤ u)
+    (hEq :
+      op (mu F r0) (iterate_op d u) =
+        op (mu F ry) (iterate_op d v)) :
+    mu F ry = op (mu F r0) (iterate_op d (u - v)) := by
+  -- Rewrite `d^u = d^(u-v) ⊕ d^v` and cancel the common right tail `d^v`.
+  have hu : u = (u - v) + v := by omega
+  have hsplit : iterate_op d u = op (iterate_op d (u - v)) (iterate_op d v) := by
+    have hadd :
+        op (iterate_op d (u - v)) (iterate_op d v) = iterate_op d ((u - v) + v) :=
+      iterate_op_add d (u - v) v
+    have hu_iter : iterate_op d ((u - v) + v) = iterate_op d u :=
+      (congrArg (iterate_op d) hu).symm
+    exact (Eq.trans hadd hu_iter).symm
+  have hEq' :
+      op (op (mu F r0) (iterate_op d (u - v))) (iterate_op d v) =
+        op (mu F ry) (iterate_op d v) := by
+    calc
+      op (op (mu F r0) (iterate_op d (u - v))) (iterate_op d v)
+          = op (mu F r0) (op (iterate_op d (u - v)) (iterate_op d v)) := by
+              simp [op_assoc]
+      _ = op (mu F r0) (iterate_op d u) := by simp [hsplit]
+      _ = op (mu F ry) (iterate_op d v) := hEq
+  have hcancel :
+      op (mu F r0) (iterate_op d (u - v)) = mu F ry :=
+    (op_strictMono_left (iterate_op d v)).injective hEq'
+  exact hcancel.symm
+
+lemma extensionSetB_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) :
+    extensionSetB_base F d (0 : Multi k) u = extensionSetB F d u := by
+  ext r
+  -- `0 : Multi k` is definitional `fun _ => 0`, but `simp` does not always unfold it.
+  have h0 : (0 : Multi k) = (fun _ : Fin k => 0) := rfl
+  simp [extensionSetB_base, extensionSetB, h0, mu_zero (F := F), op_ident_left]
+
+lemma extensionSetA_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) :
+    extensionSetA_base F d (0 : Multi k) u = extensionSetA F d u := by
+  ext r
+  have h0 : (0 : Multi k) = (fun _ : Fin k => 0) := rfl
+  simp [extensionSetA_base, extensionSetA, h0, mu_zero (F := F), op_ident_left]
+
+lemma extensionSetC_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) :
+    extensionSetC_base F d (0 : Multi k) u = extensionSetC F d u := by
+  ext r
+  have h0 : (0 : Multi k) = (fun _ : Fin k => 0) := rfl
+  simp [extensionSetC_base, extensionSetC, h0, mu_zero (F := F), op_ident_left]
 
 /-- The A/B/C sets partition the space of multiplicities. -/
 lemma extension_abc_partition {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) (r : Multi k) :

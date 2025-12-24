@@ -2,10 +2,15 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Core.Induction.Theta
 import Mathlib.Data.Real.Basic
 
 /-!
-# Interval-Valued Approach: Attempting to Break It
+# Interval-Valued Approach: Exploration Notes (not a refutation)
 
-We attempt to prove the interval-valued approach untenable.
-If we fail, we've found a valid alternative to K&S's flawed point-valued approach!
+This file explores an interval-valued “imprecise / credal” style semantics motivated by the
+K&S Appendix-A B-empty discussion.
+
+This is *not* a proof that the interval approach is untenable, and it is *not* a formal refutation
+of Knuth–Skilling Appendix A. It is a place to record which algebraic facts do and do not go
+through when values are intervals rather than points, and what additional hypotheses would be
+needed to recover point-valued additivity.
 
 ## The Interval-Valued Proposal
 
@@ -25,7 +30,7 @@ Instead of μ : α → ℝ, define μ : α → Interval where:
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Counterexamples.IntervalApproach
 
 /-!
-## Attack 1: Associativity of Interval Arithmetic
+## Check 1: Associativity of Interval Arithmetic
 
 Interval addition: [a,b] + [c,d] = [a+c, b+d]
 
@@ -35,7 +40,7 @@ Is this associative?
 
 YES! Interval addition is associative. ✓
 
-**ATTACK FAILS** - Associativity is preserved.
+Associativity is preserved.
 -/
 
 /-- Interval addition is associative -/
@@ -44,7 +49,7 @@ theorem interval_add_assoc (a b c d e f : ℝ) :
   constructor <;> ring
 
 /-!
-## Attack 2: Order Preservation
+## Check 2: Order Preservation
 
 If x < y in the algebra, does μ(x) < μ(y) as intervals (meaning upper(x) < lower(y))?
 
@@ -53,7 +58,7 @@ the order is preserved. Therefore:
 - sup{μ(x) : δ valid} < inf{μ(y) : δ valid}
 - i.e., upper(μ(x)) < lower(μ(y))
 
-**ATTACK FAILS** - Order is preserved when intervals come from valid δ-ranges.
+Order is preserved when intervals come from valid δ-ranges (with a uniform margin).
 -/
 
 /-- A uniform *margin* implies strict separation of the `iSup`/`iInf` envelopes.
@@ -88,7 +93,7 @@ theorem order_preserved_from_uniform_margin
   linarith [hSup_le]
 
 /-!
-## Attack 3: Compounding Uncertainty
+## Check 3: Compounding Uncertainty
 
 HERE IS THE REAL ATTACK!
 
@@ -102,7 +107,7 @@ For a combination m(s of b, t of c) = s·δ_b + t·δ_c:
 - Upper bound: s·U_b + t·U_c
 - Total uncertainty: s·ε_b + t·ε_c
 
-**THE PROBLEM**: Uncertainty ACCUMULATES with more atom types!
+Uncertainty accumulates with more atom types unless additional structure is imposed.
 
 For k atom types with uncertainties ε_1, ..., ε_k and coefficients n_1, ..., n_k:
 Total uncertainty = n_1·ε_1 + ... + n_k·ε_k
@@ -279,9 +284,11 @@ theorem archimedean_eventual_not_current :
 /-!
 ## Summary: What the Interval Approach Achieves
 
-**CANNOT PROVE UNTENABLE** - The interval approach is CONSISTENT!
+This file does not prove any impossibility result about interval-valued semantics.
+Everything developed so far is consistent with ordinary interval arithmetic on `ℝ`.
 
-But it gives a WEAKER result than K&S claims:
+It also makes clear that an interval-valued approach is (at least syntactically) weaker than a
+point-valued representation theorem:
 
 | K&S Claims | Interval Approach Achieves |
 |------------|---------------------------|
@@ -290,7 +297,7 @@ But it gives a WEAKER result than K&S claims:
 | No continuity needed | Still needs Archimedean + careful bounds |
 | Works for all α | Works for finite atom types |
 
-**THE VALID THEOREM** (Interval Version):
+One plausible “interval version” of a K&S-style statement (for finite grids) is:
 
 For any finite collection of k atom types, there exists an interval-valued
 measure μ : α → Intervals such that:
@@ -298,15 +305,12 @@ measure μ : α → Intervals such that:
 2. x < y implies μ(x) and μ(y) are separated (order)
 3. Interval widths can be made arbitrarily small by considering higher multiples
 
-**WHAT'S STILL NEEDED**:
-- For infinite atom types: Completeness (to handle accumulating uncertainty)
-- For exact additivity: Completeness (to collapse intervals to points)
+What remains open (and model-dependent):
+- Whether one can control accumulation of uncertainty uniformly across extensions.
+- Whether additional axioms collapse intervals to points (and which completeness principle that uses).
 
-**PHILOSOPHICAL WIN**:
-The interval approach makes EXPLICIT what K&S hides:
-> The gap between "arbitrarily precise approximation" and "exact value" is COMPLETENESS.
-
-This is cleaner and more honest than K&S's hidden limit step.
+This is useful mainly as a bookkeeping device: it separates “approximate / bounded” statements from
+“point-valued” statements, and makes any required use of `sSup`/completeness explicit in Lean.
 -/
 
 /-!
@@ -365,7 +369,8 @@ theorem IntervalMeasure.containment {α : Type*} [KnuthSkillingAlgebra α]
 /-!
 ## Final Verdict: Interval Approach Is Consistent But Potentially Too Weak
 
-**THE INTERVAL APPROACH IS NOT UNTENABLE** - but it may not recover K&S's full claim.
+The interval approach is consistent as a semantics, but it may be too weak to recover the full
+point-valued representation claim without additional assumptions.
 
 ### What the Interval Approach Achieves
 1. Avoids requiring completeness for approximate additivity

@@ -10,8 +10,8 @@ Key insight: Probability DERIVED from symmetry, not axiomatized!
 
 - **Basic.lean**: Core definitions (PlausibilitySpace, Valuation, KnuthSkillingAlgebra, KSSeparation)
 - **Algebra.lean**: Basic operations (iterate_op, commutativity lemmas)
-- **SeparationProof.lean**: Proof that KSSeparation holds from K-S axioms
-- **RepTheorem.lean**: Representation theorem (assumes KSSeparation)
+- **SeparationProof.lean**: Work-in-progress proof sketch toward `KSSeparation` from K-S axioms
+- **RepTheorem.lean**: Representation theorem (assumes `[KSSeparation α]`)
 - **AppendixA.lean**: **MAIN FILE** - K&S representation theorem proof
   - `Theta_eq_swap`: Θ(x⊕y) = Θ(y⊕x)
   - `op_comm_of_KS`: Commutativity x⊕y = y⊕x
@@ -21,7 +21,7 @@ Key insight: Probability DERIVED from symmetry, not axiomatized!
 
 The formalization uses a two-layer design to avoid circular dependencies:
 - **Layer A (RepTheorem)**: Assumes `[KSSeparation α]`, proves representation
-- **Layer B (SeparationProof)**: Proves `instance : KSSeparation α` from K-S axioms
+- **Layer B (SeparationProof)**: Intended to provide `instance : KSSeparation α` (currently not completed)
 
 ## Countermodels (opt-in)
 - See `CounterModels/` for FreeMonoid2 constructions and no-go theorems. These are
@@ -43,7 +43,7 @@ The formalization uses a two-layer design to avoid circular dependencies:
 -- Import all submodules
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Basic
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Algebra
-import Mettapedia.ProbabilityTheory.KnuthSkilling.SeparationProof  -- Provides instance : KSSeparation α
+import Mettapedia.ProbabilityTheory.KnuthSkilling.SeparationProof
 import Mettapedia.ProbabilityTheory.KnuthSkilling.RepTheorem
 import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ProbabilityDerivation

@@ -3,88 +3,87 @@ import Mathlib.Data.Real.Archimedean
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 
 /-!
-# Main Theorems: Limitations of the Knuth-Skilling Approach
+# Main Theorems: What Is (and Is Not) Shown Here
 
-This file presents two fundamental theorems about the K&S approach to deriving
-probability theory from symmetry axioms.
+This file collects a few clean, *formal* facts that are often relevant when analyzing
+Knuth–Skilling Appendix A and related “avoid continuity / avoid completeness” narratives.
 
-## Overview
+Important: **Nothing in this file is a formal refutation of Knuth–Skilling Appendix A as a
+classical mathematical theorem.** Most results here are either:
+- general facts about `ℝ` (e.g. density of `ℚ`), or
+- demonstrations that *certain proof tactics / informal slogans* require extra hypotheses
+  when made fully explicit in Lean.
 
-Knuth & Skilling (2012) claimed to derive probability theory from basic axioms:
-associativity, monotonicity, and consistency. We prove two fundamental limitations:
+## What this file actually proves
 
-1. **The Rational Density Barrier** (§1): K&S's specific proof technique fails
-   because rational numbers are dense — you cannot make δ-shifts small enough
-   to avoid rational obstructions.
+1. **Density sanity checks** (§1): Between any two distinct reals there lies a rational.
+   This is used only to caution against “pick a δ small enough to avoid all rationals”
+   style arguments *unless* one has a reason those rationals are irrelevant.
 
-2. **The Completeness-Commutativity Dichotomy** (§2): ANY approach to deriving
-   probability faces a fundamental tradeoff:
-   - Weak axioms → admit noncommutative models (not probability)
-   - Strong axioms → require completeness (assume the continuum)
+2. **Interval-to-point extraction uses `sSup`** (§2): If one models “approaching a value”
+   via nested shrinking intervals, then extracting a point value as a supremum is an explicit
+   use of conditional completeness of `ℝ`. This is a bookkeeping statement about the
+   *formalization*, not a claim that K&S must (or must not) assume completeness elsewhere.
 
-## Philosophical Implications
+3. **Weak axioms admit noncommutative models** (§2.A): As a sanity check, there are
+   associative noncommutative operations supporting trivial weak interval bounds. This shows
+   that “associativity + monotonicity” alone does not force commutativity.
 
-These results show that the continuum (ℝ) cannot be *derived* from symmetry
-axioms — it must be *assumed*. The natural completion-free structure is
-**imprecise probability** (credal sets), not classical probability.
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012), Appendix A
-- See `StrictGap.lean` for detailed proof of Theorem 1
-- See `IntervalCollapse.lean` for detailed proof of Theorem 2
+If you want a “K&S succeeds / K&S fails” statement, it needs to be phrased against the *actual*
+assumptions used in the Appendix A development (see `.../Core/Induction/ThetaPrime.lean`), not
+against generic interval constructions.
 -/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.MainTheorems
 
 /-!
-## §1: The Rational Density Barrier
+## §1: Density sanity checks
 
-K&S's proof relies on a "δ-shift" argument: if x < y, then θ(x) + δ < θ(y) for
-some small δ > 0. They try to make δ arbitrarily small to get strict inequalities.
+This section does **not** prove any obstruction theorem about K&S by itself. It only records
+the basic fact that `ℚ` is dense in `ℝ`, which is often used to sanity-check arguments of the form
+“choose δ so small that nothing interesting happens in (θ(x), θ(x)+δ)”.
 
-**The Problem**: For any δ > 0, there exists a rational q with θ(x) < q < θ(x) + δ.
-If q happens to equal some θ(z), the shift fails. Since rationals are dense,
-you cannot avoid this obstruction by making δ smaller.
+Whether such a move is valid depends on *what is considered “interesting”* (e.g. the range of θ,
+or a discrete/quantized subset), and that depends on additional hypotheses.
 -/
 
-/-- The Rational Density Barrier: Between any two distinct reals lies a rational.
-    This prevents δ-shift arguments from achieving strict separation. -/
+/-- Between any two distinct reals lies a rational (`ℚ` is dense in `ℝ`).
+
+This is a sanity check only: it blocks *only* arguments that require an interval in `ℝ` to
+contain no rationals (or no values of some explicitly specified dense set). -/
 theorem rational_density_barrier :
     ∀ x y : ℝ, x < y → ∃ q : ℚ, x < q ∧ (q : ℝ) < y :=
   fun _ _ hxy => exists_rat_btwn hxy
 
-/-- K&S's δ-shift technique requires: for all q : ℚ in (θ(x), θ(x) + δ),
-    q is not in the range of θ. But by density, such q always exist.
+/-- Given `δ > 0`, the open interval `(θ x, θ x + δ)` contains a rational number.
 
-    This is the core obstruction to K&S's proof technique. -/
+This lemma *does not* say anything about the image of `θ`; it only supplies a rational point
+in the interval. Any use of this fact in a K&S-style “δ-shift” argument must separately justify
+why that rational point is relevant (e.g. by showing the image of `θ` is discrete/quantized). -/
 theorem delta_shift_obstructed (θ : α → ℝ) (x : α) (δ : ℝ) (hδ : δ > 0) :
     ∃ q : ℚ, θ x < q ∧ (q : ℝ) < θ x + δ := by
   have h : θ x < θ x + δ := by linarith
   exact exists_rat_btwn h
 
 /-!
-### Theorem 1: The Rational Density Barrier (Formal Statement)
+### What this does *not* say
 
-**Theorem** (Rational Density Barrier):
-Let θ : α → ℝ be any representation. For any x : α and any δ > 0,
-there exists a rational q with θ(x) < q < θ(x) + δ.
-
-**Corollary**: The K&S δ-shift technique cannot establish strict inequalities
-θ(x) < θ(y) from non-strict bounds θ(x) ≤ θ(y), because the shift δ
-always contains rationals that may be in the range of θ.
-
-**Proof**: Immediate from density of ℚ in ℝ (Archimedean property).
-
-See `StrictGap.lean` for the full development showing how this obstructs
-K&S's specific proof in Appendix A.3.4.
+The density lemma does **not** imply that any δ-shift argument is invalid. It only says that
+intervals in `ℝ` are never “empty of rationals”. If a δ-shift argument needs an interval to avoid
+some *specific* set (e.g. the image of θ restricted to a grid, or integer multiples of a step),
+then that avoidance must be proved from the relevant hypotheses (e.g. quantization or separation),
+not from “δ is small”.
 -/
 
 /-!
-## §2: The Completeness-Commutativity Dichotomy
+## §2: Interval-to-point extraction uses `sSup`
 
-Even if we try to rescue K&S by using interval-valued representations
-(avoiding the need to name exact points), we face a fundamental dichotomy.
+This section formalizes a simple point: if one represents “an unknown real number” by a nested
+sequence of shrinking intervals `(Lₙ(x), Uₙ(x))`, then extracting a point value via
+`θ(x) := sSup {Lₙ(x)}` is an *explicit* use of conditional completeness of `ℝ`.
+
+This is a statement about a particular formalization pattern. It is not, by itself, a proof that
+K&S must assume completeness in their Appendix A argument.
 -/
 
 /-- Weak interval axioms: sub/super-additivity bounds -/
@@ -106,17 +105,14 @@ structure StrongIntervalAxioms (α : Type*) (μ : ℕ → α → ℝ × ℝ) : P
   converge : ∀ x ε, ε > 0 → ∃ n, (μ n x).2 - (μ n x).1 < ε
 
 /-!
-### Theorem 2: The Completeness-Commutativity Dichotomy
+### What this section does prove
 
-**Part A** (Weak Axioms Don't Imply Commutativity):
-There exists an associative, noncommutative algebra with a valid weak interval measure.
+- Part A constructs an associative noncommutative operation with trivial weak interval bounds.
+  This is a “don’t overclaim” sanity check: weak constraints do not force commutativity.
+- Part B shows that extracting point values *by taking suprema* uses `sSup`.
 
-**Part B** (Strong Axioms Require Completeness):
-If intervals converge (width → 0), extracting point values requires the
-completeness axiom (sSup existence).
-
-**Corollary**: No first-order axiom system can derive both commutativity
-and real-valued representations without assuming completeness.
+Any stronger meta-claim (e.g. “no first-order axiom system can derive …”) is outside the scope
+of what is proved here.
 -/
 
 /-- The Heisenberg group: associative but NOT commutative -/
@@ -195,61 +191,21 @@ theorem strong_axioms_yield_points (α : Type*) (μ : ℕ → α → ℝ × ℝ)
     exact csSup_le h_ne (fun v ⟨m, hm⟩ => hm ▸ lower_le_upper_all μ hS x m n)
 
 /-!
-### The Dichotomy (Summary)
+### Summary (for this file)
 
-| Axiom Strength | Commutativity | Completeness Required |
-|----------------|---------------|----------------------|
-| Weak intervals | CANNOT prove  | No                   |
-| Strong intervals | CAN prove   | **Yes** (sSup)       |
-
-**Interpretation**:
-- Weak axioms are *too weak* to force probability-like structure
-- Strong axioms are *strong enough* but *require* the continuum
-
-There is no "Goldilocks" axiom set that derives probability without assuming ℝ.
+| Pattern | What is shown here |
+|---|---|
+| Weak interval constraints | Do not force commutativity |
+| Interval shrinking + `θ := sSup Lₙ` | Uses conditional completeness of `ℝ` |
 -/
 
 /-!
-## §3: Philosophical Implications
+## §3: Notes
 
-### The Continuum is a Choice, Not a Theorem
-
-K&S tried to show: Rationality ⟹ Real-valued probabilities
-
-We've shown: Rationality ⟹ Credal sets (interval bounds)
-             Rationality + Completeness ⟹ Real-valued probabilities
-
-The completeness axiom is *independent* — it cannot be derived from
-associativity, monotonicity, or any first-order symmetry requirements.
-
-### What You Get Without Completeness
-
-Without assuming the continuum, the natural structure is **imprecise probability**:
-- Lower probability P*(A): infimum of admissible values
-- Upper probability P*(A): supremum of admissible values
-- Credal set C(A) = [P*(A), P*(A)]: all admissible probability assignments
-
-This is developed further in `CredalSets.lean`.
-
-### The Steelmanned K&S
-
-The correct formulation of K&S's insight:
-
-**Theorem** (Steelmanned K&S):
-Let (α, ⊕, <) satisfy:
-1. Associativity: (x ⊕ y) ⊕ z = x ⊕ (y ⊕ z)
-2. Monotonicity: x < y → x ⊕ z < y ⊕ z
-3. Solvability: ∀ x y, ∃ z, x ⊕ z = y (when x < y)
-
-Then there exists a **credal representation** μ : α → Interval satisfying:
-- μ(x ⊕ y) ⊆ μ(x) + μ(y) (containment)
-- x < y → sup(μ(x)) ≤ inf(μ(y)) (order preservation)
-
-**IF additionally** we assume completeness, THEN intervals collapse to points,
-giving classical probability: θ : α → ℝ with θ(x ⊕ y) = θ(x) + θ(y).
-
-This correctly separates what the axioms give you (credal sets) from what
-the continuum adds (exact point values).
+This file intentionally avoids presenting philosophical conclusions as theorems.
+Any “steelmanned K&S” statement should be tied to the precise Lean assumptions used in the
+Appendix A development (finite-grid representations + extension step + globalization), rather
+than to generic interval reasoning alone.
 -/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.MainTheorems

@@ -994,8 +994,8 @@ lemma delta_shift_equiv {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
       Case B: B(Δ) empty (d^Δ ∉ kGrid F)
         The trade μ_F(r_old) = μ_F(s_old) ⊕ d^Δ with both sides in kGrid F
         requires a "coincidence" - the product lands back in kGrid F despite
-        d^Δ not being there. In many K&S algebras this is impossible,
-        but in general it may happen via algebraic relations.
+        d^Δ not being there. This is *not guaranteed* and depends on extra algebraic
+        relations in the model; some models forbid it, others may allow it.
         For this case, use the accuracy lemma to squeeze bounds.
       -/
 

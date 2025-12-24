@@ -20,7 +20,7 @@ Goal: keep the library building green while we incrementally port/fix that proof
 
 **Status**: Blocked by explicit missing hypotheses (see `.../Core/Induction/ThetaPrime.lean`):
 - `BEmptyStrictGapSpec` (K&S Appendix A.3.4 strict relative gaps in the global `B = ∅` regime)
-- `ZQuantized F R (chooseδ …)` (a commensurability hypothesis needed by the current extension proof)
+- `ZQuantized_chooseδ_if_B_nonempty` (commensurability used only in the global `B ≠ ∅` branch)
 
 **Proof Strategy** (GPT-5 Pro's "Triple Family Trick"):
 1. For any x ≠ ident, choose reference atom `a` with `ident < a`

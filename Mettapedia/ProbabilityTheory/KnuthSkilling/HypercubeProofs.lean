@@ -4,33 +4,32 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.CounterExamples
 import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.CredalSets
 
 /-!
-# Hypercube Connection: Proven Theorems Only
+# Hypercube Connection: Exploratory “Shape” Lemmas
 
-This file contains **only proven theorems** connecting K&S probability to the hypercube framework.
+This file is an **exploratory organizational layer** that relates some existing results in this
+repository to a simple “type-system hypercube” picture.
 
-## What's Proven (0 Sorries)
+Every declaration below is fully checked by Lean (no `sorry`), but most of the “hypercube”
+statements are about the *toy graph* defined in this file, not about Knuth–Skilling Appendix A.
+In particular, nothing here proves the main K&S representation theorem.
 
-1. **`commutativity_from_representation`**: IF Θ exists, THEN commutativity follows
-   - This is a conditional: assumes Θ representation exists
-   - Whether K&S axioms guarantee such Θ is proven in Main.lean
+## What this file does prove
 
-2. **`path2_intervals_collapse_to_points`**: Completeness collapses intervals to points
-   - Uses `collapse_theorem` from CredalSets.lean
-   - Shows completeness is sufficient for point values
+1. **Conditional commutativity**: if an order-reflecting additive map `Θ : α → ℝ` exists, then
+   `op` is commutative (`commutativity_from_representation`).
 
-3. **Graph structure**: Hypercube has edges V₀→V₂ and V₂→V₃, no shortcut V₀→V₃
+2. **Interval collapse (in the credal-set toy model)**: some point-extraction lemmas about
+   interval bounds in `CredalSets.lean`.
 
-## What's NOT Proven
-
-- Full construction V₀ → V₂ (requires Main.lean's representation theorem)
-- Bridge V₂ → V₃ (CredalAlgebra ≠ KnuthSkillingAlgebra, different structures)
+3. **Graph reachability facts**: simple facts about the `HypercubeEdge` inductive defined below
+   (e.g. there is no *edge* `V0 → V3` because we did not define one).
 
 ## References
 
 - Stay & Wells, "Generating Hypercubes of Type Systems" (hypercube.pdf)
 - K&S, "Foundations of Inference" Appendix A
-- CredalSets.lean (collapse_theorem)
-- CounterExamples.lean (free_monoid_counterexample)
+- `AppendixA/CredalSets.lean` (interval / credal-set exploration)
+- `CounterExamples.lean` (noncommutative associative counterexamples)
 -/
 
 set_option linter.unusedVariables false
@@ -51,7 +50,9 @@ We first formally characterize each vertex of the hypercube.
 A structure is at V₀ if:
 1. It has an associative operation
 2. It does NOT have commutativity
-3. Therefore: No additive representation Θ can exist
+
+This is *not* a claim that no order-embedding into `ℝ` exists in general; it only records a
+simple obstruction: if `op` is not commutative, then it cannot be represented by `+` on `ℝ`.
 -/
 structure VertexV0 (α : Type*) where
   /-- The operation -/
@@ -64,9 +65,11 @@ structure VertexV0 (α : Type*) where
 /-- **Vertex V₂**: Credal Sets (Imprecise Probability)
 
 A structure is at V₂ if:
-1. It has commutativity (emerged from order + Archimedean)
-2. It uses INTERVAL-valued measures
-3. It does NOT assume completeness of ℝ
+1. It carries some “credal/interval” semantics (see `CredalAlgebra`)
+2. The chosen `op` is commutative (assumed as a field here)
+
+This file does not prove that V₂ follows from the K&S axioms; V₂ is just a convenient waypoint
+for organizing some alternative interpretations (e.g. interval-valued bounds).
 -/
 structure VertexV2 (α : Type*) where
   /-- The credal algebra structure -/
@@ -112,14 +115,16 @@ def freeMenoidIsV0 : VertexV0 FreeMonoid2 where
 
 **Key Insight**: IF a representation Θ exists, THEN commutativity follows.
 
-This is proven below. Whether such Θ exists from K&S axioms is proven in Main.lean.
+This is proven below. Whether such Θ exists from the K&S axioms is the substantive content of
+the Appendix A development (currently packaged as explicit `Prop`-blockers in
+`Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/Main.lean`).
 -/
 
 /-- **Commutativity Emergence Theorem** (Informal Statement)
 
 **Given**: A structure with associativity, strict order, and Archimedean property
 
-**Then**: If an additive representation Θ exists (as proven in K&S Appendix A),
+**Then**: If an additive representation Θ exists,
 the operation MUST be commutative.
 
 **Proof**:
@@ -241,12 +246,8 @@ theorem path2_exists :
 
 /-- **No Shortcut Theorem**: There is no direct V₀ → V₃ transition
 
-You cannot go from free monoid to classical probability in one step.
-You MUST pass through the credal sets (V₂) stage.
-
-This is because:
-1. First you need order + Archimedean to get commutativity (V₀ → V₂)
-2. Then you need completeness to get point values (V₂ → V₃)
+This is a statement about the *toy graph* `hypercubeGraph` defined in this file: we did not add
+an edge constructor from `V0` to `V3`, so such an edge cannot be produced.
 -/
 theorem no_direct_V0_to_V3 :
     ¬ (HypercubeEdge HypercubeVertex.V0 HypercubeVertex.V3) := by
@@ -259,9 +260,8 @@ def hypercubePath : HypercubeVertex → HypercubeVertex → Prop :=
 
 /-- **The Full V₀ → V₃ Path**: Free monoid to classical probability
 
-This requires TWO steps:
-1. V₀ → V₂ (order + Archimedean gives commutativity)
-2. V₂ → V₃ (completeness gives point values)
+This is again about reachability in `hypercubeGraph`, not about the truth of any mathematical
+reduction between those theories.
 -/
 theorem V0_to_V3_via_V2 :
     hypercubePath HypercubeVertex.V0 HypercubeVertex.V3 := by
@@ -272,9 +272,7 @@ theorem V0_to_V3_via_V2 :
   · exact HypercubeEdge.path2
   exact Relation.ReflTransGen.refl
 
-/-! ## Section 6: The Foundational Independence Theorems
-
-These theorems establish that certain choices are INDEPENDENT and cannot be derived.
+/-! ## Section 6: Small sanity checks
 -/
 
 /-- **Independence Theorem 1**: Commutativity requires more than associativity
@@ -290,7 +288,8 @@ theorem commutativity_not_from_associativity_alone :
 
 /-- **Independence Theorem 2**: Commutativity emerges FROM order + Archimedean
 
-This is the K&S insight: Once you add ORDER structure, commutativity follows!
+This is a *conditional* form: if an order-reflecting additive `Θ` exists, then commutativity
+is immediate (because `+` is commutative).
 -/
 theorem commutativity_from_order_plus_archimedean
     {α : Type*} [inst : KnuthSkillingAlgebra α] :
@@ -302,27 +301,6 @@ theorem commutativity_from_order_plus_archimedean
     (∀ x y, inst.op x y = inst.op y x) := by
   intro ⟨Θ, horder, hadd⟩
   exact commutativity_from_representation Θ horder hadd
-
-/-- **Independence Theorem 3**: Point values require completeness
-
-Proven by: The credal sets construction (V₂) shows intervals work without completeness.
-
-This theorem states: In a foundation WITHOUT completeness (e.g., constructive ℝ),
-the K&S axioms yield interval-valued measures, not point values.
--/
-theorem point_values_require_completeness :
-    -- In constructive foundations (without sSup):
-    -- ∃ structures with K&S axioms that use intervals
-
-    -- In classical foundations (with sSup):
-    -- The intervals collapse to points (collapse_theorem)
-
-    -- Therefore: Completeness is a CHOICE, not derivable
-    True := by
-  -- This is more of a meta-theorem about foundations
-  -- The proof is that CredalSets.lean constructs interval-valued structures
-  -- that work without completeness, while Main.lean uses sSup
-  trivial
 
 /-! ## Section 7: The Main Result
 
