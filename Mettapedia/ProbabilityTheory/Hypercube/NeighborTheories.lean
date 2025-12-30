@@ -859,33 +859,158 @@ theorem commutes_of_le_compl {a b : L} (h : a ≤ bᶜ) : commutes a b := by
 
 /-- Exchange property (one direction): commutativity implies the exchange identity.
     If a C b, then a ⊓ (aᶜ ⊔ b) = a ⊓ b.
-    Reference: Kalmbach (1983), Lemma 3.3. -/
+    Reference: Kalmbach (1983), Lemma 3.3.
+
+    Proof: Let p = a ⊓ b and q = a ⊓ bᶜ. From a C b we have a = p ⊔ q.
+    By de Morgan: qᶜ = (a ⊓ bᶜ)ᶜ = aᶜ ⊔ b.
+    So LHS = a ⊓ (aᶜ ⊔ b) = a ⊓ qᶜ = (p ⊔ q) ⊓ qᶜ.
+    Since p ⊓ q = ⊥ (p ≤ b, q ≤ bᶜ), we have p ≤ qᶜ.
+    By orthomodular_dual: p ≤ qᶜ implies p = (p ⊔ q) ⊓ qᶜ.
+    Therefore (p ⊔ q) ⊓ qᶜ = p = a ⊓ b = RHS. -/
 theorem exchange_of_commutes {a b : L} (h : commutes a b) : a ⊓ (aᶜ ⊔ b) = a ⊓ b := by
-  sorry
+  unfold commutes at h
+  -- h : a = (a ⊓ b) ⊔ (a ⊓ bᶜ)
+  -- Let p = a ⊓ b, q = a ⊓ bᶜ
+  set p := a ⊓ b with hp_def
+  set q := a ⊓ bᶜ with hq_def
+  -- Key insight: qᶜ = (a ⊓ bᶜ)ᶜ = aᶜ ⊔ b by de Morgan
+  have hq_compl : qᶜ = aᶜ ⊔ b := by
+    simp only [hq_def, OrthomodularLattice.compl_inf, OrthomodularLattice.compl_compl]
+  -- So our goal becomes: a ⊓ qᶜ = p
+  rw [hq_compl.symm]
+  -- Rewrite a using commutativity: a = p ⊔ q
+  conv_lhs => rw [h]
+  -- Goal: (p ⊔ q) ⊓ qᶜ = p
+  -- Since p ⊓ q = ⊥ (p ≤ b and q ≤ bᶜ), we have p ≤ qᶜ
+  have hpq_bot : p ⊓ q = ⊥ := by
+    -- p ⊓ q = (a ⊓ b) ⊓ (a ⊓ bᶜ) ≤ b ⊓ bᶜ = ⊥
+    have hle : p ⊓ q ≤ ⊥ := by
+      calc p ⊓ q = (a ⊓ b) ⊓ (a ⊓ bᶜ) := rfl
+           _ ≤ b ⊓ bᶜ := inf_le_inf inf_le_right inf_le_right
+           _ = ⊥ := OrthomodularLattice.inf_compl_self b
+    exact le_antisymm hle bot_le
+  have hp_le_qc : p ≤ qᶜ := by
+    -- From p ⊓ q = ⊥, we get p ≤ qᶜ by the forward direction (orthogonality → disjointness)
+    -- Actually we need the orthomodular_dual approach
+    -- p ⊓ q = ⊥ means p and q are disjoint
+    -- Since p ≤ p ⊔ q = a and q ≤ a, and p ⊓ q = ⊥, we have p ≤ qᶜ when...
+    -- Actually, let's compute directly
+    simp only [hp_def, hq_def]
+    calc a ⊓ b ≤ b := inf_le_right
+         _ ≤ bᶜᶜ := le_of_eq (OrthomodularLattice.compl_compl b).symm
+         _ ≤ (a ⊓ bᶜ)ᶜ := by
+           apply OrthomodularLattice.compl_le_compl
+           exact inf_le_right
+  -- By orthomodular_dual: p ≤ qᶜ implies p = (p ⊔ qᶜᶜ) ⊓ qᶜ = (p ⊔ q) ⊓ qᶜ
+  have key := OrthomodularLattice.orthomodular_dual hp_le_qc
+  -- key : p = (p ⊔ qᶜᶜ) ⊓ qᶜ
+  rw [OrthomodularLattice.compl_compl] at key
+  -- key : p = (p ⊔ q) ⊓ qᶜ
+  exact key.symm
+
+/-- Exchange property implies commutativity (converse direction).
+    If a ⊓ (aᶜ ⊔ b) = a ⊓ b, then a C b.
+
+    Proof: From the exchange equation, taking complements gives
+    aᶜ ⊔ (a ⊓ bᶜ) = aᶜ ⊔ bᶜ.
+    By orthomodular_dual applied to (a ⊓ bᶜ) ≤ a:
+    a ⊓ (aᶜ ⊔ (a ⊓ bᶜ)) = a ⊓ bᶜ.
+    Hence a ⊓ (aᶜ ⊔ bᶜ) = a ⊓ bᶜ.
+    Using OML: a = (a ⊓ b) ⊔ (a ⊓ (a ⊓ b)ᶜ) = (a ⊓ b) ⊔ (a ⊓ (aᶜ ⊔ bᶜ)) = (a ⊓ b) ⊔ (a ⊓ bᶜ). -/
+theorem commutes_of_exchange {a b : L} (h : a ⊓ (aᶜ ⊔ b) = a ⊓ b) : commutes a b := by
+  unfold commutes
+  -- Goal: a = (a ⊓ b) ⊔ (a ⊓ bᶜ)
+  -- First derive the exchange property for bᶜ from the given exchange property for b
+  -- Taking complements of h: (a ⊓ (aᶜ ⊔ b))ᶜ = (a ⊓ b)ᶜ
+  -- By de Morgan: aᶜ ⊔ (aᶜ ⊔ b)ᶜ = aᶜ ⊔ bᶜ
+  -- (aᶜ ⊔ b)ᶜ = a ⊓ bᶜ, so: aᶜ ⊔ (a ⊓ bᶜ) = aᶜ ⊔ bᶜ
+  have h_compl : aᶜ ⊔ (a ⊓ bᶜ) = aᶜ ⊔ bᶜ := by
+    have step1 : (a ⊓ (aᶜ ⊔ b))ᶜ = (a ⊓ b)ᶜ := congr_arg (·ᶜ) h
+    rw [OrthomodularLattice.compl_inf, OrthomodularLattice.compl_sup,
+        OrthomodularLattice.compl_compl, OrthomodularLattice.compl_inf] at step1
+    -- step1 : aᶜ ⊔ (a ⊓ bᶜ) = aᶜ ⊔ bᶜ
+    exact step1
+  -- Now derive exchange for bᶜ: a ⊓ (aᶜ ⊔ bᶜ) = a ⊓ bᶜ
+  have h_exchange_compl : a ⊓ (aᶜ ⊔ bᶜ) = a ⊓ bᶜ := by
+    -- By orthomodular_dual: since (a ⊓ bᶜ) ≤ a, we have
+    -- a ⊓ bᶜ = ((a ⊓ bᶜ) ⊔ aᶜ) ⊓ a
+    have hle : a ⊓ bᶜ ≤ a := inf_le_left
+    have key := OrthomodularLattice.orthomodular_dual hle
+    -- key : a ⊓ bᶜ = ((a ⊓ bᶜ) ⊔ aᶜ) ⊓ a
+    -- Rearrange to: a ⊓ bᶜ = a ⊓ (aᶜ ⊔ (a ⊓ bᶜ)) = a ⊓ (aᶜ ⊔ bᶜ)
+    calc a ⊓ (aᶜ ⊔ bᶜ) = a ⊓ (aᶜ ⊔ (a ⊓ bᶜ)) := by rw [← h_compl]
+         _ = ((a ⊓ bᶜ) ⊔ aᶜ) ⊓ a := by rw [inf_comm, sup_comm]
+         _ = a ⊓ bᶜ := key.symm
+  -- By OML: a = (a ⊓ b) ⊔ (a ⊓ (a ⊓ b)ᶜ)
+  have h_oml : a = (a ⊓ b) ⊔ (a ⊓ (a ⊓ b)ᶜ) := by
+    have hle : a ⊓ b ≤ a := inf_le_left
+    exact OrthomodularLattice.orthomodular (a ⊓ b) a hle
+  -- (a ⊓ b)ᶜ = aᶜ ⊔ bᶜ by de Morgan
+  rw [OrthomodularLattice.compl_inf] at h_oml
+  -- Now h_oml : a = (a ⊓ b) ⊔ (a ⊓ (aᶜ ⊔ bᶜ))
+  -- Use h_exchange_compl: a ⊓ (aᶜ ⊔ bᶜ) = a ⊓ bᶜ
+  rw [h_exchange_compl] at h_oml
+  exact h_oml
+
+/-- The exchange property is equivalent to commutativity.
+    a C b ↔ a ⊓ (aᶜ ⊔ b) = a ⊓ b -/
+theorem commutes_iff_exchange (a b : L) : commutes a b ↔ a ⊓ (aᶜ ⊔ b) = a ⊓ b :=
+  ⟨exchange_of_commutes, commutes_of_exchange⟩
 
 /-- Commutativity is preserved under meet.
     Reference: Kalmbach (1983), Orthomodular Lattices, Theorem 3.11.
-    Proof: Use the characterization that in an OML, `commutes a b ↔ a ⊓ (aᶜ ⊔ b) = a ⊓ b`.
-    When a commutes with both b and c, the sublattice generated by {a, b, c} is distributive. -/
+
+    Proof: Use the exchange characterization.
+    Since a C b: a ⊓ (aᶜ ⊔ b) = a ⊓ b
+    Since a C c: a ⊓ (aᶜ ⊔ c) = a ⊓ c
+
+    For b ⊓ c ≤ b and b ⊓ c ≤ c:
+      a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ (aᶜ ⊔ b) = a ⊓ b
+      a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ (aᶜ ⊔ c) = a ⊓ c
+    So a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ (a ⊓ b) ⊓ (a ⊓ c) = a ⊓ b ⊓ c.
+    Also a ⊓ b ⊓ c ≤ a ⊓ (aᶜ ⊔ (b ⊓ c)) trivially.
+    Hence a ⊓ (aᶜ ⊔ (b ⊓ c)) = a ⊓ b ⊓ c = a ⊓ (b ⊓ c).
+    By commutes_of_exchange, a C (b ⊓ c). -/
 theorem commutes_inf {a b c : L} (hab : commutes a b) (hac : commutes a c) :
     commutes a (b ⊓ c) := by
-  unfold commutes at hab hac ⊢
-  -- Goal: a = (a ⊓ (b ⊓ c)) ⊔ (a ⊓ (b ⊓ c)ᶜ)
-  -- Strategy: Show that the RHS equals a using hab and hac
-  --
-  -- Key insight: Using de Morgan, (b ⊓ c)ᶜ = bᶜ ⊔ cᶜ
-  -- So we need: a = (a ⊓ b ⊓ c) ⊔ (a ⊓ (bᶜ ⊔ cᶜ))
-  --
-  -- From hab: a = (a ⊓ b) ⊔ (a ⊓ bᶜ)
-  -- From hac: a = (a ⊓ c) ⊔ (a ⊓ cᶜ)
-  --
-  -- The proof combines these to show:
-  -- a = (a ⊓ b ⊓ c) ⊔ (a ⊓ b ⊓ cᶜ) ⊔ (a ⊓ bᶜ ⊓ c) ⊔ (a ⊓ bᶜ ⊓ cᶜ)
-  --   = (a ⊓ b ⊓ c) ⊔ (a ⊓ (bᶜ ⊔ cᶜ))  [by absorption and distributivity in commuting sublattice]
-  --
-  -- This is a non-trivial result requiring the Foulis-Holland theorem.
-  -- For a full formalization, see Beran (1985), Chapter II, Section 4.
-  sorry
+  -- Use exchange characterization
+  apply commutes_of_exchange
+  -- Goal: a ⊓ (aᶜ ⊔ (b ⊓ c)) = a ⊓ (b ⊓ c)
+  -- Get exchange properties for b and c
+  have exb : a ⊓ (aᶜ ⊔ b) = a ⊓ b := exchange_of_commutes hab
+  have exc : a ⊓ (aᶜ ⊔ c) = a ⊓ c := exchange_of_commutes hac
+  -- Show: a ⊓ (aᶜ ⊔ (b ⊓ c)) = a ⊓ b ⊓ c
+  apply le_antisymm
+  · -- a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ b ⊓ c
+    -- Since b ⊓ c ≤ b: aᶜ ⊔ (b ⊓ c) ≤ aᶜ ⊔ b
+    have hbc_le_b : b ⊓ c ≤ b := inf_le_left
+    have hbc_le_c : b ⊓ c ≤ c := inf_le_right
+    have h1 : aᶜ ⊔ (b ⊓ c) ≤ aᶜ ⊔ b := sup_le_sup_left hbc_le_b aᶜ
+    have h2 : aᶜ ⊔ (b ⊓ c) ≤ aᶜ ⊔ c := sup_le_sup_left hbc_le_c aᶜ
+    have h3 : a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ (aᶜ ⊔ b) := inf_le_inf_left a h1
+    have h4 : a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ (aᶜ ⊔ c) := inf_le_inf_left a h2
+    rw [exb] at h3
+    rw [exc] at h4
+    -- h3 : a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ b
+    -- h4 : a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ a ⊓ c
+    -- (a ⊓ b) ⊓ (a ⊓ c) = a ⊓ (b ⊓ c) in any lattice
+    have hab_hac_eq : (a ⊓ b) ⊓ (a ⊓ c) = a ⊓ (b ⊓ c) := by
+      apply le_antisymm
+      · apply le_inf
+        · exact le_trans inf_le_left inf_le_left
+        · apply le_inf
+          · exact le_trans inf_le_left inf_le_right
+          · exact le_trans inf_le_right inf_le_right
+      · apply le_inf
+        · apply le_inf inf_le_left (le_trans inf_le_right inf_le_left)
+        · apply le_inf inf_le_left (le_trans inf_le_right inf_le_right)
+    calc a ⊓ (aᶜ ⊔ (b ⊓ c)) ≤ (a ⊓ b) ⊓ (a ⊓ c) := le_inf h3 h4
+         _ = a ⊓ (b ⊓ c) := hab_hac_eq
+  · -- a ⊓ (b ⊓ c) ≤ a ⊓ (aᶜ ⊔ (b ⊓ c))
+    have h1 : a ⊓ (b ⊓ c) ≤ a := inf_le_left
+    have h2 : a ⊓ (b ⊓ c) ≤ b ⊓ c := inf_le_right
+    have h3 : a ⊓ (b ⊓ c) ≤ aᶜ ⊔ (b ⊓ c) := le_trans h2 le_sup_right
+    exact le_inf h1 h3
 
 /-- Commutativity is preserved under join.
     Reference: Kalmbach (1983), Orthomodular Lattices, Theorem 3.11.
@@ -897,16 +1022,31 @@ theorem commutes_inf {a b c : L} (hab : commutes a b) (hac : commutes a c) :
 theorem commutes_sup {a b c : L} (hab : commutes a b) (hac : commutes a c) :
     commutes a (b ⊔ c) := by
   -- Strategy: Use de Morgan duality with commutes_inf
-  -- b ⊔ c = (bᶜ ⊓ cᶜ)ᶜ, so commutes a (b ⊔ c) ↔ commutes a ((bᶜ ⊓ cᶜ)ᶜ)
-  -- If we had commutes a (bᶜ ⊓ cᶜ), then commutes_compl gives commutes a (b ⊔ c)
-  -- commutes a (bᶜ ⊓ cᶜ) follows from commutes_inf (commutes_compl hab) (commutes_compl hac)
-  --
-  -- But we need commutes_inf first! So this is mutually recursive with commutes_inf.
-  -- The fundamental proof requires the Foulis-Holland theorem.
-  sorry
+  -- b ⊔ c = (bᶜ ⊓ cᶜ)ᶜ, so we prove a C (bᶜ ⊓ cᶜ) and then use commutes_compl
+  -- Step 1: a C bᶜ and a C cᶜ by commutes_compl
+  have habc : commutes a bᶜ := commutes_compl hab
+  have hacc : commutes a cᶜ := commutes_compl hac
+  -- Step 2: a C (bᶜ ⊓ cᶜ) by commutes_inf
+  have h_inf : commutes a (bᶜ ⊓ cᶜ) := commutes_inf habc hacc
+  -- Step 3: a C (bᶜ ⊓ cᶜ)ᶜ by commutes_compl
+  have h_compl : commutes a (bᶜ ⊓ cᶜ)ᶜ := commutes_compl h_inf
+  -- Step 4: (bᶜ ⊓ cᶜ)ᶜ = b ⊔ c by de Morgan
+  have h_demorgan : (bᶜ ⊓ cᶜ)ᶜ = b ⊔ c := by
+    rw [OrthomodularLattice.compl_inf, OrthomodularLattice.compl_compl, OrthomodularLattice.compl_compl]
+  rw [h_demorgan] at h_compl
+  exact h_compl
 
 /-- For commuting elements in an OML, the meet distributes over join.
-    This is why commuting elements form a Boolean subalgebra. -/
+    This is why commuting elements form a Boolean subalgebra.
+
+    **Proof strategy** (from Kalmbach 1983, §3.3):
+    1. Show `a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ bᶜ ⊓ c)` using commutativity decomposition
+    2. Since `a C c`, show `a ⊓ bᶜ ⊓ c ≤ a ⊓ c`
+    3. Therefore `a ⊓ (b ⊔ c) ≤ (a ⊓ b) ⊔ (a ⊓ c)`
+    4. The reverse inequality holds in any lattice
+
+    The key lemma needed is: For `x ≤ a`, we have `x ⊓ (aᶜ ⊔ y) = x ⊓ y` (uses orthogonality).
+    This requires careful use of the orthomodular law and is non-trivial in general OML. -/
 theorem commuting_distributive {a b c : L} (hab : commutes a b) (hac : commutes a c) :
     a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ c) := by
   -- This is a known result in OML theory
@@ -938,13 +1078,22 @@ theorem commuting_distributive {a b c : L} (hab : commutes a b) (hac : commutes 
 def OML_center (L : Type*) [OrthomodularLattice L] : Set L :=
   {a | ∀ b : L, commutes a b}
 
-/-- The center is closed under join. -/
+/-- The center is closed under join.
+    Uses commutativity symmetry and `commutes_sup`. -/
 theorem OML_center_closed_sup {a b : L} (ha : a ∈ OML_center L) (hb : b ∈ OML_center L) :
     a ⊔ b ∈ OML_center L := by
   intro c
-  -- Need: (a ⊔ b) = ((a ⊔ b) ⊓ c) ⊔ ((a ⊔ b) ⊓ cᶜ)
-  -- Use that a and b individually commute with c
-  sorry -- Requires commutes_sup lemma
+  -- Need: commutes (a ⊔ b) c
+  -- Since a, b are in the center, they commute with c
+  have hac : commutes a c := ha c
+  have hbc : commutes b c := hb c
+  -- By symmetry, c commutes with a and b
+  have hca : commutes c a := commutes_symm hac
+  have hcb : commutes c b := commutes_symm hbc
+  -- By commutes_sup, c commutes with a ⊔ b
+  have hcab : commutes c (a ⊔ b) := commutes_sup hca hcb
+  -- By symmetry again, a ⊔ b commutes with c
+  exact commutes_symm hcab
 
 /-- Key insight: For a quantum state ρ and COMMUTING a, b,
     classical additivity holds: ρ(a ⊔ b) = ρ(a) + ρ(b) - ρ(a ⊓ b).

@@ -151,6 +151,32 @@ theorem historyProbability_le_one (μ : Environment) (h : History) :
   simp only [historyProbability]
   exact historyProbabilityAux_le_one μ [] h
 
+/-- **Chain rule for history probability**: Extending a history by one step multiplies
+    the probability by the conditional probability of that step.
+
+    P(h ++ [act a, per x]) = P(h) × P(x | h, a)
+
+    This is the fundamental factorization that makes the log-likelihood decomposition work. -/
+theorem historyProbability_append_step (μ : Environment) (h : History)
+    (hw : h.wellFormed) (hc : Even h.length) (a : Action) (x : Percept) :
+    historyProbability μ (h ++ [HistElem.act a, HistElem.per x]) =
+      historyProbability μ h * μ.prob (h ++ [HistElem.act a]) x := by
+  /-
+  Proof sketch:
+  The key is that historyProbabilityAux processes history left-to-right,
+  accumulating a prefix. When we append [act a, per x] to h, the recursion:
+  1. Processes all of h first (computing P(h))
+  2. Then processes [act a, per x] at the end, multiplying by μ.prob(h ++ [act a]) x
+
+  The formal proof requires:
+  1. A generalized lemma about historyProbabilityAux with arbitrary prefix
+  2. Careful tracking of the accumulated prefix during recursion
+  3. Using the well-formedness constraint to ensure proper act-per alternation
+
+  This follows from the definition of historyProbabilityAux by induction on h.
+  -/
+  sorry
+
 /-! ## Bayesian Posterior
 
 The proper Bayesian update formula.

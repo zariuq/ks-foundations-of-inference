@@ -296,6 +296,29 @@ theorem inf_eq_bot_of_le_compl {a b : L} (h : a ≤ bᶜ) : a ⊓ b = ⊥ := by
          _ = ⊥ := compl_inf_self b
   exact le_antisymm hle bot_le
 
+/-!
+### Important Note on Disjointness vs Orthogonality
+
+In a Boolean algebra: `a ⊓ b = ⊥ ↔ a ≤ bᶜ` (disjointness = orthogonality)
+
+In a general OML: `a ≤ bᶜ → a ⊓ b = ⊥` but NOT the converse!
+
+**Counterexample**: In the Hilbert lattice of ℂ², let:
+- a = span{(1,0)}
+- b = span{(1,1)}
+Then a ⊓ b = {0} = ⊥ (they're disjoint as subspaces),
+but a ≤ bᶜ is FALSE since bᶜ = span{(1,-1)} and (1,0) ∉ span{(1,-1)}.
+
+This asymmetry is fundamental to quantum logic: disjoint propositions
+need not be orthogonal (complementary).
+
+The property `(a ⊔ b) ⊓ aᶜ ≤ b` (quasi-distributivity) is also FALSE
+in general OML, as shown by the same counterexample where
+(a ⊔ b) ⊓ aᶜ = ℂ² ⊓ span{(0,1)} = span{(0,1)} ⊈ span{(1,1)} = b.
+
+For COMMUTING elements, these properties DO hold (Foulis-Holland theorem).
+-/
+
 end OrthomodularLattice
 
 /-- Two elements commute in an orthomodular lattice -/
