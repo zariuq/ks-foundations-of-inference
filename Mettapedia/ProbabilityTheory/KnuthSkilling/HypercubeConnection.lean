@@ -355,10 +355,12 @@ In modal terms:
 
 The δ value is **inaccessible** - it lives in the gap!
 
-This explains why the B-empty strict-gap step is hard in the Appendix A development:
-the boundary case must be excluded in a way compatible with the “no witnesses” hypothesis.
-In the refactored codebase, this dependency is made explicit via the blocker
-`Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/Core/Induction/ThetaPrime.lean`:`BEmptyStrictGapSpec`.
+This explains why the B-empty strict-gap step was hard in the Appendix A development:
+the boundary case must be excluded in a way compatible with the "no witnesses" hypothesis.
+
+**Status (2026-01-08)**: This blocker is now **fully resolved**. The `KSSeparationStrict` axiom
+provides the strict gap, and the proof machinery in `Goertzel.lean` derives all necessary
+properties automatically via `appendixA34Extra_of_KSSeparationStrict`.
 -/
 
 /-! ## Section 10: Summary - The Hypercube Perspective

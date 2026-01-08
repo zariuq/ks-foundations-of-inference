@@ -1,4 +1,5 @@
 import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Core.Induction.ThetaPrime
+import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Core.SeparationImpliesCommutative
 
 set_option linter.unnecessarySimpa false
 
@@ -2147,6 +2148,15 @@ lemma newAtomCommutes_of_op_comm {k : ℕ} {F : AtomFamily α k} {d : α}
   intro i
   simpa [NewAtomCommutes] using hcomm (F.atoms i) d
 
+/-- **Key simplification (Goertzel v5)**: `KSSeparation` implies global commutativity, hence
+    any candidate `d` satisfies `NewAtomCommutes F d` automatically.
+
+    This eliminates the need for explicit `NewAtomCommutes` hypotheses throughout the B-empty
+    extension machinery when working with `[KSSeparation α]`. -/
+theorem newAtomCommutes_of_KSSeparation [KSSeparation α] {k : ℕ} {F : AtomFamily α k} {d : α} :
+    NewAtomCommutes F d :=
+  newAtomCommutes_of_op_comm Core.separationImpliesCommutative_of_KSSeparation
+
 /-- Equivalent formulation of `NewAtomCommutes`: `d` commutes with every old-grid element `μ(F,r)`. -/
 def NewAtomCommutesGrid {k : ℕ} (F : AtomFamily α k) (d : α) : Prop :=
   ∀ r : Multi k, op (mu F r) d = op d (mu F r)
@@ -2639,6 +2649,39 @@ theorem appendixA34Extra_of_newAtomCommutes_of_KSSeparation_of_denselyOrdered
   exact
     appendixA34Extra_of_newAtomCommutes_of_KSSeparationStrict (α := α) (hk := hk) (R := R)
       (IH := IH) (H := H) (d := d) (hd := hd) hcomm
+
+/-!
+### V5-style AppendixA34Extra constructors
+
+With `[KSSeparation α]`, `NewAtomCommutes` is automatically satisfied via global commutativity.
+These constructors eliminate the explicit `hcomm` parameter entirely.
+-/
+
+/-- **V5 Simplified**: Build `AppendixA34Extra` from `[KSSeparationStrict α]` alone.
+    `NewAtomCommutes` is derived automatically from KSSeparation → commutativity. -/
+theorem appendixA34Extra_of_KSSeparationStrict
+    {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
+    (IH : GridBridge F) (H : GridComm F) (d : α) (hd : ident < d)
+    [KSSeparationStrict α] :
+    AppendixA34Extra (α := α) hk (R := R) (F := F) d hd := by
+  letI : KSSeparation α := KSSeparationStrict.toKSSeparation (α := α)
+  have hcomm : NewAtomCommutes F d := newAtomCommutes_of_KSSeparation (α := α) (F := F) (d := d)
+  exact
+    appendixA34Extra_of_newAtomCommutes_of_KSSeparationStrict (α := α) (hk := hk) (R := R)
+      (IH := IH) (H := H) (d := d) (hd := hd) hcomm
+
+/-- **V5 Simplified with Density**: Build `AppendixA34Extra` from `[KSSeparation α] [DenselyOrdered α]`.
+    `NewAtomCommutes` is derived automatically from KSSeparation → commutativity.
+    `KSSeparationStrict` is derived from density. -/
+theorem appendixA34Extra_of_KSSeparation_of_denselyOrdered
+    {k : ℕ} (hk : k ≥ 1) {F : AtomFamily α k} (R : MultiGridRep F)
+    (IH : GridBridge F) (H : GridComm F) (d : α) (hd : ident < d)
+    [KSSeparation α] [DenselyOrdered α] :
+    AppendixA34Extra (α := α) hk (R := R) (F := F) d hd := by
+  have hcomm : NewAtomCommutes F d := newAtomCommutes_of_KSSeparation (α := α) (F := F) (d := d)
+  exact
+    appendixA34Extra_of_newAtomCommutes_of_KSSeparation_of_denselyOrdered (α := α) (hk := hk)
+      (R := R) (IH := IH) (H := H) (d := d) (hd := hd) hcomm
 
 /-- The key decomposition: with NewAtomCommutes, we can decompose (μ(F,r) ⊕ d^u)^m. -/
 lemma iterate_op_mu_d_decompose {k : ℕ} {F : AtomFamily α k}
@@ -4182,6 +4225,36 @@ theorem chooseδBaseAdmissible_of_newAtomCommutes_of_KSSeparation_of_denselyOrde
     chooseδBaseAdmissible_of_newAtomCommutes_of_KSSeparationStrict (α := α) (hk := hk) (R := R)
       (F := F) (d := d) (hd := hd) (IH := IH) (H := H) hcomm
 
+/-!
+### V5-style ChooseδBaseAdmissible constructors
+
+With `[KSSeparation α]`, `NewAtomCommutes` is automatically satisfied via global commutativity.
+These constructors eliminate the explicit `hcomm` parameter entirely.
+-/
+
+omit [KSSeparation α] in
+/-- **V5 Simplified**: `ChooseδBaseAdmissible` from `[KSSeparationStrict α]` alone.
+    `NewAtomCommutes` is derived automatically from KSSeparation → commutativity. -/
+theorem chooseδBaseAdmissible_of_KSSeparationStrict
+    (IH : GridBridge F) (H : GridComm F) [KSSeparationStrict α] :
+    ChooseδBaseAdmissible (hk := hk) (R := R) (F := F) (d := d) (hd := hd) := by
+  letI : KSSeparation α := KSSeparationStrict.toKSSeparation (α := α)
+  have hcomm : NewAtomCommutes F d := newAtomCommutes_of_KSSeparation (α := α) (F := F) (d := d)
+  exact
+    chooseδBaseAdmissible_of_newAtomCommutes_of_KSSeparationStrict (α := α) (hk := hk) (R := R)
+      (F := F) (d := d) (hd := hd) (IH := IH) (H := H) hcomm
+
+/-- **V5 Simplified with Density**: `ChooseδBaseAdmissible` from `[KSSeparation α] [DenselyOrdered α]`.
+    `NewAtomCommutes` is derived automatically from KSSeparation → commutativity.
+    `KSSeparationStrict` is derived from density. -/
+theorem chooseδBaseAdmissible_of_KSSeparation_of_denselyOrdered
+    (IH : GridBridge F) (H : GridComm F) [DenselyOrdered α] :
+    ChooseδBaseAdmissible (hk := hk) (R := R) (F := F) (d := d) (hd := hd) := by
+  have hcomm : NewAtomCommutes F d := newAtomCommutes_of_KSSeparation (α := α) (F := F) (d := d)
+  exact
+    chooseδBaseAdmissible_of_newAtomCommutes_of_KSSeparation_of_denselyOrdered (α := α) (hk := hk)
+      (R := R) (F := F) (d := d) (hd := hd) (IH := IH) (H := H) hcomm
+
 theorem chooseδBaseAdmissible_of_appendixA34Extra
     (IH : GridBridge F) (H : GridComm F)
     (hExtra : AppendixA34Extra (α := α) hk (R := R) (F := F) d hd) :
@@ -4268,6 +4341,51 @@ theorem extend_grid_rep_with_atom_of_newAtomCommutes_of_KSSeparation_of_denselyO
   exact
     extend_grid_rep_with_atom_of_newAtomCommutes_of_KSSeparationStrict (α := α) (hk := hk) (R := R)
       (F := F) (d := d) (hd := hd) (IH := IH) (H := H) hcomm
+
+/-!
+### V5-style wrappers: `NewAtomCommutes` derived automatically from `KSSeparation`
+
+With `[KSSeparation α]`, global commutativity is proven (Goertzel v5), hence `NewAtomCommutes`
+is automatically satisfied for any atom family and candidate. These wrappers eliminate the
+explicit `hcomm : NewAtomCommutes F d` parameter entirely.
+-/
+
+omit [KSSeparation α] in
+/-- **V5 Simplified**: B-empty extension step with `[KSSeparationStrict α]` only.
+    `NewAtomCommutes` is derived automatically from KSSeparation → commutativity. -/
+theorem extend_grid_rep_with_atom_of_KSSeparationStrict
+    (IH : GridBridge F) (H : GridComm F)
+    [KSSeparationStrict α] :
+      ∃ (F' : AtomFamily α (k + 1)),
+      (∀ i : Fin k, F'.atoms ⟨i, Nat.lt_succ_of_lt i.is_lt⟩ = F.atoms i) ∧
+      F'.atoms ⟨k, Nat.lt_succ_self k⟩ = d ∧
+      ∃ (R' : MultiGridRep F'),
+        (∀ r_old : Multi k, ∀ t : ℕ,
+          R'.Θ_grid ⟨mu F' (joinMulti r_old t), mu_mem_kGrid F' (joinMulti r_old t)⟩ =
+          R.Θ_grid ⟨mu F r_old, mu_mem_kGrid F r_old⟩ + (t : ℝ) * chooseδ hk R d hd) := by
+  letI : KSSeparation α := KSSeparationStrict.toKSSeparation (α := α)
+  have hNew : NewAtomCommutes F d := newAtomCommutes_of_KSSeparation (α := α) (F := F) (d := d)
+  exact
+    extend_grid_rep_with_atom_of_newAtomCommutes_of_KSSeparationStrict (α := α) (hk := hk) (R := R)
+      (F := F) (d := d) (hd := hd) (IH := IH) (H := H) (hcomm := hNew)
+
+/-- **V5 Simplified with Density**: B-empty extension step with `[KSSeparation α]` + `[DenselyOrdered α]`.
+    `NewAtomCommutes` is derived automatically from KSSeparation → commutativity.
+    `KSSeparationStrict` is derived from density. -/
+theorem extend_grid_rep_with_atom_of_KSSeparation_of_denselyOrdered_auto
+    (IH : GridBridge F) (H : GridComm F)
+    [DenselyOrdered α] :
+      ∃ (F' : AtomFamily α (k + 1)),
+      (∀ i : Fin k, F'.atoms ⟨i, Nat.lt_succ_of_lt i.is_lt⟩ = F.atoms i) ∧
+      F'.atoms ⟨k, Nat.lt_succ_self k⟩ = d ∧
+      ∃ (R' : MultiGridRep F'),
+        (∀ r_old : Multi k, ∀ t : ℕ,
+          R'.Θ_grid ⟨mu F' (joinMulti r_old t), mu_mem_kGrid F' (joinMulti r_old t)⟩ =
+          R.Θ_grid ⟨mu F r_old, mu_mem_kGrid F r_old⟩ + (t : ℝ) * chooseδ hk R d hd) := by
+  have hNew : NewAtomCommutes F d := newAtomCommutes_of_KSSeparation (α := α) (F := F) (d := d)
+  exact
+    extend_grid_rep_with_atom_of_newAtomCommutes_of_KSSeparation_of_denselyOrdered (α := α)
+      (hk := hk) (R := R) (F := F) (d := d) (hd := hd) (IH := IH) (H := H) hNew
 
 /-!
 ## Archived attempt: `A_base_statistic_lt_chooseδ_noCommon`

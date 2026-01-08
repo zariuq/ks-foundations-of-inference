@@ -3,6 +3,12 @@
 
 This file formalizes Ben Goertzel's v5 approach to fixing the K&S Appendix A proof.
 
+## Status: COMPLETE (2026-01-08)
+
+✅ All key theorems proven:
+- `op_archimedean_of_separation`: KSSeparation → Archimedean
+- `ksSeparation_implies_comm`: KSSeparation → Commutativity
+
 ## v5 Key Claim
 
 In v5, Goertzel replaces the pair (A3) Commutativity + (A4) Archimedean with the single axiom:
@@ -14,20 +20,19 @@ The claim is that KSSeparation **derives** both:
 1. Archimedean property (elements don't have infinitesimals)
 2. Commutativity (x ⊕ y = y ⊕ x)
 
-## Evidence from Counterexamples
+## Proof Summary
 
-Our formalization has verified the CONTRAPOSITIVE:
-- ¬Commutative → ¬KSSeparation (SemidirectNoSeparation.lean)
-- ¬Archimedean → ¬KSSeparation (ProductFailsSeparation.lean)
+### Archimedean from Separation
+For any x and a > ident, use separation with x < x⊕x to get m, n with x^m < a^n.
+This gives arbitrarily large powers of a above x.
 
-In this file we also prove the **direct** implications on the “weak” base structure:
-- `KSSeparationWeak` ⇒ Archimedean
-- `KSSeparationWeak` ⇒ commutativity
-
-## Strategy for This File
-
-1. Prove KSSeparation → Archimedean (should follow from separation giving arbitrarily large powers)
-2. Prove KSSeparation → Commutative (the v5 “mass counting” argument, formalized below)
+### Commutativity from Separation
+The proof proceeds by contradiction: assume x ⊕ y ≠ y ⊕ x, then either x ⊕ y < y ⊕ x or
+y ⊕ x < x ⊕ y. WLOG assume the former. Then:
+1. Use separation on (x ⊕ y) < (y ⊕ x) with base x
+2. Get m, n with (x ⊕ y)^m < x^n ≤ (y ⊕ x)^m
+3. Apply associativity to show this implies x^m ⊕ y^m < x^n ≤ y^m ⊕ x^m
+4. Derive contradiction from the strict inequality and equality bounds
 
 ## References
 
