@@ -10,7 +10,7 @@ genuinely new frameworks for reasoning under uncertainty.
 2. **Quantum D-S**: Dempster-Shafer on non-commutative algebras
 3. **Partial Classical**: Classical probability without total ordering
 
-Each theory sits at an unexplored vertex of the 5-axis hypercube and could
+Each theory sits at an unexplored vertex of the probability hypercube and could
 have significant applications in AI, physics, and decision theory.
 
 ## References
@@ -530,6 +530,7 @@ noncomputable def conflictMass_lr (m₁ m₂ : QuantumMassFunction L) : ℝ :=
 noncomputable def normalizationK_lr (m₁ m₂ : QuantumMassFunction L) : ℝ :=
   1 - conflictMass_lr m₁ m₂
 
+omit [DecidableRel (α := L) (· ≤ ·)] in
 /-- Raw combination masses are non-negative. -/
 theorem rawCombineMass_lr_nonneg (m₁ m₂ : QuantumMassFunction L) (c : L) :
     0 ≤ rawCombineMass_lr m₁ m₂ c := by
@@ -894,6 +895,9 @@ def partialOrderClassical : ProbabilityVertex where
   distributivity := .distributive  -- Not Boolean!
   precision := .precise
   orderAxis := .partialOrder       -- Key difference
+  density := .dense
+  completeness := .conditionallyComplete
+  separation := .ksSeparationStrict
   additivity := .additive
   invertibility := .monoid
   determinism := .probabilistic
@@ -1014,17 +1018,8 @@ This would be at the "most general" vertex of the hypercube!
 -/
 
 /-- The most general theory vertex -/
-def mostGeneral : ProbabilityVertex where
-  commutativity := .noncommutative
-  distributivity := .general
-  precision := .imprecise
-  orderAxis := .partialOrder
-  additivity := .subadditive
-  invertibility := .semigroup
-  determinism := .fuzzy
-  support := .continuous
-  regularity := .finitelyAdditive
-  independence := .free  -- Free is most general
+def mostGeneral : ProbabilityVertex :=
+  mostGeneralVertex
 
 /-- Imprecise K&S has imprecise valuations (like mostGeneral) -/
 theorem impreciseKS_is_imprecise :

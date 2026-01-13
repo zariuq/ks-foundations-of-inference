@@ -201,7 +201,10 @@ From just four axioms (order, associativity, identity, Archimedean), we can prov
 This is the **REPRESENTATION THEOREM** - the crown jewel of the K&S approach!
 -/
 
-/-- A Knuth-Skilling Algebra: the minimal axiomatic structure for deriving probability.
+/-! A Knuth-Skilling Algebra: the minimal axiomatic structure for deriving probability.
+
+Paper cross-reference:
+- `paper/ks-formalization.tex`, Subsection “The KnuthSkillingAlgebra Class” (Section `sec:main`).
 
 **Axioms** (following Knuth & Skilling, Appendix A of "Foundations of Inference"):
 1. **Order**: The operation is strictly monotone (more plausibility → larger result)
@@ -220,7 +223,14 @@ This structure is MORE GENERAL than probability spaces - it applies to any
 **IMPORTANT**: We extend LinearOrder (not PartialOrder) because the K&S paper
 implicitly assumes trichotomy ("three possibilities are exhaustive" - line 1339).
 See the Counterexample section below for a formal proof that PartialOrder is insufficient. -/
-class KnuthSkillingAlgebra (α : Type*) extends LinearOrder α where
+/-- The “core” K&S algebraic structure, without assuming any Archimedean property.
+
+This is the axiomatic package that is actually needed for the iterate/power “sandwich” axiom
+(`KSSeparation`) and for the commutativity-from-separation theorem.
+
+The full `KnuthSkillingAlgebra` extends this base structure with an explicit Archimedean axiom.
+-/
+class KnuthSkillingAlgebraBase (α : Type*) extends LinearOrder α where
   /-- The combination operation (written ⊕ in papers, here `op`) -/
   op : α → α → α
   /-- Identity element (the "zero" or impossibility) -/
@@ -235,25 +245,39 @@ class KnuthSkillingAlgebra (α : Type*) extends LinearOrder α where
   op_strictMono_left : ∀ y : α, StrictMono (fun x => op x y)
   /-- Strict monotonicity in second argument -/
   op_strictMono_right : ∀ x : α, StrictMono (fun y => op x y)
-  /-- Archimedean property: no infinitesimals.
-      For any x > ident and any y, there exists n such that iterating x surpasses y.
-      We formalize this by requiring that the iterate sequence is unbounded. -/
-  op_archimedean : ∀ x y : α, ident < x → ∃ n : ℕ, y < Nat.iterate (op x) n x
   /-- Positivity: identity is the bottom element.
       This is K&S Axiom I - there is a bottom element ⊥ such that ∀x, x ≥ ⊥.
       In measure/probability theory, this means "plausibility cannot be negative".
       This axiom eliminates degenerate cases where x < ident. -/
   ident_le : ∀ x : α, ident ≤ x
 
-/-! ## CRITICAL: Why LinearOrder is REQUIRED (not just PartialOrder)
+/-- A Knuth-Skilling algebra together with an explicit Archimedean axiom.
+
+We keep this as a separate extension of `KnuthSkillingAlgebraBase` so that statements like
+“separation implies Archimedean” are meaningful on the base structure.
+-/
+class KnuthSkillingAlgebra (α : Type*) extends KnuthSkillingAlgebraBase α where
+  /-- Archimedean property: no infinitesimals.
+      For any `x > ident` and any `y`, there exists `n` such that iterating `x` surpasses `y`.
+      We formalize this by requiring that the iterate sequence is unbounded. -/
+  op_archimedean : ∀ x y : α, ident < x → ∃ n : ℕ, y < Nat.iterate (op x) n x
+
+/-! ## CRITICAL: Why `LinearOrder` is REQUIRED (not just `PartialOrder`)
 
 The K&S paper (line 1339) says: "these three possibilities (<, >, =) are exhaustive"
 This is the **trichotomy axiom** - it requires LINEAR order, not just partial order!
 
-**COUNTEREXAMPLE**: ℝ² with coordinate-wise order satisfies all axioms EXCEPT totality,
-but has incomparable elements, so the representation theorem FAILS.
+We formalize this by extending `LinearOrder` in `KnuthSkillingAlgebra`.
 
-We formalize this counterexample below to demonstrate the necessity of LinearOrder.
+Separately, the iterate/power “sandwich” axiom (formalized as
+`KSSeparation` on the base structure `KnuthSkillingAlgebraBase`) is genuinely nontrivial:
+even very natural commutative linearly ordered monoids can fail it.
+
+Concrete example: the lex-ordered product `ℕ ×ₗ ℕ` with componentwise addition fails
+`KSSeparation` (and is also non-Archimedean, so it is not a `KnuthSkillingAlgebra`).
+
+See `Mettapedia/ProbabilityTheory/KnuthSkilling/RepresentationTheorem/Counterexamples/ProductFailsSeparation.lean`
+(`Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.Counterexamples.ProductFailsSeparation.natProdLex_fails_KSSeparation`).
 -/
 
 /-! ## Connection to Common Infrastructure

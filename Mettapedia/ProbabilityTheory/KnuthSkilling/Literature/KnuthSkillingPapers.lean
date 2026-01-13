@@ -1,5 +1,5 @@
 import Mettapedia.ProbabilityTheory.KnuthSkilling
-import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA
+import Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem
 
 /-!
 # Knuth–Skilling papers: formalization entry points
@@ -16,8 +16,9 @@ Local PDFs:
 Lean entry points (project-relative paths):
 - `Mettapedia/ProbabilityTheory/KnuthSkilling/Basic.lean` (high-level K&S structures)
 - `Mettapedia/ProbabilityTheory/KnuthSkilling/Algebra.lean` (core algebra)
-- `Mettapedia/ProbabilityTheory/KnuthSkilling/SeparationProof.lean` (separation machinery)
-- `Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/` (Appendix A development)
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/Separation/SandwichSeparation.lean` (sandwich separation: separation ⇒ commutativity)
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/Separation/Derivation.lean` (WIP derivation of `KSSeparation`)
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/RepresentationTheorem/` (representation theorem development)
 - `Mettapedia/ProbabilityTheory/AssociativityTheorem.lean` (context + alternative view)
 
 Nothing in this file is “new mathematics”; it is a documentation-oriented import bridge so the
@@ -27,4 +28,3 @@ literature codex can refer to K&S-by-PDF without duplicating the main formalizat
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Literature
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Literature
-

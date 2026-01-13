@@ -10,9 +10,13 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.Basic
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
+open KnuthSkillingAlgebraBase
+
 namespace KnuthSkillingAlgebra
 
-variable {α : Type*} [KnuthSkillingAlgebra α]
+section Base
+
+variable {α : Type*} [KnuthSkillingAlgebraBase α]
 
 /-- Iterate the operation: x ⊕ x ⊕ ... ⊕ x (n times).
 This builds the sequence: ident, x, x⊕x, x⊕(x⊕x), ... -/
@@ -60,15 +64,6 @@ theorem nat_iterate_eq_iterate_op_succ (a : α) (n : ℕ) :
     -- Now: op a (iterate_op a (k+1)) = iterate_op a (k+2)
     -- By definition: iterate_op a (k+2) = op a (iterate_op a (k+1))
     rfl
-
-/-- For any x in α, x is bounded above by some iterate of a.
-This follows directly from Archimedean property (no totality needed). -/
-theorem bounded_by_iterate (a : α) (ha : ident < a) (x : α) :
-    ∃ n : ℕ, x < iterate_op a n := by
-  -- Archimedean gives x < Nat.iterate (op a) n a for some n
-  obtain ⟨n, hn⟩ := op_archimedean a x ha
-  rw [nat_iterate_eq_iterate_op_succ] at hn
-  exact ⟨n + 1, hn⟩
 
 /-- iterate_op is strict mono in its iteration count for a > ident -/
 theorem iterate_op_strictMono (a : α) (ha : ident < a) : StrictMono (iterate_op a) := by
@@ -226,6 +221,25 @@ theorem iterate_op_op_distrib_of_comm' (x y : α) (h_comm : ∀ a b : α, op a b
     op (iterate_op x m) (iterate_op y m) = iterate_op (op x y) m :=
   (iterate_op_op_distrib_of_comm x y h_comm m).symm
 
+end Base
+
+section Full
+
+variable {α : Type*} [KnuthSkillingAlgebra α]
+
+open KnuthSkillingAlgebra
+
+/-- For any `x` in `α`, `x` is bounded above by some iterate of `a`.
+
+This is exactly the `op_archimedean` axiom, rewritten using `iterate_op`. -/
+theorem bounded_by_iterate (a : α) (ha : ident < a) (x : α) :
+    ∃ n : ℕ, iterate_op a n > x := by
+  obtain ⟨n, hn⟩ := op_archimedean a x ha
+  rw [nat_iterate_eq_iterate_op_succ] at hn
+  exact ⟨n + 1, hn⟩
+
+end Full
+
 end KnuthSkillingAlgebra
 
 /-! ## Separation Typeclass
@@ -237,33 +251,34 @@ power of `x` and a power of `y`.
 In the original K&S Appendix A narrative this is treated as a derived lemma, but in our
 formalization it is an *explicit* typeclass assumption: it is **not** derivable from the base
 `KnuthSkillingAlgebra` axioms in general (see
-`Mettapedia/ProbabilityTheory/KnuthSkilling/AppendixA/Counterexamples/KSSeparationNotDerivable.lean`).
+`Mettapedia/ProbabilityTheory/KnuthSkilling/RepresentationTheorem/Counterexamples/KSSeparationNotDerivable.lean`).
 
-`SeparationProof.lean` is the (still experimental) attempt to derive `KSSeparation` from additional
+`Separation/Derivation.lean` is the (still experimental) attempt to derive `KSSeparation` from additional
 structured hypotheses, and it currently packages the remaining hard step as a `Prop`-class
 (`LargeRegimeSeparationSpec`). -/
 
-/-- **Separation Typeclass**: The property that we can always find rational witnesses
-separating any two distinct positive elements.
+/-- **KSSeparation**: the iterate/power “sandwich” axiom.
 
-This is NOT a primitive axiom - it is derivable from the Knuth-Skilling axioms above.
-However, for organizational clarity, we factor it into a typeclass:
+Paper cross-reference:
+- `paper/ks-formalization.tex`, Subsection “The Separation Property” and Subsection
+  “The Separation Type Classes” (inside Section `sec:main`).
 
-**Layer A (RepTheorem.lean)**: Assumes this property holds, proves representation theorem
-**Layer B (SeparationProof.lean)**: Proves this property from K-S axioms (discharges the spec)
+This is the statement that for any positive `a` and `ident < x < y`, there exist exponents `n,m`
+with `0 < m` such that `x^m < a^n ≤ y^m`.
 
-This factorization avoids circularity:
-- The representation theorem uses separation to prove Θ is strictly monotonic
-- Separation is proven using direct Archimedean arguments (without using Θ)
+Important meta-fact (formalized):
+`KSSeparation` is **not** derivable from the bare `KnuthSkillingAlgebra` axioms in general.
+See the semidirect-product countermodel in
+`Mettapedia/ProbabilityTheory/KnuthSkilling/RepresentationTheorem/Counterexamples/KSSeparationNotDerivable.lean`.
 
-**Mathematical content**: If x < y, then the gap between y^m and x^m grows unboundedly.
-Eventually this gap contains a full step from a^n to a^{n+1}, giving witnesses with
-x^m < a^n ≤ y^m. -/
-class KSSeparation (α : Type*) [KnuthSkillingAlgebra α] where
+Related files:
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/Separation/Derivation.lean` explores additional structured
+  hypotheses under which `KSSeparation` *can* be derived. -/
+class KSSeparation (α : Type*) [KnuthSkillingAlgebraBase α] where
   /-- For any positive x < y and any base a > ident, we can find exponents (n, m)
   such that x^m < a^n ≤ y^m. This is the key property enabling representation. -/
-  separation : ∀ {a x y : α}, KnuthSkillingAlgebra.ident < a →
-      KnuthSkillingAlgebra.ident < x → KnuthSkillingAlgebra.ident < y → x < y →
+  separation : ∀ {a x y : α}, KnuthSkillingAlgebraBase.ident < a →
+      KnuthSkillingAlgebraBase.ident < x → KnuthSkillingAlgebraBase.ident < y → x < y →
     ∃ n m : ℕ, 0 < m ∧
       KnuthSkillingAlgebra.iterate_op x m < KnuthSkillingAlgebra.iterate_op a n ∧
       KnuthSkillingAlgebra.iterate_op a n ≤ KnuthSkillingAlgebra.iterate_op y m
@@ -272,7 +287,7 @@ namespace KSSeparation
 
 open KnuthSkillingAlgebra
 
-variable {α : Type*} [KnuthSkillingAlgebra α] [KSSeparation α]
+variable {α : Type*} [KnuthSkillingAlgebraBase α] [KSSeparation α]
 
 /-- Strengthening of `KSSeparation.separation`: we can request an arbitrarily large exponent `m`.
 
@@ -328,30 +343,32 @@ strict strengthening where `a^n < y^m`.  This is packaged separately so we can p
 track where strictness is used.
 -/
 
-/-- **Strict Separation Typeclass**: strengthen `KSSeparation` by making the upper bound strict. -/
-class KSSeparationStrict (α : Type*) [KnuthSkillingAlgebra α] where
+/-- **KSSeparationStrict**: strengthen `KSSeparation` by making the upper bound strict.
+
+Paper cross-reference:
+- `paper/ks-formalization.tex`, Subsection “The Separation Type Classes” (Section `sec:main`).
+- The informal “density implies strict separation” remark corresponds to
+  `KSSeparation.toKSSeparationStrict_of_denselyOrdered` below. -/
+class KSSeparationStrict (α : Type*) [KnuthSkillingAlgebraBase α] extends KSSeparation α where
   /-- For any positive `x < y` and any base `a > ident`, find exponents `(n,m)` with `0 < m` and
   `x^m < a^n < y^m`. -/
-  separation_strict : ∀ {a x y : α}, KnuthSkillingAlgebra.ident < a →
-      KnuthSkillingAlgebra.ident < x → KnuthSkillingAlgebra.ident < y → x < y →
+  separation_strict : ∀ {a x y : α}, KnuthSkillingAlgebraBase.ident < a →
+      KnuthSkillingAlgebraBase.ident < x → KnuthSkillingAlgebraBase.ident < y → x < y →
     ∃ n m : ℕ, 0 < m ∧
       KnuthSkillingAlgebra.iterate_op x m < KnuthSkillingAlgebra.iterate_op a n ∧
       KnuthSkillingAlgebra.iterate_op a n < KnuthSkillingAlgebra.iterate_op y m
+  /-- `KSSeparationStrict` implies `KSSeparation` by weakening the strict upper bound. -/
+  separation := by
+    intro a x y ha hx hy hxy
+    rcases separation_strict (a := a) (x := x) (y := y) ha hx hy hxy with
+      ⟨n, m, hm_pos, hlt, hgt⟩
+    exact ⟨n, m, hm_pos, hlt, le_of_lt hgt⟩
 
 namespace KSSeparationStrict
 
 open KnuthSkillingAlgebra
 
-variable {α : Type*} [KnuthSkillingAlgebra α] [KSSeparationStrict α]
-
-/-- `KSSeparationStrict` implies `KSSeparation` (by weakening `<` to `≤` on the upper bound). -/
-theorem toKSSeparation : KSSeparation α := by
-  classical
-  refine ⟨?_⟩
-  intro a x y ha hx hy hxy
-  rcases (KSSeparationStrict.separation_strict (a := a) (x := x) (y := y) ha hx hy hxy) with
-    ⟨n, m, hm_pos, hlt, hgt⟩
-  exact ⟨n, m, hm_pos, hlt, le_of_lt hgt⟩
+variable {α : Type*} [KnuthSkillingAlgebraBase α] [KSSeparationStrict α]
 
 end KSSeparationStrict
 
@@ -359,7 +376,7 @@ namespace KSSeparation
 
 open KnuthSkillingAlgebra
 
-variable {α : Type*} [KnuthSkillingAlgebra α] [KSSeparation α]
+variable {α : Type*} [KnuthSkillingAlgebraBase α] [KSSeparation α]
 
 /-- If we can pick an intermediate point between any `ident < x < y`, then `KSSeparation` upgrades to
 the strict variant `KSSeparationStrict`.
@@ -384,6 +401,10 @@ theorem toKSSeparationStrict_of_exists_between_pos
 /-- If the order on `α` is dense, then `KSSeparation` upgrades to the strict variant
 `KSSeparationStrict`.
 
+Paper cross-reference:
+- `paper/ks-formalization.tex`, listing “Density implies strict separation” in Subsection
+  “The Separation Type Classes” (Section `sec:main`).
+
 This isolates an extra hypothesis that suffices to rule out the “upper-bound equality” corner case:
 pick `z` with `x < z < y`, apply separation to `(x,z)`, then use `z^m < y^m` to make the upper
 bound strict. -/
@@ -398,20 +419,21 @@ end Mettapedia.ProbabilityTheory.KnuthSkilling
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
+open KnuthSkillingAlgebraBase
 open KnuthSkillingAlgebra
 
 /-!
 ## Commutation Helpers
 
 These small lemmas are convenient when reasoning about “new atom commutes with old atoms” style
-assumptions (see `AppendixA/Core/Induction/Goertzel.lean`).
+assumptions (see `RepresentationTheorem/Core/Induction/Goertzel.lean`).
 -/
 
 namespace KnuthSkillingAlgebra
 
 variable {α : Type*} [KnuthSkillingAlgebra α]
 
-/-- `x` and `y` commute with respect to `KnuthSkillingAlgebra.op`. -/
+/-- `x` and `y` commute with respect to `KnuthSkillingAlgebraBase.op`. -/
 def Commutes (x y : α) : Prop :=
   op x y = op y x
 

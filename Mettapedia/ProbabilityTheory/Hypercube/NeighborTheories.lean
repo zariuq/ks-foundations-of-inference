@@ -35,7 +35,7 @@ import Mathlib.Tactic
 import Mettapedia.ProbabilityTheory.Hypercube.Basic
 import Mettapedia.ProbabilityTheory.Hypercube.NovelTheories
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Basic
-import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Main
+import Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.Main
 
 namespace Mettapedia.ProbabilityTheory.Hypercube.NeighborTheories
 
@@ -151,20 +151,21 @@ def OrthomodularPlausibilityAlgebra.toKnuthSkillingAlgebra
 /-- The representation theorem for the plausibility space α.
     Since α forms a KnuthSkillingAlgebra, the K-S representation theorem applies.
 
-    **Status**: conditional on the public `AppendixA.associativity_representation` API.
+    **Status**: conditional on the public `RepresentationTheorem.associativity_representation` API.
     This keeps the dependency explicit while remaining `sorry`-free. -/
 theorem oml_carrier_has_representation
     {L : Type*} {α : Type*} [OrthomodularLattice L] [LinearOrder α]
     (inst : OrthomodularPlausibilityAlgebra L α)
-    [hsep : @KnuthSkilling.KSSeparation α inst.toKnuthSkillingAlgebra]
-    [hglob : @KnuthSkilling.AppendixA.AppendixAGlobalization α inst.toKnuthSkillingAlgebra hsep] :
+    [hsep : @KnuthSkilling.KSSeparation α inst.toKnuthSkillingAlgebra.toKnuthSkillingAlgebraBase]
+    [hglob :
+      @KnuthSkilling.RepresentationTheorem.RepresentationGlobalization α inst.toKnuthSkillingAlgebra hsep] :
     ∃ θ : α → ℝ, (∀ x y, θ (inst.op x y) = θ x + θ y) ∧ StrictMono θ := by
   classical
   letI : KnuthSkilling.KnuthSkillingAlgebra α := inst.toKnuthSkillingAlgebra
   letI : KnuthSkilling.KSSeparation α := hsep
-  letI : KnuthSkilling.AppendixA.AppendixAGlobalization α := hglob
+  letI : KnuthSkilling.RepresentationTheorem.RepresentationGlobalization α := hglob
   obtain ⟨Θ, hΘ_order, _, hΘ_add⟩ :=
-    KnuthSkilling.AppendixA.associativity_representation (α := α)
+    KnuthSkilling.RepresentationTheorem.associativity_representation (α := α)
   refine ⟨Θ, ?_, ?_⟩
   · intro x y
     simpa using hΘ_add x y
@@ -173,7 +174,8 @@ theorem oml_carrier_has_representation
     have hle : Θ a ≤ Θ b := (hΘ_order a b).1 (le_of_lt hab)
     have hne : Θ a ≠ Θ b := by
       intro hEq
-      have hΘba : Θ b ≤ Θ a := by simpa [hEq.symm] using (le_rfl : Θ b ≤ Θ b)
+      have hΘba : Θ b ≤ Θ a := by
+        simp [hEq.symm]
       have hba : b ≤ a := (hΘ_order b a).2 hΘba
       exact (ne_of_lt hab) (le_antisymm (le_of_lt hab) hba)
     exact lt_of_le_of_ne hle hne
@@ -217,9 +219,9 @@ variable {α : Type*} [PartialKSAlgebra α]
 
 /-- Key theorem: Each chain admits a K-S representation!
     A chain is a linearly ordered subset, so it satisfies totality. -/
-theorem chain_representation_exists (C : Set α) (hC : IsChain (· ≤ ·) C)
+theorem chain_representation_exists (C : Set α) (_hC : IsChain (· ≤ ·) C)
     (hClosed : ∀ x y, x ∈ C → y ∈ C → op x y ∈ C)
-    (hIdent : ident ∈ C) :
+    (_hIdent : ident ∈ C) :
     -- Each chain gets its own representation
     ∃ θ : C → ℝ, ∀ x y : C, θ ⟨op x.1 y.1, hClosed x.1 y.1 x.2 y.2⟩ = θ x + θ y := by
   -- Trivial additive map; a *useful* chain representation would also require (at least)
@@ -781,13 +783,16 @@ compatibility/commutativity hypotheses.
 Accordingly, we do not postulate an `oml_disjunctive_syllogism` lemma here.
 -/
 
-/-- Uniqueness of orthocomplement in OML (placeholder).
+/-!
+### Quantum Logic Note: Complement Uniqueness
 
-This statement is true in standard OML developments, but the proof here previously
-relied on a disjunctive-syllogism lemma (which does not hold in general quantum logic).
-It will be reintroduced later with the correct compatibility hypotheses. -/
-def oml_orthocomplement_unique_statement {x y z w : L} : Prop :=
-  (x ⊔ y = w) → (x ⊓ y = ⊥) → (x ⊔ z = w) → (x ⊓ z = ⊥) → y = z
+In a general orthomodular lattice, a given `x` can have many (non-orthogonal) complements:
+`x ⊓ y = ⊥` and `x ⊔ y = ⊤` does not force `y = xᶜ`.
+
+What *is* true (and sufficient for our downstream “classical reasoning” steps) is that
+uniqueness holds **among commuting candidates**; see `orthocomplement_unique_of_commutes`
+below in the “Background Lemmas” section.
+-/
 
 /-- Commutativity is symmetric: if a commutes with b, then b commutes with a.
     Reference: Beran (1985), Chapter II, Theorem 2.3.
@@ -1080,6 +1085,66 @@ theorem le_of_inf_compl_eq_bot_of_commutes {x y : L} (hxy : commutes x y)
   rw [hx]
   exact inf_le_right
 
+/-- Uniqueness of complements **among commuting candidates**.
+
+In a general orthomodular lattice, a given `x` can have many (non-orthogonal) complements:
+`x ⊓ y = ⊥` and `x ⊔ y = ⊤` does not force `y = xᶜ`.
+
+However, if `x` commutes with `y`, then this classical uniqueness property *does* hold. -/
+theorem orthocomplement_unique_of_commutes {x y z : L}
+    (hxy : commutes x y) (hxz : commutes x z)
+    (hxy_sup : x ⊔ y = ⊤) (hxy_inf : x ⊓ y = ⊥)
+    (hxz_sup : x ⊔ z = ⊤) (hxz_inf : x ⊓ z = ⊥) :
+    y = z := by
+  have hy_eq : y = xᶜ := by
+    have hx_le_yc : x ≤ yᶜ := by
+      unfold commutes at hxy
+      have hx_eq : x = x ⊓ yᶜ := by
+        calc x = (x ⊓ y) ⊔ (x ⊓ yᶜ) := hxy
+             _ = ⊥ ⊔ (x ⊓ yᶜ) := by rw [hxy_inf]
+             _ = x ⊓ yᶜ := by simp
+      -- x = x ⊓ yᶜ ≤ yᶜ
+      calc x = x ⊓ yᶜ := hx_eq
+           _ ≤ yᶜ := inf_le_right
+    have hy_le_xc : y ≤ xᶜ := by
+      simpa [OrthomodularLattice.compl_compl] using OrthomodularLattice.compl_le_compl hx_le_yc
+    have hxcyc_bot : xᶜ ⊓ yᶜ = ⊥ := by
+      -- (x ⊔ y)ᶜ = xᶜ ⊓ yᶜ = ⊤ᶜ = ⊥
+      have : (x ⊔ y)ᶜ = (⊤ : L)ᶜ := by
+        simp [hxy_sup]
+      simpa [OrthomodularLattice.compl_sup, OrthomodularLattice.compl_top] using this
+    have hxc_comm_y : commutes xᶜ y := by
+      have hyx : commutes y x := commutes_symm hxy
+      have hyxc : commutes y xᶜ := commutes_compl hyx
+      exact commutes_symm hyxc
+    have hxc_le_y : xᶜ ≤ y :=
+      le_of_inf_compl_eq_bot_of_commutes (x := xᶜ) (y := y) hxc_comm_y hxcyc_bot
+    exact le_antisymm hy_le_xc hxc_le_y
+  have hz_eq : z = xᶜ := by
+    have hx_le_zc : x ≤ zᶜ := by
+      unfold commutes at hxz
+      have hx_eq : x = x ⊓ zᶜ := by
+        calc x = (x ⊓ z) ⊔ (x ⊓ zᶜ) := hxz
+             _ = ⊥ ⊔ (x ⊓ zᶜ) := by rw [hxz_inf]
+             _ = x ⊓ zᶜ := by simp
+      calc x = x ⊓ zᶜ := hx_eq
+           _ ≤ zᶜ := inf_le_right
+    have hz_le_xc : z ≤ xᶜ := by
+      simpa [OrthomodularLattice.compl_compl] using OrthomodularLattice.compl_le_compl hx_le_zc
+    have hxc_zc_bot : xᶜ ⊓ zᶜ = ⊥ := by
+      have : (x ⊔ z)ᶜ = (⊤ : L)ᶜ := by
+        simp [hxz_sup]
+      simpa [OrthomodularLattice.compl_sup, OrthomodularLattice.compl_top] using this
+    have hxc_comm_z : commutes xᶜ z := by
+      have hzx : commutes z x := commutes_symm hxz
+      have hzxc : commutes z xᶜ := commutes_compl hzx
+      exact commutes_symm hzxc
+    have hxc_le_z : xᶜ ≤ z :=
+      le_of_inf_compl_eq_bot_of_commutes (x := xᶜ) (y := z) hxc_comm_z hxc_zc_bot
+    exact le_antisymm hz_le_xc hxc_le_z
+  -- Both `y` and `z` are forced to be `xᶜ`.
+  simp [hy_eq, hz_eq]
+
 /-- If `x ≤ a` and `a` commutes with `y`, then the `aᶜ` term is irrelevant:
 `x ⊓ (aᶜ ⊔ y) = x ⊓ y`.
 
@@ -1095,13 +1160,65 @@ theorem inf_sup_compl_of_le_of_commutes {x a y : L} (hx : x ≤ a) (hay : commut
   _ = (x ⊓ a) ⊓ y := by ac_rfl
   _ = x ⊓ y := by simp [hx_inf]
 
-/-- **Foulis–Holland distributivity (statement)**: if `a` commutes with both `b` and `c`,
+/-- **Foulis–Holland distributivity**: if `a` commutes with both `b` and `c`,
 then `a` distributes over `b ⊔ c`.
 
-This is a standard theorem (Beran/Kalmbach/Holland). We record the statement here without
-claiming a Lean proof yet, and keep the module `sorry`-free. -/
-def commuting_distributive (a b c : L) : Prop :=
-  commutes a b → commutes a c → a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ c)
+This is a standard theorem (Beran/Kalmbach/Holland).
+Reference: Kalmbach (1983) "Orthomodular Lattices", Beran (1985). -/
+theorem commuting_distributive (a b c : L) (hab : commutes a b) (hac : commutes a c) :
+    a ⊓ (b ⊔ c) = (a ⊓ b) ⊔ (a ⊓ c) := by
+  apply le_antisymm
+  · -- Hard direction: use a one-step “absorb into aᶜ ⊔ …” bound plus exchange.
+    set y : L := (a ⊓ b) ⊔ (a ⊓ c)
+    have hay : commutes a y := by
+      have hab' : commutes a (a ⊓ b) := commutes_inf (commutes_self a) hab
+      have hac' : commutes a (a ⊓ c) := commutes_inf (commutes_self a) hac
+      exact commutes_sup hab' hac'
+    -- Bound `b ⊔ c ≤ aᶜ ⊔ y` by splitting `b` and `c` along `a`.
+    have hb_le : b ≤ aᶜ ⊔ y := by
+      have hba : commutes b a := commutes_symm hab
+      -- b = (a ⊓ b) ⊔ (aᶜ ⊓ b)
+      have hb_decomp : b = (a ⊓ b) ⊔ (aᶜ ⊓ b) := by
+        unfold commutes at hba
+        simpa [inf_comm, inf_left_comm, inf_assoc] using hba
+      calc b = (a ⊓ b) ⊔ (aᶜ ⊓ b) := hb_decomp
+      _ ≤ aᶜ ⊔ y := by
+        refine sup_le ?_ ?_
+        · exact le_trans le_sup_left le_sup_right
+        · exact le_trans inf_le_left le_sup_left
+    have hc_le : c ≤ aᶜ ⊔ y := by
+      have hca : commutes c a := commutes_symm hac
+      have hc_decomp : c = (a ⊓ c) ⊔ (aᶜ ⊓ c) := by
+        unfold commutes at hca
+        simpa [inf_comm, inf_left_comm, inf_assoc] using hca
+      calc c = (a ⊓ c) ⊔ (aᶜ ⊓ c) := hc_decomp
+      _ ≤ aᶜ ⊔ y := by
+        refine sup_le ?_ ?_
+        · exact le_trans le_sup_right le_sup_right
+        · exact le_trans inf_le_left le_sup_left
+    have hbc_le : b ⊔ c ≤ aᶜ ⊔ y := sup_le hb_le hc_le
+    have h1 : a ⊓ (b ⊔ c) ≤ a ⊓ (aᶜ ⊔ y) := inf_le_inf_left a hbc_le
+    have h_exch : a ⊓ (aᶜ ⊔ y) = a ⊓ y := exchange_of_commutes hay
+    have h2 : a ⊓ (b ⊔ c) ≤ a ⊓ y := by
+      simpa [h_exch] using h1
+    -- `y ≤ a`, so `a ⊓ y = y`.
+    have hy_le_a : y ≤ a := by
+      refine sup_le ?_ ?_
+      · exact inf_le_left
+      · exact inf_le_left
+    have hay_eq : a ⊓ y = y := by
+      -- rewrite as y ⊓ a
+      calc a ⊓ y = y ⊓ a := by simp [inf_comm]
+      _ = y := inf_eq_left.mpr hy_le_a
+    simpa [y, hay_eq] using h2
+  · -- Easy direction: holds in any lattice.
+    refine sup_le ?_ ?_
+    · refine le_inf ?_ ?_
+      · exact inf_le_left
+      · exact le_trans inf_le_right le_sup_left
+    · refine le_inf ?_ ?_
+      · exact inf_le_left
+      · exact le_trans inf_le_right le_sup_right
 
 /-- The center of an OML consists of elements that commute with everything.
     This is always a Boolean algebra. -/
@@ -1402,7 +1519,7 @@ theorem OperatorRepresentation.iterate_scale {α A : Type*} [NoncommutativeKSAlg
                 congrArg inst.θ (Function.iterate_succ_apply' (NoncommutativeKSAlgebra.op x) n x)
       _ = inst.θ x + inst.θ (Nat.iterate (NoncommutativeKSAlgebra.op x) n x) := by
               simpa using inst.θ_additive x (Nat.iterate (NoncommutativeKSAlgebra.op x) n x)
-      _ = inst.θ x + (n + 1) • inst.θ x := by simpa [ih]
+      _ = inst.θ x + (n + 1) • inst.θ x := by simp [ih]
       _ = (n.succ + 1) • inst.θ x := by
             -- `a + (n+1)•a = (n+1)•a + a = (n.succ+1)•a`.
             -- `succ_nsmul` gives `(n.succ+1)•a = n.succ•a + a`.

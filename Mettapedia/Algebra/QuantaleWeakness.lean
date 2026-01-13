@@ -21,6 +21,7 @@ providing a unified framework for plausibility, probability, and logical entropy
 -/
 
 import Mathlib.Algebra.Order.Quantale
+import Mathlib.Order.Hom.CompleteLattice
 import Mathlib.Data.ENNReal.Basic
 import Mathlib.Data.ENNReal.Inv
 import Mathlib.Order.CompleteBooleanAlgebra
@@ -38,10 +39,13 @@ namespace Mettapedia.Algebra.QuantaleWeakness
 open scoped ENNReal
 open Finset
 
-/-! ## Commutative Quantales
+/-! ## Quantales (and the Commutative Special Case)
 
-Mathlib's `IsQuantale` only requires `Semigroup`. We extend it with commutativity
-for Goertzel's weakness theory.
+Mathlib’s `IsQuantale` supports **noncommutative** quantales. We additionally name the commutative
+special case (`IsCommQuantale`) for when we want to state commutative-only lemmas.
+
+The core weakness construction itself is **noncommutative**: it only needs a multiplication and
+arbitrary suprema.
 -/
 
 /-- A commutative quantale is a quantale where the product is commutative. -/
@@ -78,8 +82,7 @@ The core definition: weakness assigns to each subset of U × U a value in the qu
 
 section WeaknessDef
 
-variable {U : Type*} [Fintype U] {Q : Type*}
-  [CommMonoid Q] [CompleteLattice Q] [IsCommQuantale Q]
+variable {U : Type*} [Fintype U] {Q : Type*} [Monoid Q] [CompleteLattice Q]
 
 /-- A weight function assigns quantale values to universe elements. -/
 structure WeightFunction (U : Type*) (Q : Type*) [Fintype U] [Monoid Q] where
@@ -87,13 +90,141 @@ structure WeightFunction (U : Type*) (Q : Type*) [Fintype U] [Monoid Q] where
 
 /-- The weakness of a subset H ⊆ U × U under weight function μ.
 
-For probabilistic weakness: μ(u) = p(u) and ⊗ = ·, ⊕ = +
-For Bennett weakness: μ(u) = 1 and Q = ℕ with standard operations
+This definition uses the **quantale join** `⨆` (implemented as `sSup`) as the aggregator `⊕`,
+matching Goertzel’s notation `\bigoplus` for quantale weakness.
+
+For the **probabilistic sum-of-products** variant (where the aggregator is `∑`), see `probWeakness`
+in the `ProbabilisticWeakness` section below.
 -/
 noncomputable def weakness (wf : WeightFunction U Q) (H : Finset (U × U)) : Q :=
   sSup { wf.μ p.1 * wf.μ p.2 | p ∈ H }
 
 end WeaknessDef
+
+/-! ## Weakness and Quantale Morphisms
+
+To connect the hypercube story with Goertzel’s “weakness preorder via morphisms”, it is useful to
+package one basic functoriality fact:
+
+> if `f` preserves the quantale structure (enough to preserve `⊗` and `⨆`),
+> then `f (weakness_Q μ H) = weakness_{Q'} (f ∘ μ) H`.
+
+This is the key lemma needed to transport a weakness score between vertices whose value spaces are
+related by a structure-preserving map.
+-/
+
+section WeaknessMorphisms
+
+variable {U : Type*} [Fintype U]
+
+variable {Q Q' : Type*} [Monoid Q] [CompleteLattice Q] [Monoid Q'] [CompleteLattice Q']
+
+/-- A morphism of (possibly noncommutative) quantales (enough structure to transport `weakness`):
+preserves multiplication and arbitrary suprema. -/
+structure QuantaleHom (Q Q' : Type*) [Monoid Q] [CompleteLattice Q] [Monoid Q'] [CompleteLattice Q']
+    extends sSupHom Q Q' where
+  /-- Multiplication is preserved. -/
+  map_mul' (x y : Q) : toFun (x * y) = toFun x * toFun y
+
+attribute [simp] QuantaleHom.map_mul'
+
+instance : CoeFun (QuantaleHom Q Q') (fun _ => Q → Q') :=
+  ⟨fun f => f.toFun⟩
+
+/-- Alias for the commutative case: the same notion of morphism, just with commutative monoids. -/
+abbrev CommQuantaleHom (Q Q' : Type*) [CommMonoid Q] [CompleteLattice Q] [CommMonoid Q']
+    [CompleteLattice Q'] :=
+  QuantaleHom Q Q'
+
+namespace WeightFunction
+
+/-- Push a weight function forward along a map. -/
+def map {Q Q' : Type*} [Fintype U] [Monoid Q] [Monoid Q'] (f : Q → Q') (wf : WeightFunction U Q) :
+    WeightFunction U Q' :=
+  ⟨fun u => f (wf.μ u)⟩
+
+@[simp]
+theorem map_μ {Q Q' : Type*} [Monoid Q] [Monoid Q'] (f : Q → Q') (wf : WeightFunction U Q)
+    (u : U) : (WeightFunction.map (U := U) f wf).μ u = f (wf.μ u) :=
+  rfl
+
+end WeightFunction
+
+/-- **Weakness functoriality**: a quantale morphism preserves weakness. -/
+theorem QuantaleHom.map_weakness (f : QuantaleHom Q Q') (wf : WeightFunction U Q)
+    (H : Finset (U × U)) :
+    f (weakness wf H) = weakness (WeightFunction.map (U := U) (Q := Q) (Q' := Q') f wf) H := by
+  classical
+  -- Expand the definition and use `map_sSup'` on the underlying `sSupHom`.
+  unfold weakness
+  -- Rewrite the image of the generator-set pointwise using `map_mul'`.
+  have hImage :
+      (f '' { wf.μ p.1 * wf.μ p.2 | p ∈ H }) =
+        { (WeightFunction.map (U := U) (Q := Q) (Q' := Q') f wf).μ p.1 *
+            (WeightFunction.map (U := U) (Q := Q) (Q' := Q') f wf).μ p.2 | p ∈ H } := by
+    ext t
+    constructor
+    · rintro ⟨s, hs, rfl⟩
+      rcases hs with ⟨p, hpH, rfl⟩
+      refine ⟨p, hpH, ?_⟩
+      simp [WeightFunction.map, f.map_mul']
+    · rintro ⟨p, hpH, rfl⟩
+      refine ⟨wf.μ p.1 * wf.μ p.2, ?_, ?_⟩
+      · exact ⟨p, hpH, rfl⟩
+      · simp [WeightFunction.map, f.map_mul']
+  -- Now use `map_sSup'` and the set rewrite (without `simp` rewriting the lemma into `True`).
+  have hsSup :
+      f (sSup { wf.μ p.1 * wf.μ p.2 | p ∈ H }) =
+        sSup (f '' { wf.μ p.1 * wf.μ p.2 | p ∈ H }) :=
+    f.map_sSup' { wf.μ p.1 * wf.μ p.2 | p ∈ H }
+  refine hsSup.trans ?_
+  simpa using congrArg sSup hImage
+
+namespace QuantaleHom
+
+/-! ### A tiny morphism toolkit
+
+Downstream hypercube modules want to build and compose `QuantaleHom`s without re-proving the
+structure laws each time.  We keep this API minimal: identity and composition.
+
+This is intentionally **weaker** than `MonoidHom`/`SupHom`-based approaches: we only require
+preservation of `*` and `sSup`, because that is exactly what `weakness` needs.
+-/
+
+variable {Q₁ Q₂ Q₃ : Type*}
+variable [Monoid Q₁] [CompleteLattice Q₁]
+variable [Monoid Q₂] [CompleteLattice Q₂]
+variable [Monoid Q₃] [CompleteLattice Q₃]
+
+/-- Identity morphism of quantales (in the weak sense used here). -/
+protected def id (Q : Type*) [Monoid Q] [CompleteLattice Q] : QuantaleHom Q Q where
+  toFun := id
+  map_sSup' S := by simp
+  map_mul' _ _ := rfl
+
+@[simp] lemma id_apply (x : Q₁) : QuantaleHom.id (Q := Q₁) x = x := rfl
+
+/-- Composition of quantale morphisms. -/
+protected def comp (g : QuantaleHom Q₂ Q₃) (f : QuantaleHom Q₁ Q₂) : QuantaleHom Q₁ Q₃ where
+  toFun := fun x => g (f x)
+  map_sSup' S := by
+    -- Push `sSup` through `f`, then through `g`.
+    calc
+      g (f (sSup S)) = g (sSup (f '' S)) := by simp [f.map_sSup' S]
+      _ = sSup (g '' (f '' S)) := g.map_sSup' (f '' S)
+      _ = sSup ((fun x => g (f x)) '' S) := by
+        simp [Set.image_image]
+  map_mul' x y := by
+    calc
+      g (f (x * y)) = g (f x * f y) := by simp [f.map_mul' x y]
+      _ = g (f x) * g (f y) := g.map_mul' _ _
+
+@[simp] lemma comp_apply (g : QuantaleHom Q₂ Q₃) (f : QuantaleHom Q₁ Q₂) (x : Q₁) :
+    QuantaleHom.comp g f x = g (f x) := rfl
+
+end QuantaleHom
+
+end WeaknessMorphisms
 
 /-! ## Bennett's Weakness (Counting Case)
 
@@ -341,6 +472,7 @@ theorem setoidDistinctionSet_union_equivalenceSet (r : Setoid U) [DecidableRel r
     Finset.mem_filter, Finset.mem_univ, true_and]
   tauto
 
+omit [DecidableEq U] in
 /-- The distinction and equivalence sets are disjoint. -/
 theorem disjoint_setoidDistinctionSet_equivalenceSet (r : Setoid U) [DecidableRel r.r] :
     Disjoint (setoidDistinctionSet r) (setoidEquivalenceSet r) := by
@@ -348,6 +480,7 @@ theorem disjoint_setoidDistinctionSet_equivalenceSet (r : Setoid U) [DecidableRe
   intro x _ hx
   exact hx
 
+omit [DecidableEq U] in
 /-- If r₁ ≤ r₂ (r₁ is finer), then the distinction set of r₁ contains the distinction set of r₂.
     Finer partition → more distinctions.
 
@@ -360,6 +493,7 @@ theorem setoidDistinctionSet_mono {r₁ r₂ : Setoid U}
   intro hr₁
   exact hp (h hr₁)
 
+omit [DecidableEq U] in
 /-- Cardinality version: finer partition has at least as many distinctions. -/
 theorem setoidDistinctionSet_card_mono {r₁ r₂ : Setoid U}
     [DecidableRel r₁.r] [DecidableRel r₂.r]
@@ -384,10 +518,12 @@ def indiscreteSetoid' (U : Type*) : Setoid U where
 instance indiscreteSetoid'_decidable : DecidableRel (indiscreteSetoid' U).r :=
   fun _ _ => isTrue trivial
 
+omit [Fintype U] [DecidableEq U] in
 /-- The discrete Setoid refines every Setoid. -/
 theorem discreteSetoid'_le (r : Setoid U) : discreteSetoid' U ≤ r :=
   fun {_ _} huv => huv ▸ r.refl' _
 
+omit [Fintype U] [DecidableEq U] in
 /-- Every Setoid refines the indiscrete Setoid. -/
 theorem le_indiscreteSetoid' (r : Setoid U) : r ≤ indiscreteSetoid' U :=
   fun {_ _} _ => trivial
@@ -399,6 +535,7 @@ theorem discreteSetoid'_distinctionSet :
   simp only [setoidDistinctionSet, discreteSetoid', Finset.mem_filter, Finset.mem_univ,
     true_and, distinctionEvent, ne_eq]
 
+omit [DecidableEq U] in
 /-- The distinction set of the indiscrete Setoid is empty. -/
 theorem indiscreteSetoid'_distinctionSet :
     setoidDistinctionSet (indiscreteSetoid' U) = ∅ := by
@@ -416,6 +553,7 @@ the cardinality of its distinction set. -/
 noncomputable def setoidBennettEntropy (r : Setoid U) [DecidableRel r.r] : ℚ :=
   (setoidDistinctionSet r).card / (Fintype.card U * Fintype.card U : ℕ)
 
+omit [DecidableEq U] in
 /-- **Entropy Monotonicity Theorem (Bennett/Uniform Case)**
 
 If r₁ ≤ r₂ (r₁ is finer), then entropy(r₁) ≥ entropy(r₂).
@@ -432,6 +570,7 @@ theorem setoidBennettEntropy_discrete_maximal (r : Setoid U) [DecidableRel r.r] 
     setoidBennettEntropy r ≤ setoidBennettEntropy (discreteSetoid' U) :=
   setoidBennettEntropy_mono (discreteSetoid'_le r)
 
+omit [DecidableEq U] in
 /-- The indiscrete Setoid has zero entropy. -/
 theorem setoidBennettEntropy_indiscrete :
     setoidBennettEntropy (indiscreteSetoid' U) = 0 := by
@@ -546,6 +685,7 @@ theorem modusPonens' {Q : Type*} [CommSemigroup Q] [CompleteLattice Q] [IsQuanta
     (A B : Q) : (quantaleImplies A B) * A ≤ B :=
   modusPonens_left A B
 
+omit [IsQuantale Q] in
 /-- **Monotonicity of Implication (Right)**
 
 If B ≤ C, then (A → B) ≤ (A → C).
@@ -658,7 +798,7 @@ variable {U : Type*} [Fintype U]
 
 /-- The weakness of the empty event is the bottom element.
     Corresponds to: "impossible event has zero weakness" -/
-theorem weakness_empty {Q : Type*} [CommMonoid Q] [CompleteLattice Q] [IsCommQuantale Q]
+theorem weakness_empty {Q : Type*} [Monoid Q] [CompleteLattice Q]
     (wf : WeightFunction U Q) :
     weakness wf ∅ = ⊥ := by
   unfold weakness
@@ -668,7 +808,7 @@ theorem weakness_empty {Q : Type*} [CommMonoid Q] [CompleteLattice Q] [IsCommQua
   tauto
 
 /-- Monotonicity: H₁ ⊆ H₂ implies w(H₁) ≤ w(H₂) -/
-theorem weakness_mono {Q : Type*} [CommMonoid Q] [CompleteLattice Q] [IsCommQuantale Q]
+theorem weakness_mono {Q : Type*} [Monoid Q] [CompleteLattice Q]
     (wf : WeightFunction U Q) (H₁ H₂ : Finset (U × U)) (h : H₁ ⊆ H₂) :
     weakness wf H₁ ≤ weakness wf H₂ := by
   unfold weakness

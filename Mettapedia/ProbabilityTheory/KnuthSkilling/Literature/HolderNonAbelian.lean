@@ -129,6 +129,7 @@ def HasLeastPos : Prop :=
 def NoLeastPos : Prop :=
   ∀ p : G, 0 < p → ∃ q : G, 0 < q ∧ q < p
 
+omit [IsBiOrderedAddGroup G] in
 theorem noLeastPos_of_not_hasLeastPos (h : ¬ HasLeastPos (G := G)) : NoLeastPos (G := G) := by
   intro p hp
   by_contra hcontra
@@ -173,6 +174,7 @@ theorem exists_pos_add_self_lt_of_noLeastPos (hNo : NoLeastPos (G := G)) {p : G}
 def commutator (g h : G) : G :=
   g + h + (-g) + (-h)
 
+omit [LinearOrder G] [IsBiOrderedAddGroup G] in
 theorem commutator_eq_zero_iff (g h : G) : commutator (G := G) g h = 0 ↔ g + h = h + g := by
   constructor
   · intro hc
@@ -189,6 +191,7 @@ theorem commutator_eq_zero_iff (g h : G) : commutator (G := G) g h = 0 ↔ g + h
     have := congrArg (fun t => t + (-g) + (-h)) hgh
     simpa [commutator, add_assoc] using this
 
+omit [LinearOrder G] [IsBiOrderedAddGroup G] in
 theorem add_comm_iff_neg_left (g h : G) : g + h = h + g ↔ (-g) + h = h + (-g) := by
   constructor
   · intro hgh
@@ -205,6 +208,7 @@ theorem add_comm_iff_neg_left (g h : G) : g + h = h + g ↔ (-g) + h = h + (-g) 
     have := congrArg (fun t => t + g) h1
     simpa [add_assoc] using this.symm
 
+omit [LinearOrder G] [IsBiOrderedAddGroup G] in
 theorem commutator_swap (g h : G) :
     commutator (G := G) h g = - commutator (G := G) g h := by
   -- `-(a+b) = -b + -a` (reverse order) is `neg_add_rev`.
@@ -249,7 +253,7 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
           simpa using congrArg Neg.neg hmEq
         have hm : (-(m : ℤ)) • p = -(m • p) := by
           calc
-            (-(m : ℤ)) • p = -((m : ℤ) • p) := by simpa [neg_zsmul]
+            (-(m : ℤ)) • p = -((m : ℤ) • p) := by simp [neg_zsmul]
             _ = -(m • p) := by simp [natCast_zsmul]
         simpa [hm] using hg
       · exact ⟨0, by simp⟩
@@ -269,7 +273,7 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
           exact (not_lt_of_ge this) hdLt
         refine ⟨(m : ℤ), ?_⟩
         have hm : (m : ℤ) • p = m • p := by
-          simpa using (natCast_zsmul p m)
+          simp [natCast_zsmul]
         simpa [hm] using hmEq
     rcases hMul a with ⟨za, rfl⟩
     rcases hMul b with ⟨zb, rfl⟩
@@ -277,7 +281,7 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
     calc
       za • p + zb • p = (za + zb) • p := by
         simpa using (add_zsmul p za zb).symm
-      _ = (zb + za) • p := by simpa [Int.add_comm]
+      _ = (zb + za) • p := by simp [Int.add_comm]
       _ = zb • p + za • p := by
         simpa using (add_zsmul p zb za)
   · -- no least positive element: Clay–Rolfsen Lemma 2.4, Case 2
@@ -289,11 +293,11 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
     have ha0 : a ≠ 0 := by
       intro ha0
       apply hab'
-      simpa [ha0]
+      simp [ha0]
     have hb0 : b ≠ 0 := by
       intro hb0
       apply hab'
-      simpa [hb0]
+      simp [hb0]
     -- Make both elements positive by possibly negating.
     let g : G := if 0 < a then a else -a
     let h : G := if 0 < b then b else -b
@@ -373,9 +377,10 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
       · simpa [h', hc] using hgPos
     have hCommPos : 0 < commutator (G := G) g' h' := by
       by_cases hc : 0 < commutator (G := G) g h
-      · simpa [g', h', hc] using hc
+      · simp [g', h', hc]
       · have : 0 < commutator (G := G) h g := hCpos.resolve_left hc
-        simpa [g', h', hc] using this
+        simp [g', h', hc]
+        exact this
     -- Halving lemma: pick `x>0` with `x+x < commutator`.
     rcases exists_pos_add_self_lt_of_noLeastPos (G := G) hNo hCommPos with ⟨x, hxPos, hx2Lt⟩
     -- Trap `g'` and `h'` between consecutive multiples of `x`.
@@ -391,7 +396,7 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
       have hEq : (↑(m + 1) : ℤ) • x = (m + 1) • x := natCast_zsmul x (m + 1)
       have hmLt' : g' < (↑(m + 1) : ℤ) • x := lt_of_lt_of_eq hmLt hEq.symm
       have hCoef : (↑(m + 1) : ℤ) = (↑m + 1 : ℤ) := by
-        simpa [Nat.succ_eq_add_one] using (Int.ofNat_succ m)
+        simp
       have hCoef' : (↑(m + 1) : ℤ) • x = (↑m + 1 : ℤ) • x :=
         congrArg (fun t : ℤ => t • x) hCoef
       exact lt_of_lt_of_eq hmLt' hCoef'
@@ -399,7 +404,7 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
       have hEq : (↑(n + 1) : ℤ) • x = (n + 1) • x := natCast_zsmul x (n + 1)
       have hnLt' : h' < (↑(n + 1) : ℤ) • x := lt_of_lt_of_eq hnLt hEq.symm
       have hCoef : (↑(n + 1) : ℤ) = (↑n + 1 : ℤ) := by
-        simpa [Nat.succ_eq_add_one] using (Int.ofNat_succ n)
+        simp
       have hCoef' : (↑(n + 1) : ℤ) • x = (↑n + 1 : ℤ) • x :=
         congrArg (fun t : ℤ => t • x) hCoef
       exact lt_of_lt_of_eq hnLt' hCoef'
@@ -456,7 +461,7 @@ theorem add_comm_of_biOrdered_archimedean [ArchimedeanNC G] :
                   -- scalar arithmetic in `ℤ`
                   have h0 : (↑m + 1 + (↑n + 1) + (-(m : ℤ) + (-(n : ℤ))) : ℤ) = 2 := by
                     abel
-                  simpa [h0]
+                  simp [h0]
           _ = x + x := by simpa using (two_zsmul x)
       have h5'' : g' + h' + (-g') + (-h') < x + x := lt_of_lt_of_eq h5' hRhs
       have : commutator (G := G) g' h' < x + x := by

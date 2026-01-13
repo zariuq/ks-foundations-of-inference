@@ -10,7 +10,7 @@ Key structures:
 - Probability rules (sum rule, product rule, Bayes' theorem, complement rule)
 -/
 
-import Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.Main
+import Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.Main
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
@@ -53,14 +53,14 @@ Note: The full constructive proof (grid extension) is in WeakRegraduation + dens
 arguments below. Here we state the existence theorem cleanly. -/
 theorem ks_representation_theorem
     [KnuthSkillingAlgebra α] [KSSeparation α]
-    [Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.AppendixAGlobalization α] :
+    [Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.RepresentationGlobalization α] :
     ∃ (Θ : α → ℝ),
       StrictMono Θ ∧
-        Θ KnuthSkillingAlgebra.ident = 0 ∧
-          (∀ x y : α, Θ (KnuthSkillingAlgebra.op x y) = Θ x + Θ y) := by
+        Θ KnuthSkillingAlgebraBase.ident = 0 ∧
+          (∀ x y : α, Θ (KnuthSkillingAlgebraBase.op x y) = Θ x + Θ y) := by
   classical
   obtain ⟨Θ, hΘ_order, hΘ_ident, hΘ_add⟩ :=
-    Mettapedia.ProbabilityTheory.KnuthSkilling.AppendixA.associativity_representation (α := α)
+    Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.associativity_representation (α := α)
   refine ⟨Θ, ?_, hΘ_ident, ?_⟩
   · intro x y hxy
     have hx_le : x ≤ y := le_of_lt hxy

@@ -5,6 +5,7 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.Algebra
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling
 
 open Classical
+open KnuthSkillingAlgebraBase
 open KnuthSkillingAlgebra
 
 /-!
@@ -21,7 +22,7 @@ axiom `op_archimedean` implies mathlib’s `Archimedean` typeclass (for the indu
 commutative monoid).
 -/
 
-/-- Type wrapper interpreting `KnuthSkillingAlgebra.op` as addition and `ident` as `0`. -/
+/-- Type wrapper interpreting `KnuthSkillingAlgebraBase.op` as addition and `ident` as `0`. -/
 structure KSAdd (α : Type*) where
   val : α
 
