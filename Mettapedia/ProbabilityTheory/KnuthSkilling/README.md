@@ -43,30 +43,38 @@ In practice, the globalization class `RepresentationGlobalization` is provided a
 induction pipeline once `KSSeparationStrict` is available; and `KSSeparationStrict` is derived from
 `KSSeparation` under a mild “density above `ident`” hypothesis (e.g. `[DenselyOrdered α]`).
 
-## Axiom Systems
+## Axiom System
 
-### Bundle: Explicit Commutativity + Archimedean
+### Our Approach: Base + Separation
 
-Some expositions assume commutativity and an Archimedean property up front:
-- **Strict monotonicity** (both sides)
-- **Associativity**
-- **Commutativity** (`x ⊕ y = y ⊕ x`)
-- **Archimedean** (no infinitesimals)
+We use a minimal base with separation as the key regularity condition:
 
-### Bundle: Iterate/Power “Sandwich” Separation (`KSSeparation`)
+**Base axioms (`KnuthSkillingAlgebraBase`)**:
+- Linear order on α
+- Associative operation `op : α → α → α`
+- Identity element `ident`
+- Strict monotonicity (both sides)
+- Positivity (`ident ≤ x` for all x)
 
-This development also supports a (stronger, but often implicit) separation assumption:
-- **Strict monotonicity** (both sides)
-- **Associativity**
-- **Sandwich separation** (`KSSeparation`)
+**Plus separation (`KSSeparation`)**:
+- For any `a > ident` and `x < y`, there exist `m, n` such that `x^m < a^n ≤ y^m`
 
-The key insight is that `KSSeparation` forces both commutativity and an Archimedean-style
-unboundedness property (see `Separation/SandwichSeparation.lean` and
-`AxiomSystemEquivalence.lean`).
+**What we DERIVE (not assume!)**:
+- **Commutativity**: `op x y = op y x` — proven in `Separation/SandwichSeparation.lean`
+- **Archimedean property**: no infinitesimals — proven in `Separation/SandwichSeparation.lean`
 
-Importantly, `KSSeparation` is **not derivable** from the bare `KnuthSkillingAlgebra` axioms: there
-are ordered associative Archimedean noncommutative monoids (semidirect products) that satisfy the
-base axioms but fail `KSSeparation` (see `RepresentationTheorem/Counterexamples/KSSeparationNotDerivable.lean`).
+### Comparison with Other Expositions
+
+Some treatments assume commutativity and Archimedean up front. Our approach is
+more economical: separation implies both.
+
+### Why Separation is Necessary
+
+`KSSeparation` is **not derivable** from the base axioms alone. Counterexamples:
+- `Counterexamples/SemidirectNoSeparation.lean`: Archimedean ordered associative monoid
+  that is noncommutative and fails separation
+- `Counterexamples/ProductFailsSeparation.lean`: Commutative ordered monoid with
+  infinitesimals (ℕ×ℕ lexicographic) that fails separation
 
 ```lean
 -- KSSeparation: For any a > ident and x < y, there exist m, n such that x^m < a^n ≤ y^m
@@ -87,37 +95,40 @@ class KSSeparation (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
 ```
 KnuthSkilling/
 ├── README.md                    # This file
-├── Basic.lean                   # PlausibilitySpace, Valuation, KnuthSkillingAlgebra
+├── Basic.lean                   # PlausibilitySpace, Valuation, KnuthSkillingAlgebraBase
 ├── Algebra.lean                 # iterate_op, basic lemmas
 ├── Separation/                  # Separation machinery
-│   ├── SandwichSeparation.lean  # Sandwich separation: commutativity + Archimedean consequences
-│   └── Derivation.lean          # WIP derivation of `KSSeparation` (packages `LargeRegimeSeparationSpec`)
-├── AxiomSystemEquivalence.lean  # Relationship between separation and commutativity/representation bundles
-├── ProductTheorem/              # Appendix B (product equation + product rule)
-│   ├── FunctionalEquation.lean   # Appendix B solver: product equation → exponential
-│   ├── Basic.lean                # Derive product equation from axioms 3–4 + Θ(x⊗t)=Θx+Θt
-│   ├── DirectProduct.lean        # Lattice-level bookkeeping for direct products of independent lattices
-│   └── Main.lean                 # Conclude `⊗` is multiplication (up to a scale constant)
-├── ProductTheorem.lean          # Public entry point for Appendix B
-├── RepresentationTheorem/       # The main formalization (see RepresentationTheorem/README.md)
-│   ├── Main.lean                # Public API: representation theorem + corollaries
-│   ├── Globalization.lean       # Globalization construction (`RepresentationGlobalization`)
-│   ├── Core/                    # Induction machinery (see Core/README.md)
-│   └── ...
-└── Literature/                  # Reference material (Aczél functional equations)
+│   ├── SandwichSeparation.lean  # KSSeparation ⇒ Commutativity + Archimedean (DERIVED!)
+│   └── Derivation.lean          # WIP derivation of KSSeparation from weaker hypotheses
+├── AxiomSystemEquivalence.lean  # Separation ⇔ representation equivalences
+├── RepresentationTheorem/       # Appendix A: main formalization
+│   ├── Main.lean                # Public API: associativity_representation
+│   ├── Alternative/             # Direct Dedekind cuts proof (Hölder-style)
+│   │   ├── Main.lean            # associativity_representation_cuts
+│   │   └── DirectCuts.lean      # The construction
+│   ├── Globalization.lean       # RepresentationGlobalization typeclass
+│   ├── Core/                    # K&S-style induction machinery
+│   └── Counterexamples/         # Why separation is necessary
+├── ProductTheorem/              # Appendix B: product operation (WIP)
+│   ├── Main.lean                # Public entry point
+│   ├── Basic.lean               # Product equation from distributivity
+│   ├── FunctionalEquation.lean  # Product equation → exponential
+│   └── AczelTheorem.lean        # TensorRegularity hypothesis bundle
+├── ProductTheorem.lean          # Import facade
+└── Literature/                  # Reference: Aczél, Hölder, Cox
 ```
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
-| `Basic.lean` | Core definitions: `PlausibilitySpace`, `KnuthSkillingAlgebra`, `iterate_op` |
-| `Algebra.lean` | Basic lemmas about `iterate_op`, monotonicity, Archimedean bounds |
-| `Separation/SandwichSeparation.lean` | Sandwich separation: `KSSeparation` ⇒ Commutativity + Archimedean-style consequences |
-| `AxiomSystemEquivalence.lean` | Separation consequences + “representation ⇒ separation” via rational density |
-| `RepresentationTheorem/Main.lean` | **Main theorem**: `associativity_representation` |
-| `ProductTheorem/Main.lean` | **Appendix B**: product equation ⇒ exponential ⇒ product rule for `⊗` |
-| `ProductTheorem/DirectProduct.lean` | Lattice-level direct product `×` (canonical `Set` model) |
+| `Basic.lean` | Core definitions: `PlausibilitySpace`, `KnuthSkillingAlgebraBase` |
+| `Separation/SandwichSeparation.lean` | **Key derivations**: `KSSeparation` ⇒ Commutativity + Archimedean |
+| `RepresentationTheorem/Main.lean` | **Appendix A (K&S proof)**: `associativity_representation` |
+| `RepresentationTheorem/Alternative/Main.lean` | **Appendix A (cuts proof)**: `associativity_representation_cuts` |
+| `AxiomSystemEquivalence.lean` | Representation ⇔ separation equivalence |
+| `ProductTheorem/Main.lean` | **Appendix B (WIP)**: product operation |
+| `Counterexamples/ProductFailsSeparation.lean` | NatProdLex: why separation is necessary |
 
 ## The Hypercube Connection
 
