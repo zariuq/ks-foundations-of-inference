@@ -175,6 +175,18 @@ theorem iterate_op_strictMono_base (m : ℕ) (hm : 0 < m) (x y : α) (hxy : x < 
         _ < op y (iterate_op y (n + 1)) := op_strictMono_left (iterate_op y (n + 1)) hxy
         _ = iterate_op y (n + 1 + 1) := rfl
 
+/-- iterate_op is monotone in base: x ≤ y → x^m ≤ y^m -/
+theorem iterate_op_mono_base (m : ℕ) (x y : α) (hxy : x ≤ y) :
+    iterate_op x m ≤ iterate_op y m := by
+  induction m with
+  | zero => simp only [iterate_op_zero]; exact le_refl _
+  | succ n ih =>
+    calc iterate_op x (n + 1)
+        = op x (iterate_op x n) := rfl
+      _ ≤ op x (iterate_op y n) := op_mono_right x ih
+      _ ≤ op y (iterate_op y n) := op_mono_left (iterate_op y n) hxy
+      _ = iterate_op y (n + 1) := rfl
+
 /-- Positive iterations are strictly greater than identity -/
 theorem iterate_op_pos (y : α) (hy : ident < y) (m : ℕ) (hm : m > 0) :
     ident < iterate_op y m := by
@@ -184,7 +196,7 @@ theorem iterate_op_pos (y : α) (hy : ident < y) (m : ℕ) (hm : m > 0) :
 /-- **Distribution lemma**: `(x ⊕ y)^m = x^m ⊕ y^m` when op is commutative.
 
 This is the key lemma for expanding iterates of sums. Note that this is FALSE without
-commutativity (see counterexample in Counterexamples.lean). -/
+commutativity (noncommutative `op` does not distribute over iterated sums). -/
 theorem iterate_op_op_distrib_of_comm (x y : α) (h_comm : ∀ a b : α, op a b = op b a) (m : ℕ) :
     iterate_op (op x y) m = op (iterate_op x m) (iterate_op y m) := by
   induction m with

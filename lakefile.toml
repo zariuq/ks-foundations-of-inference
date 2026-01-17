@@ -21,3 +21,8 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.25.0"
 
+# Eric Luap's OrderedSemigroups (local dependency)
+[[require]]
+name = "ordered_semigroups"
+path = "Mettapedia/Algebra/OrderedSemigroups"
+

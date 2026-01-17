@@ -1,4 +1,5 @@
 import Mettapedia.UniversalAI.BayesianAgents
+import Mettapedia.UniversalAI.InfiniteHistory
 import Mettapedia.UniversalAI.GrainOfTruth.FixedPoint
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.Probability.Process.Stopping
@@ -1007,15 +1008,16 @@ instance initialMeasureIic0WithPolicy_isProbability (μ : Environment) (π : Age
 /-- The environment measure on trajectories induced by policy `π` via Ionescu–Tulcea. -/
 noncomputable def environmentMeasureWithPolicy (μ : Environment) (π : Agent) (h_stoch : isStochastic μ) :
     MeasureTheory.Measure Trajectory :=
-  have : ∀ n, IsMarkovKernel (transitionKernelWithPolicy μ π n) :=
+  have hκ : ∀ n, IsMarkovKernel (transitionKernelWithPolicy μ π n) :=
     fun n => transitionKernelWithPolicy_isMarkov μ π n h_stoch
-  @Kernel.traj StepFamily (fun _ => inferInstance) (transitionKernelWithPolicy μ π) this 0 ∘ₘ
-    initialMeasureIic0WithPolicy μ π
+  let _ : (n : Nat) -> IsMarkovKernel (transitionKernelWithPolicy μ π n) := hκ
+  Mettapedia.UniversalAI.InfiniteHistory.trajMeasureOf (X := StepFamily)
+    (κ := transitionKernelWithPolicy μ π) 0 (initialMeasureIic0WithPolicy μ π)
 
 /-- The policy-driven environment measure is a probability measure. -/
 theorem environmentMeasureWithPolicy_isProbability (μ : Environment) (π : Agent) (h_stoch : isStochastic μ) :
     MeasureTheory.IsProbabilityMeasure (environmentMeasureWithPolicy μ π h_stoch) := by
-  simp only [environmentMeasureWithPolicy]
+  simp [environmentMeasureWithPolicy]
   haveI : MeasureTheory.IsProbabilityMeasure (initialMeasureIic0WithPolicy μ π) :=
     initialMeasureIic0WithPolicy_isProbability μ π h_stoch
   haveI : ∀ n, ProbabilityTheory.IsMarkovKernel (transitionKernelWithPolicy μ π n) :=
@@ -1068,8 +1070,11 @@ noncomputable def environmentMeasure (μ : Environment) (h_stoch : isStochastic 
     MeasureTheory.Measure Trajectory :=
   -- Apply Ionescu-Tulcea: bind initial distribution with traj kernel
   -- Explicitly provide all type parameters to avoid Iic/Finset.Iic ambiguity
-  have : ∀ n, IsMarkovKernel (transitionKernel μ n) := fun n => transitionKernel_isMarkov μ n h_stoch
-  @Kernel.traj StepFamily (fun _ => inferInstance) (transitionKernel μ) this 0 ∘ₘ initialMeasureIic0 μ
+  have hκ : ∀ n, IsMarkovKernel (transitionKernel μ n) :=
+    fun n => transitionKernel_isMarkov μ n h_stoch
+  let _ : (n : Nat) -> IsMarkovKernel (transitionKernel μ n) := hκ
+  Mettapedia.UniversalAI.InfiniteHistory.trajMeasureOf (X := StepFamily)
+    (κ := transitionKernel μ) 0 (initialMeasureIic0 μ)
 
 /-- The environment measure is a probability measure.
     Follows from Ionescu-Tulcea: traj applied to a probability measure
@@ -1084,7 +1089,7 @@ noncomputable def environmentMeasure (μ : Environment) (h_stoch : isStochastic 
 -/
 theorem environmentMeasure_isProbability (μ : Environment) (h_stoch : isStochastic μ) :
     MeasureTheory.IsProbabilityMeasure (environmentMeasure μ h_stoch) := by
-  simp only [environmentMeasure]
+  simp [environmentMeasure]
   -- Provides: IsProbabilityMeasure (initialMeasureIic0 μ) from earlier instance
   haveI : MeasureTheory.IsProbabilityMeasure (initialMeasureIic0 μ) :=
     initialMeasureIic0_isProbability μ h_stoch
@@ -1144,7 +1149,7 @@ theorem environmentMeasureWithPolicy_step0_singleton (μ : Environment) (π : Ag
       fun n => transitionKernelWithPolicy_isMarkov μ π n h_stoch
     have hf : Measurable (frestrictLe (π := StepFamily) 0) :=
       measurable_frestrictLe (X := StepFamily) 0
-    simp only [environmentMeasureWithPolicy]
+    simp [environmentMeasureWithPolicy]
     rw [MeasureTheory.Measure.map_comp (μ := initialMeasureIic0WithPolicy μ π)
       (κ := @Kernel.traj StepFamily (fun _ => inferInstance) (transitionKernelWithPolicy μ π)
         (fun n => transitionKernelWithPolicy_isMarkov μ π n h_stoch) 0) hf]
@@ -1234,7 +1239,7 @@ theorem environmentMeasure_step0_singleton (μ : Environment) (h_stoch : isStoch
     haveI : ∀ n, IsMarkovKernel (transitionKernel μ n) :=
       fun n => transitionKernel_isMarkov μ n h_stoch
     have hf : Measurable (frestrictLe (π := StepFamily) 0) := measurable_frestrictLe (X := StepFamily) 0
-    simp only [environmentMeasure]
+    simp [environmentMeasure]
     -- `map_comp` pushes `map` through `∘ₘ`
     rw [MeasureTheory.Measure.map_comp (μ := initialMeasureIic0 μ)
       (κ := @Kernel.traj StepFamily (fun _ => inferInstance) (transitionKernel μ)
@@ -1958,7 +1963,7 @@ theorem IT_product_factorization (μ : Environment) (h_stoch : isStochastic μ)
         (environmentMeasure μ h_stoch).map (frestrictLe (π := StepFamily) k) =
           Kernel.partialTraj (transitionKernel μ) 0 k ∘ₘ initialMeasureIic0 μ := by
       have hk_meas : Measurable (frestrictLe (π := StepFamily) k) := measurable_frestrictLe (X := StepFamily) k
-      simp only [environmentMeasure]
+      simp [environmentMeasure]
       rw [MeasureTheory.Measure.map_comp (μ := initialMeasureIic0 μ)
         (κ := @Kernel.traj StepFamily (fun _ => inferInstance) (transitionKernel μ)
           (fun n => transitionKernel_isMarkov μ n h_stoch) 0) hk_meas]
@@ -2377,7 +2382,7 @@ theorem IT_product_factorizationWithPolicy (μ : Environment) (π : Agent) (h_st
         (environmentMeasureWithPolicy μ π h_stoch).map (frestrictLe (π := StepFamily) k) =
           Kernel.partialTraj (transitionKernelWithPolicy μ π) 0 k ∘ₘ initialMeasureIic0WithPolicy μ π := by
       have hk_meas : Measurable (frestrictLe (π := StepFamily) k) := measurable_frestrictLe (X := StepFamily) k
-      simp only [environmentMeasureWithPolicy]
+      simp [environmentMeasureWithPolicy]
       rw [MeasureTheory.Measure.map_comp (μ := initialMeasureIic0WithPolicy μ π)
         (κ := @Kernel.traj StepFamily (fun _ => inferInstance) (transitionKernelWithPolicy μ π)
           (fun n => transitionKernelWithPolicy_isMarkov μ π n h_stoch) 0) hk_meas]

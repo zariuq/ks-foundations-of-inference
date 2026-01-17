@@ -15,6 +15,8 @@ Key insight: Probability DERIVED from symmetry, not axiomatized!
   - `Separation/SandwichSeparation.lean`: sandwich separation ⇒ commutativity + Archimedean-style consequences
 - **RepresentationTheorem.lean**: **MAIN ENTRYPOINT** - Appendix A representation theorem (proof under `RepresentationTheorem/`)
 - **ProductTheorem.lean**: Appendix B product theorem (product equation → exponential → product rule)
+- **ConditionalProbability/**: K&S Section 7 on conditional probability
+  - `ConditionalProbability/Basic.lean`: Axiom 5 (Chaining Associativity), chain-product rule, Bayes' theorem
 
 ## Layer Structure
 
@@ -37,5 +39,6 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.ProductTheorem
 import Mettapedia.ProbabilityTheory.KnuthSkilling.GoertzelGroupFix
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ProbabilityDerivation
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Independence
+import Mettapedia.ProbabilityTheory.KnuthSkilling.ConditionalProbability
 
 -- Countermodels are parked under CounterModels/ and not imported by default.

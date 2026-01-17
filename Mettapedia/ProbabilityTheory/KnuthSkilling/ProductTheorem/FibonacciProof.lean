@@ -1085,8 +1085,7 @@ lemma exponential_on_lattice_strictMono
     (0 < A → StrictMonoOn Ψ {x : ℝ | ∃ m n : ℤ, x = m * a - n * a}) ∧
     (A < 0 → StrictMonoOn (fun x => -Ψ x) {x : ℝ | ∃ m n : ℤ, x = m * a - n * a}) := by
   constructor
-  · intro hApos
-    intro x hx y hy hxy
+  · intro hApos x hx y hy hxy
     obtain ⟨m₁, n₁, rfl⟩ := hx
     obtain ⟨m₂, n₂, rfl⟩ := hy
     -- x = m₁*a - n₁*a < y = m₂*a - n₂*a
@@ -1099,8 +1098,7 @@ lemma exponential_on_lattice_strictMono
     apply mul_lt_mul_of_pos_right
     · exact Real.exp_strictMono (mul_lt_mul_of_pos_left hxy hApos)
     · exact hPos 0
-  · intro hAneg
-    intro x hx y hy hxy
+  · intro hAneg x hx y hy hxy
     obtain ⟨m₁, n₁, rfl⟩ := hx
     obtain ⟨m₂, n₂, rfl⟩ := hy
     have h0 := hLattice m₁ n₁ 0
@@ -1604,7 +1602,7 @@ theorem ks_appendix_b_fibonacci_strictAnti
     simp only [Ψ', ζ']
     have := hProd (-τ) (-ξ) (-η)
     simp only [neg_add_rev] at this ⊢
-    convert this using 2 <;> ring
+    convert this using 2 <;> ring_nf
   have hPos' : ∀ x, 0 < Ψ' x := fun x => hPos (-x)
   have hStrictMono' : StrictMono Ψ' := hStrictAnti.comp (fun _ _ h => neg_lt_neg h)
   obtain ⟨C', A', hC'_pos, hΨ'_eq⟩ := ks_appendix_b_fibonacci_strictMono Ψ' ζ' hProd' hPos' hStrictMono'

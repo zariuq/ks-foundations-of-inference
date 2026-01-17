@@ -905,14 +905,17 @@ theorem directProduct_rule_mul_div_const
     (P : ProductTheorem.DirectProduct α β γ)
     (vα : Valuation α) (vβ : Valuation β) (vγ : Valuation γ)
     {tensor : ProductTheorem.PosReal → ProductTheorem.PosReal → ProductTheorem.PosReal}
-    (hTensor : ProductTheorem.TensorRegularity tensor)
+    (hAssoc : ∀ u v w : ProductTheorem.PosReal,
+      tensor (tensor u v) w = tensor u (tensor v w))
     (hDistrib : ProductTheorem.DistributesOverAdd tensor)
+    (hCommOne : ∀ t : ProductTheorem.PosReal,
+      tensor ProductTheorem.onePos t = tensor t ProductTheorem.onePos)
     (hCompat : RectTensorCompatible (β := β) (γ := γ) P vα vβ vγ tensor) :
     ∃ C : ℝ, 0 < C ∧
       ∀ a : α, ∀ b : β, 0 < vα.val a → 0 < vβ.val b →
         vγ.val (P.prod a b) = (vα.val a * vβ.val b) / C := by
-  rcases ProductTheorem.tensor_coe_eq_mul_div_const_of_tensorRegularity
-      (tensor := tensor) hTensor hDistrib with ⟨C, hC, hMul⟩
+  rcases ProductTheorem.tensor_coe_eq_mul_div_const_of_assoc_of_distrib_of_comm_one
+      (tensor := tensor) hAssoc hDistrib hCommOne with ⟨C, hC, hMul⟩
   refine ⟨C, hC, ?_⟩
   intro a b ha hb
   have hRect : vγ.val (P.prod a b) =

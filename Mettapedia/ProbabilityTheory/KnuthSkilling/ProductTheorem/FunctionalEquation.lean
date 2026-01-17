@@ -279,11 +279,18 @@ theorem continuous_additive_eq_mul (φ : ℝ → ℝ)
   have : f_lin x = x * f_lin 1 := by simpa [smul_eq_mul] using hsmul
   simpa [f_add, f_lin, mul_comm, mul_left_comm, mul_assoc] using this
 
-/-- K&S Appendix B Product Theorem, with explicit regularity assumptions.
+/-- K&S Appendix B Product Theorem: exponential is the unique solution.
 
-If `Ψ` is positive, continuous, and strictly increasing, and satisfies the product equation,
-then `Ψ` is an exponential `C * exp (A * x)` (with `0 < C`).
--/
+If `Ψ` is positive, continuous, strictly monotone, and satisfies the product equation,
+then `Ψ x = C * exp (A * x)` for some `C > 0`.
+
+This is a standard functional equations result. The hypotheses `Continuous Ψ` and
+`StrictMono Ψ` are **not** extra assumptions in K&S - they are **derived** from the
+order isomorphism `Θ : PosReal ≃o ℝ` established in Appendix A:
+- `Psi_continuous`: order isomorphisms on ℝ are continuous
+- `Psi_strictMono`: order isomorphisms are strictly monotone
+
+See `ProductTheorem.Main` for the assembled result. -/
 theorem productEquation_solution_of_continuous_strictMono
     {Ψ : ℝ → ℝ} {ζ : ℝ → ℝ → ℝ}
     (hEq : ProductEquation Ψ ζ)

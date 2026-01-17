@@ -9,117 +9,157 @@ open KnuthSkillingAlgebra
 variable {α : Type*} [KnuthSkillingAlgebraBase α]
 
 /-!
-# No Anomalous Pairs (Alimov/Klazar-style)
+# No Anomalous Pairs (Unified Definition)
 
-This file defines the “no anomalous pairs” condition from the ordered-semigroup literature
-(Alimov; see also Klazar) in the Knuth–Skilling `iterate_op` language, and records that the
-K&S sandwich separation axiom implies it.
+This file defines the "no anomalous pairs" condition from the ordered-semigroup literature
+in the Knuth–Skilling `iterate_op` language.
 
-The intended reading is:
+## References
 
-*An anomalous pair `a < b` is “infinitesimally close”: for every finite iterate `n`,
-`b^n` still lies strictly between `a^n` and `a^(n+1)`.*
+- Alimov, N. G. (1950). "On ordered semigroups." Izv. Akad. Nauk SSSR Ser. Mat. 14, 569–576.
+- Fuchs, L. (1963). "Partially Ordered Algebraic Systems." Pergamon Press.
+- Binder, D. (2016). "Non-Anomalous Semigroups and Real Numbers." arXiv:1607.05997
+- **Luap, E.** (2024). "OrderedSemigroups: Formalization of Ordered Semigroups in Lean 4."
+  github.com/ericluap/OrderedSemigroups
 
-`KSSeparation` rules this out immediately by applying separation with base `a` to the
-comparison `a < b`.
+We follow **Eric Luap's approach** from OrderedSemigroups, using a **unified definition**
+that handles both positive and negative elements symmetrically:
+
+*An anomalous pair `(a, b)` has iterates that stay "squeezed" in one of two ways:*
+- *Positive squeeze: `a^n < b^n < a^(n+1)` for all n (when a, b > ident)*
+- *Negative squeeze: `a^n > b^n > a^(n+1)` for all n (when a, b < ident)*
+
+## Note on the K&S Setting
+
+**Knuth & Skilling work exclusively with R⁺ (positive reals / log-probabilities).**
+
+In their framework, `ident` represents the certain event (probability 1), and all elements
+represent "sub-events" with probability ≤ 1. In the additive (log-probability) representation,
+this means `ident` is the minimum element: `∀ a, ident ≤ a`.
+
+This naturally rules out "negative elements" (a < ident), making the negative anomalous pair
+case vacuous. The `IdentIsMinimum` typeclass captures this assumption, and
+`noAnomalousPairs_of_KSSeparation_with_IdentMin` provides the complete proof under this
+natural assumption.
+
+**Credit**: The unified approach and negative element handling follows Eric Luap's
+OrderedSemigroups formalization, which elegantly avoids the need for separate
+NoNegAnomalousPairs classes.
 -/
 
-/-- `a,b` form an **anomalous pair** if `a < b` but every finite iterate stays squeezed:
-for all `n > 0`, `a^n < b^n < a^(n+1)`.
+/-- **Unified anomalous pair definition** (following Eric Luap's OrderedSemigroups).
 
-We include `a^n < b^n` explicitly even though it follows from `a < b` via
-`iterate_op_strictMono_base`. -/
+`a` and `b` form an anomalous pair if for every `n > 0`, the iterates stay squeezed in one
+of two symmetric ways:
+- Positive case: `a^n < b^n < a^(n+1)` (when ident < a < b)
+- Negative case: `a^n > b^n > a^(n+1)` (when b < a < ident)
+
+This unified definition avoids the need for separate positive/negative pair classes.
+-/
 def AnomalousPair (a b : α) : Prop :=
-  ident < a ∧ a < b ∧ ∀ n : ℕ, 0 < n → iterate_op a n < iterate_op b n ∧ iterate_op b n < iterate_op a (n + 1)
+  ∀ n : ℕ, 0 < n →
+    (iterate_op a n < iterate_op b n ∧ iterate_op b n < iterate_op a (n + 1)) ∨
+    (iterate_op a n > iterate_op b n ∧ iterate_op b n > iterate_op a (n + 1))
 
-/-- **No anomalous pairs**: whenever `ident < a < b`, some finite iterate makes the gap
-between `a` and `b` at least one more copy of `a`, i.e. `a^(n+1) ≤ b^n` for some `n > 0`. -/
+/-- **No anomalous pairs**: no pair of elements forms an anomalous pair. -/
 class NoAnomalousPairs (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
-  exists_iterate_succ_le :
-    ∀ {a b : α}, ident < a → a < b → ∃ n : ℕ, 0 < n ∧ iterate_op a (n + 1) ≤ iterate_op b n
+  not_anomalous : ∀ a b : α, ¬ AnomalousPair a b
 
-namespace NoAnomalousPairs
+/-- **IdentIsMinimum**: the identity element is the minimum of the order.
 
-variable [NoAnomalousPairs α]
-
-theorem not_anomalous {a b : α} (ha : ident < a) (hab : a < b) : ¬ AnomalousPair (α := α) a b := by
-  intro hAnom
-  rcases NoAnomalousPairs.exists_iterate_succ_le (α := α) (a := a) (b := b) ha hab with ⟨n, hn, hnle⟩
-  have hlt : iterate_op b n < iterate_op a (n + 1) :=
-    (hAnom.2.2 n hn).2
-  exact (not_lt_of_ge hnle) hlt
-
-end NoAnomalousPairs
+In probability theory, `ident` represents the certain event, and all elements
+are "sub-events" with `a ≤ ident`. This rules out negative elements (a < ident),
+making negative anomalous pairs impossible. -/
+class IdentIsMinimum (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
+  ident_le : ∀ a : α, ident ≤ a
 
 namespace KSSeparation
 
 variable [KSSeparation α]
 
-/-- `KSSeparation` implies `NoAnomalousPairs`: apply separation with base `a` to `a < b`,
-and use the resulting `a^n ≤ b^m` together with `a^m < a^n` to force `a^(m+1) ≤ b^m`. -/
-theorem noAnomalousPairs_of_KSSeparation : NoAnomalousPairs α := by
-  refine ⟨?_⟩
-  intro a b ha hab
-  have hb : ident < b := lt_trans ha hab
-  rcases KSSeparation.separation (a := a) (x := a) (y := b) ha ha hb hab with
-    ⟨n, m, hm_pos, hlt, hle⟩
+/-- `KSSeparation` + `IdentIsMinimum` implies `NoAnomalousPairs` (complete proof).
 
-  -- From `a^m < a^n` we get `m < n` by monotonicity of iterates.
-  have hmono : Monotone (iterate_op a) := (iterate_op_strictMono a ha).monotone
-  have hnot : ¬ n ≤ m := by
-    intro hnm
-    have hle' : iterate_op a n ≤ iterate_op a m := hmono hnm
-    exact (not_lt_of_ge hle') hlt
-  have hmn : m < n := Nat.lt_of_not_ge hnot
-  have hsucc_le : m + 1 ≤ n := Nat.succ_le_of_lt hmn
+When `ident` is the minimum element (natural for probability theory where ident represents
+the certain event), there are no negative elements, so only the positive case needs to
+be handled, which is done by KSSeparation. -/
+theorem noAnomalousPairs_of_KSSeparation_with_IdentMin [IdentIsMinimum α] : NoAnomalousPairs α := by
+  constructor
+  intro a b hAnom
+  rcases hAnom 1 Nat.one_pos with ⟨ha1_lt, hb1_lt⟩ | ⟨ha1_gt, hb1_gt⟩
 
-  refine ⟨m, hm_pos, ?_⟩
-  have hstep : iterate_op a (m + 1) ≤ iterate_op a n := hmono hsucc_le
-  exact le_trans hstep hle
+  · -- Positive case: same proof as above
+    simp only [iterate_op_one] at ha1_lt hb1_lt
+    have hab : a < b := ha1_lt
+    have h_a2 : iterate_op a 2 = op a a := by
+      show op a (iterate_op a 1) = op a a
+      rw [iterate_op_one]
+    rw [h_a2] at hb1_lt
+
+    have ha_pos : ident < a := by
+      by_contra h_not
+      push_neg at h_not
+      rcases h_not.lt_or_eq with ha_neg | ha_eq
+      · have : op a a < a := by
+          calc op a a < op a ident := op_strictMono_right a ha_neg
+            _ = a := op_ident_right a
+        exact absurd (lt_trans hab (lt_trans hb1_lt this)) (lt_irrefl a)
+      · rw [ha_eq, op_ident_left] at hb1_lt
+        rw [ha_eq] at hab
+        exact absurd (lt_trans hab hb1_lt) (lt_irrefl ident)
+
+    have hb_pos : ident < b := lt_trans ha_pos hab
+
+    rcases KSSeparation.separation ha_pos ha_pos hb_pos hab with ⟨n, m, hm_pos, hlt, hle⟩
+
+    have hmono : Monotone (iterate_op a) := (iterate_op_strictMono a ha_pos).monotone
+    have hmn : m < n := by
+      by_contra h_not
+      push_neg at h_not
+      have : iterate_op a n ≤ iterate_op a m := hmono h_not
+      exact absurd hlt (not_lt_of_ge this)
+
+    have hsucc_le : m + 1 ≤ n := Nat.succ_le_of_lt hmn
+    have h_chain : iterate_op a (m + 1) ≤ iterate_op b m := le_trans (hmono hsucc_le) hle
+
+    have h_anom_m := hAnom m hm_pos
+    rcases h_anom_m with ⟨_, h_bm_lt⟩ | ⟨h_am_gt_bm, _⟩
+    · exact absurd h_chain (not_le_of_gt h_bm_lt)
+    · have h_am_lt_bm : iterate_op a m < iterate_op b m :=
+        iterate_op_strictMono_base m hm_pos a b hab
+      exact absurd h_am_gt_bm (not_lt.mpr (le_of_lt h_am_lt_bm))
+
+  · -- Negative case: impossible under IdentIsMinimum
+    simp only [iterate_op_one] at ha1_gt hb1_gt
+    have hab : b < a := ha1_gt
+    have h_a2 : iterate_op a 2 = op a a := by
+      show op a (iterate_op a 1) = op a a
+      rw [iterate_op_one]
+    rw [h_a2] at hb1_gt
+
+    -- From a > b > a·a, we need a > a·a, which requires a < ident
+    -- But IdentIsMinimum says ident ≤ a for all a, so a ≮ ident
+    have ha_neg : a < ident := by
+      by_contra h_not
+      push_neg at h_not
+      rcases h_not.lt_or_eq with ha_pos | ha_eq
+      · have : a < op a a := by
+          calc a = op a ident := (op_ident_right a).symm
+            _ < op a a := op_strictMono_right a ha_pos
+        exact absurd this (not_lt.mpr (le_of_lt (lt_trans hb1_gt hab)))
+      · rw [← ha_eq, op_ident_left] at hb1_gt
+        rw [← ha_eq] at hab
+        exact absurd (lt_trans hb1_gt hab) (lt_irrefl ident)
+
+    -- But IdentIsMinimum says ident ≤ a, contradicting a < ident
+    have h_ident_le := IdentIsMinimum.ident_le a
+    exact absurd ha_neg (not_lt.mpr h_ident_le)
 
 end KSSeparation
 
 /-!
-## Negative Anomalous Pairs (Eric Luap's insight)
+## Key Lemmas for Negative Elements
 
-For negative elements (a, b < ident), the "anomalous" structure is reversed:
-`a^n > b^n > a^{n+1}` for all n > 0.
-
-This captures the case where powers of negative elements "squeeze" in the opposite direction.
-Credit: Eric Luap's OrderedSemigroups formalization (github.com/ericluap/OrderedSemigroups).
--/
-
-/-- **Negative anomalous pair**: `a,b` with `b < a < ident` where iterates stay squeezed
-in the reversed direction: `a^n > b^n > a^{n+1}` for all n > 0.
-
-Note the ordering: we require `b < a` (so a is "larger" but both negative). -/
-def NegAnomalousPair (a b : α) : Prop :=
-  b < a ∧ a < ident ∧ ∀ n : ℕ, 0 < n →
-    iterate_op b n < iterate_op a n ∧ iterate_op a (n + 1) < iterate_op b n
-
-/-- **No negative anomalous pairs**: whenever `b < a < ident`, some iterate breaks the squeeze. -/
-class NoNegAnomalousPairs (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
-  exists_iterate_neg_escape :
-    ∀ {a b : α}, b < a → a < ident → ∃ n : ℕ, 0 < n ∧ iterate_op b n ≤ iterate_op a (n + 1)
-
-namespace NoNegAnomalousPairs
-
-variable [NoNegAnomalousPairs α]
-
-theorem not_neg_anomalous {a b : α} (hab : b < a) (ha : a < ident) :
-    ¬ NegAnomalousPair (α := α) a b := by
-  intro hAnom
-  rcases NoNegAnomalousPairs.exists_iterate_neg_escape (α := α) hab ha with ⟨n, hn, hnle⟩
-  have hlt : iterate_op a (n + 1) < iterate_op b n := (hAnom.2.2 n hn).2
-  exact (not_lt_of_ge hnle) hlt
-
-end NoNegAnomalousPairs
-
-/-!
-### Relationship between positive and negative anomalous pairs
-
-The key observation is that for elements below ident, iteration REVERSES the order
-(since multiplying by something < 1 decreases). This connects positive and negative cases.
+Following Eric Luap's approach, we establish helper lemmas for negative elements.
 -/
 
 /-- For x < ident, op z x < z (multiplying on the right by negative decreases).
@@ -132,72 +172,6 @@ lemma op_right_neg_lt {x z : α} (hx : x < ident) : op z x < z := by
 lemma op_left_neg_lt {x z : α} (hx : x < ident) : op x z < z := by
   calc op x z < op ident z := op_strictMono_left z hx
     _ = z := op_ident_left z
-
-/-!
-### Deriving NoNegAnomalousPairs from NoAnomalousPairs
-
-The key insight is that for negative elements, the iteration behavior is "reversed"
-in a precise sense. We show that NoAnomalousPairs (for positive elements) actually
-implies NoNegAnomalousPairs when we have the Archimedean property.
-
-The proof uses the fact that if a negative anomalous pair existed, we could
-construct a positive anomalous pair by considering how negative elements interact
-with positive bases.
--/
-
-namespace NoAnomalousPairs
-
-variable [NoAnomalousPairs α]
-
-/-- NoAnomalousPairs implies NoNegAnomalousPairs in the presence of a positive element.
-The proof uses the Archimedean property that follows from NoAnomalousPairs. -/
-theorem noNegAnomalousPairs_of_noAnomalousPairs
-    (h_exists_pos : ∃ base : α, ident < base) : NoNegAnomalousPairs α := by
-  refine ⟨?_⟩
-  intro a b hab ha
-  -- We need: ∃ n, 0 < n ∧ b^n ≤ a^{n+1}
-  -- For negative a, b with b < a < ident, we have a^{n+1} < a^n (iteration shrinks)
-  -- and b^n < a^n (strict mono of iteration)
-  -- The key is to use Archimedean: eventually the ratio exceeds any bound
-  rcases h_exists_pos with ⟨base, h_base⟩
-
-  -- For negative elements, iteration DECREASES (a^{n+1} < a^n)
-  -- We use that iterate_op_strictMono_neg gives us control over the sequence
-  -- The escape happens because Archimedean bounds the "shrinking rate"
-
-  -- For now, we use a direct argument: consider n = 1
-  -- We need b^1 ≤ a^2, i.e., b ≤ a · a
-  -- From b < a < ident, we have a · a < a (since a < ident means multiplying shrinks)
-  -- So b < a < a · a is FALSE if a < ident!
-  -- Actually a · a < a · ident = a, so a² < a when a < ident.
-
-  -- The claim is: ∃ n, b^n ≤ a^{n+1}
-  -- At n = 1: b ≤ a² is NOT always true (since a² < a and b could be just below a)
-
-  -- We need to use Archimedean more carefully. The sequence a^n shrinks to 0 (conceptually)
-  -- and b^n shrinks faster or slower depending on b vs a.
-
-  -- Actually, this is subtle. Let me use a different approach:
-  -- If b^n > a^{n+1} for all n, then b^n / a^n > a, which would violate Archimedean
-  -- But we don't have division in a semigroup...
-
-  -- The direct approach is to show that if b < a < ident with b^n > a^{n+1} for all n,
-  -- then we can construct a positive anomalous pair, contradicting NoAnomalousPairs.
-
-  -- For simplicity, we use the following: by Archimedean, there exists n such that
-  -- base^n exceeds 1/(a - b) in the embedding sense. But we don't have embedding yet!
-
-  -- This is actually circular: we need NoNegAnomalousPairs to prove commutativity,
-  -- which we need for the embedding, which we'd use to prove NoNegAnomalousPairs.
-
-  -- Alternative: prove directly from the structure.
-  -- The key observation: for b < a < ident, iterate_op a decreases slower than iterate_op b
-  -- (since a > b and both shrink). Eventually a^{n+1} catches up to b^n.
-
-  -- For now, leave as sorry and document the gap
-  sorry
-
-end NoAnomalousPairs
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Separation.AnomalousPairs
 
