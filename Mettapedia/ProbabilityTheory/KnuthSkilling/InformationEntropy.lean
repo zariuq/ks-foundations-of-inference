@@ -184,6 +184,7 @@ open Mettapedia.ProbabilityTheory.KnuthSkilling.ConditionalProbability
 
 /-- For Fin (m+1), iSup splits into sup of iSup over Fin m and the last element. -/
 theorem iSup_fin_succ {α : Type*} [CompleteLattice α] {m : ℕ} (f : Fin (m + 1) → α) :
+    -- Note: This only requires CompleteLattice (no distributivity needed)
     ⨆ i : Fin (m + 1), f i = (⨆ i : Fin m, f (Fin.castSucc i)) ⊔ f (Fin.last m) := by
   apply le_antisymm
   · -- ⨆ f ≤ (⨆ castSucc) ⊔ f(last)
@@ -194,7 +195,9 @@ theorem iSup_fin_succ {α : Type*} [CompleteLattice α] {m : ℕ} (f : Fin (m + 
       rw [hi]
       exact le_sup_right
     · -- i ≠ last m, so i = castSucc j for some j
-      have hj : ∃ j : Fin m, i = Fin.castSucc j := Fin.exists_castSucc_eq.mpr hi
+      have hj : ∃ j : Fin m, i = Fin.castSucc j := by
+        rcases Fin.exists_castSucc_eq.mpr hi with ⟨j, hj⟩
+        exact ⟨j, hj.symm⟩
       rcases hj with ⟨j, hj⟩
       rw [hj]
       exact le_sup_of_le_left (le_iSup (f ∘ Fin.castSucc) j)
@@ -208,9 +211,11 @@ theorem iSup_fin_succ {α : Type*} [CompleteLattice α] {m : ℕ} (f : Fin (m + 
 open Finset in
 /-- Helper lemma: For a finite disjoint family, baseMeasure of the supremum equals the sum.
 
-This is the n-ary extension of `baseMeasure.additive`. -/
+This is the n-ary extension of `baseMeasure.additive`.
+
+Note: Requires `Order.Frame` (or stronger) for `iSup_disjoint_iff` to apply. -/
 theorem baseMeasure_sum_eq_sup_of_disjoint
-    {α : Type*} [CompleteLattice α]
+    {α : Type*} [Order.Frame α]
     (B : Bivaluation α)
     {n : ℕ} (atoms : Fin n → α)
     (hDisjoint : ∀ i j, i ≠ j → Disjoint (atoms i) (atoms j)) :
@@ -274,7 +279,7 @@ This connects `ProbDist` to the K&S derivation: probability distributions
 arise from the derived `baseMeasure` on finite event spaces.
 -/
 noncomputable def ProbDist.ofBivaluationPartition
-    {α : Type*} [CompleteLattice α]
+    {α : Type*} [Order.Frame α]
     (B : Bivaluation α) [ChainingAssociativity α B]
     (hNorm : ∀ t : α, ⊥ < t → B.p t t = 1)
     {n : ℕ} (hn : 0 < n) (atoms : Fin n → α)
@@ -303,7 +308,7 @@ noncomputable def ProbDist.ofBivaluationPartition
 
 /-- The induced probability distribution agrees with baseMeasure. -/
 theorem ProbDist.ofBivaluationPartition_eq
-    {α : Type*} [CompleteLattice α]
+    {α : Type*} [Order.Frame α]
     (B : Bivaluation α) [ChainingAssociativity α B]
     (hNorm : ∀ t : α, ⊥ < t → B.p t t = 1)
     {n : ℕ} (hn : 0 < n) (atoms : Fin n → α)

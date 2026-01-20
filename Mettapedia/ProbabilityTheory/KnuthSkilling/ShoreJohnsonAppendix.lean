@@ -134,11 +134,10 @@ noncomputable def shift2Prob {n : ℕ} (q : ProbDist n) (i j : Fin n) (hij : i �
     · subst hki
       simp [shift2, ht0]
     by_cases hkj : k = j
-    · subst hkj
-      have hnonneg : 0 ≤ q.p i + q.p j - t := by
+    · have hnonneg : 0 ≤ q.p i + q.p j - t := by
         linarith [q.nonneg i, q.nonneg j, ht1]
       have hji : j ≠ i := ne_comm.mp hij
-      simpa [shift2, hji] using hnonneg
+      simpa [shift2, hki, hkj, hji] using hnonneg
     · simp [shift2, hki, hkj, q.nonneg k]
   sum_one := by
     simpa using sum_shift2_eq_one (q := q) (i := i) (j := j) (t := t) hij
