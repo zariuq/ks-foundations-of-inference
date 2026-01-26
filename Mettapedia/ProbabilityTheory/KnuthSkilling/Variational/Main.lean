@@ -54,8 +54,11 @@ See also:
 - `Mettapedia/ProbabilityTheory/KnuthSkilling/Counterexamples/CauchyPathology.lean` for an explicit
   (Hamel-basis) countermodel showing that *some* regularity hypothesis is genuinely needed to rule
   out non-linear solutions of Cauchy’s equation.
-- `Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/PathC.lean` for the Shore-Johnson
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/KLDerivation.lean` for the Shore-Johnson
   alternative route to the same multiplicative Cauchy/log conclusion (used to reach KL).
+- `Mettapedia/ProbabilityTheory/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean` for an
+  explicit bridge file showing the shared Cauchy/log regularity gate between Appendix C and
+  Shore--Johnson.
 
 This follows the K&S design principle: the same core algebraic structures appear across
 Appendices A, B, and C, with shared proof techniques.

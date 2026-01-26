@@ -34,7 +34,7 @@ constraint language (as in Shore–Johnson: expected-value constraints) and form
 operator→objective derivation (their Theorem I / Appendix). The constraint language is introduced
 in `Mettapedia/ProbabilityTheory/KnuthSkilling/Constraints.lean`, and the resulting
 assumption bundle for the SJ→KL pipeline is packaged in
-`Mettapedia/ProbabilityTheory/KnuthSkilling/PathC.lean`.
+`Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/KLDerivation.lean`.
 -/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.Inference

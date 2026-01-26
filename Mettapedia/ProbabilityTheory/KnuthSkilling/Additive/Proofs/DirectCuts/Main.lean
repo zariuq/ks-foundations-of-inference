@@ -4,6 +4,7 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.Additive.Proofs.DirectCuts.Dir
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Additive.Proofs.DirectCuts
 
 open Classical
+open KSSemigroupBase
 open KnuthSkillingAlgebraBase
 open KnuthSkillingAlgebra
 
@@ -30,6 +31,46 @@ variable {α : Type*} [KnuthSkillingAlgebraBase α] [KSSeparation α]
 /-!
 ## Main theorem (cuts version)
 -/
+
+/-- **Identity-free representation theorem (cuts proof, ℕ+ version)**.
+
+This is the identity-free cuts construction from `DirectCuts.lean` packaged as an existence
+statement mirroring the main Appendix A API (but without normalization).
+
+This version is meant for semigroups without identity, typically modeling a "positive cone".
+Accordingly, it takes as input:
+- an anchor element `a` with `IsPositive a`,
+- a hypothesis that *all* elements are positive, and
+- commutativity (needed by the cuts-additivity argument).
+-/
+theorem associativity_representation_semigroup_cuts_pnat
+    (α : Type*) [KSSemigroupBase α] [KSSeparationSemigroupStrict α]
+    (a : α) (ha : IsPositive a)
+    (h_all_pos : ∀ x : α, IsPositive x)
+    (hcomm : ∀ u v : α, op u v = op v u) :
+    ∃ Θ : α → ℝ,
+      (∀ x y : α, x ≤ y ↔ Θ x ≤ Θ y) ∧
+      ∀ x y : α, Θ (op x y) = Θ x + Θ y := by
+  classical
+  let Θ : α → ℝ := fun x => Θ_cuts_pnat a ha x (h_all_pos x)
+  refine ⟨Θ, ?_, ?_⟩
+  · intro x y
+    constructor
+    · intro hxy
+      -- monotonicity of Θ_cuts_pnat
+      exact Θ_cuts_pnat_mono (a := a) (ha := ha) (x := x) (y := y) (h_all_pos x) (h_all_pos y) hxy
+    · intro hΘ
+      by_contra hxy
+      have hyx : y < x := lt_of_not_ge hxy
+      have hlt :=
+        Θ_cuts_pnat_strictMono (a := a) (ha := ha) (x := y) (y := x) (h_all_pos y) (h_all_pos x) hyx
+      exact (not_le_of_gt hlt) hΘ
+  · intro x y
+    -- Additivity uses commutativity; the positivity proof for `op x y` is irrelevant.
+    have h_add :=
+      Θ_cuts_pnat_add (a := a) (ha := ha) hcomm x y (h_all_pos x) (h_all_pos y)
+    -- Our Θ uses `h_all_pos (op x y)`; the lemma uses `isPositive_op' ...`. These agree by proof irrelevance.
+    simpa [Θ, Θ_cuts_pnat] using h_add
 
 /-- **K&S Appendix A representation theorem (cuts proof)**.
 

@@ -7,7 +7,7 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.Theorem
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.OperatorAtomBridge
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.KL
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.Bridge
-import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.PathC
+import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.KLDerivation
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.GradientSeparability
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.SJ3Locality
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.KLWitness
@@ -26,7 +26,7 @@ This entrypoint keeps two threads visible:
 
 2. **Path C overlap with Appendix C**. The Shore-Johnson path derives the same
    multiplicative Cauchy/log equation used in the Appendix C variational route.
-   See `ShoreJohnson.PathC` and compare with
+   See `ShoreJohnson.KLDerivation` and compare with
    `Mettapedia/ProbabilityTheory/KnuthSkilling/Variational/Main.lean`.
 
 Analytic regularity for SJ3 -> locality is packaged in `GradientSeparability` and

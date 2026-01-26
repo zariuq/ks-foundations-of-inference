@@ -5,9 +5,9 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.Bridge
 import Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.AppendixTheoremI
 
 /-!
-# Shore–Johnson → KL (Path C glue)
+# Shore--Johnson -> KL (Derivation Glue)
 
-This file packages a **clean, explicit assumption bundle** for the Shore–Johnson → KL path.
+This file packages a **clean, explicit assumption bundle** for the Shore--Johnson -> KL path.
 It does **not** attempt to re-prove Shore–Johnson's Appendix theorem; instead it makes every
 extra hypothesis explicit and then composes the already formalized functional-equation lemmas.
 
@@ -25,6 +25,8 @@ The intended story is:
 Relation to Appendix C:
 - The multiplicative Cauchy/log step here is the same analytic gate used in the
   variational path. See `Mettapedia/ProbabilityTheory/KnuthSkilling/Variational/Main.lean`.
+  For the explicit bridge file, see
+  `Mettapedia/ProbabilityTheory/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean`.
 
 Steps (1) and (2) are not fully formalized here; the point is to **keep them explicit** as
 assumptions while still providing a rigorously composable KL conclusion.
@@ -41,7 +43,7 @@ identity implies that `I` is realized (for **positive priors**) by minimizing a 
 of the KL atom objective.
 -/
 
-namespace Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.PathC
+namespace Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.KLDerivation
 
 open Classical
 open Finset BigOperators
@@ -53,9 +55,9 @@ open Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.AppendixTheoremI
 open Mettapedia.ProbabilityTheory.KnuthSkilling.Information.InformationEntropy
 open Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.Proof
 
-/-! ## Path C: explicit assumption bundle -/
+/-! ## Explicit assumption bundle -/
 
-structure SJPathCAssumptions where
+structure ShoreJohnsonToKLAssumptions where
   /-- Inference operator (SJ1–SJ4 live here). -/
   I : Inference.InferenceMethod
   /-- Objective functional realizing inference on expected-value constraint sets. -/
@@ -121,14 +123,14 @@ theorem d_one_cauchy_of_ratioForm_mulCauchyOnPos (d : ℝ → ℝ → ℝ) (rati
 
 /-! ## KL conclusion under explicit assumptions -/
 
-theorem pathC_log_on_probabilities (h : SJPathCAssumptions) :
+theorem log_on_probabilities (h : ShoreJohnsonToKLAssumptions) :
     ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → h.d 1 q = C * Real.log q := by
   -- Derive Cauchy equation for d(1, ·) from ratio form + MulCauchyOnPos
   have hCauchy := d_one_cauchy_of_ratioForm_mulCauchyOnPos h.d h.ratio h.gMul
   -- Apply the general Cauchy → log theorem
   exact mul_cauchy_Ioc_eq_const_mul_log (h.d 1) hCauchy h.d1Meas
 
-theorem pathC_klAtom (h : SJPathCAssumptions) :
+theorem d_eq_const_mul_klAtom (h : ShoreJohnsonToKLAssumptions) :
     ∃ C : ℝ, ∀ w u : ℝ, 0 < w → 0 < u → h.d w u = C * klAtom w u := by
   exact ratioForm_eq_const_mul_klAtom_of_measurable h.d h.ratio h.gMul h.gMeas
 
@@ -192,13 +194,13 @@ theorem isMinimizer_ofAtom_iff_ofAtom_const_mul_klAtom_of_posPrior {n : ℕ}
 
 /-! ## Inference-level conclusion (for positive priors) -/
 
-theorem pathC_infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : SJPathCAssumptions) :
+theorem infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : ShoreJohnsonToKLAssumptions) :
     ∃ C : ℝ, ∀ {n : ℕ} (p : ProbDist n) (cs : Constraints.EVConstraintSet n)
       (q : ProbDist n), (∀ i, 0 < p.p i) →
       (h.I.Infer p (Constraints.toConstraintSet cs) q ↔
         (∀ i, 0 < q.p i) ∧
           IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q) := by
-  rcases pathC_klAtom h with ⟨C, hC⟩
+  rcases d_eq_const_mul_klAtom h with ⟨C, hC⟩
   refine ⟨C, ?_⟩
   intro n p cs q hp
   have hInferF :
@@ -230,12 +232,12 @@ theorem pathC_infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : SJP
 
 /-! ### Specialized statement for expected-value constraint sets -/
 
-theorem pathC_infer_ev_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : SJPathCAssumptions) :
+theorem infer_ev_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : ShoreJohnsonToKLAssumptions) :
     ∃ C : ℝ, ∀ {n : ℕ} (p : ProbDist n) (cs : Constraints.EVConstraintSet n)
       (q : ProbDist n), (∀ i, 0 < p.p i) →
       (h.I.Infer p (Constraints.toConstraintSet cs) q ↔
         (∀ i, 0 < q.p i) ∧
           IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q) := by
-  exact pathC_infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior h
+  exact infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior h
 
-end Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.PathC
+end Mettapedia.ProbabilityTheory.KnuthSkilling.ShoreJohnson.KLDerivation
