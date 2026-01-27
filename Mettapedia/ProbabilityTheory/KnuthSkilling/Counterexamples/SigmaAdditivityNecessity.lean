@@ -314,11 +314,12 @@ These counterexamples show that ALL THREE axioms are strictly necessary
 for the σ-additivity theorem. None can be derived from the others.
 -/
 
-/-- Summary: Each axiom addresses a distinct failure mode -/
-theorem axioms_address_distinct_failures :
-    -- SigmaCompleteEvents: ensures joins exist (see finSubsets_not_sigma_complete)
-    -- KSScaleComplete: ensures limits exist (see sqrt2_not_rational)
-    -- KSScottContinuous: ensures valuation respects limits (see diffuse_not_sigma_additive)
-    True := trivial
+/- TODO: Package the three counterexamples into an "axioms are independent" lemma.
+
+This file already contains concrete countermodels witnessing that dropping each axiom yields a
+distinct failure mode. A future summary lemma should quantify this as a clean independence result.
+
+We intentionally do not leave a placeholder theorem of type `True`.
+-/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Counterexamples.SigmaAdditivityNecessity

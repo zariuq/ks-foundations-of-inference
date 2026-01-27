@@ -5,37 +5,17 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.Additive.Proofs.GridInduction.
 import Mettapedia.ProbabilityTheory.Hypercube.Basic
 
 /-!
-# Precise vs Imprecise Probability: A K&S-Grounded Example
+# Precise vs. Imprecise Probability (K&S-based example)
 
-This file provides a **properly grounded** example showing when precise and imprecise
-probability lead to different decisions.
+This file revisits the toy decision problem from `Examples/PreciseVsImprecise.lean` in a setting
+where the event space is a Boolean algebra and finite additivity is obtained from the K&S
+development (via `KSBooleanRepresentation`).
 
-## Foundational Grounding
+It also records which ingredients are decision-theoretic add-ons (expected utility, maximin),
+rather than consequences of the K&S axioms.
 
-Unlike the ungrounded version, this example:
-
-1. **Derives probability from K&S**: Uses `KSBooleanRepresentation` to get additivity
-2. **Connects to the Hypercube**: Shows precise vs imprecise as vertices
-3. **Marks EU as separate axiom**: Expected utility is NOT from K&S
-4. **Grounds credal sets**: Imprecise = set of K&S representations (incomplete case)
-5. **Marks maximin as separate**: Gilboa-Schmeidler axioms, not K&S
-
-## The Hypercube Position
-
-| Theory | Precision Axis | What Fails |
-|--------|---------------|------------|
-| K&S (precise) | `precise` | Nothing - full axioms |
-| Imprecise K&S | `imprecise` | Completeness fails |
-
-When K&S completeness fails, we get a **credal set**: multiple valid representations.
-
-## Decision Theory: BEYOND K&S
-
-K&S derives the **probability calculus**. It does NOT derive:
-- Why maximize expected utility (von Neumann-Morgenstern axioms)
-- What to do with imprecise probabilities (Gilboa-Schmeidler maximin)
-
-These require **additional axiom systems** documented herein.
+We also relate the example to the "precision axis" used in
+`Mettapedia.ProbabilityTheory.Hypercube`.
 
 ## References
 
@@ -88,12 +68,7 @@ The probability structure comes from K&S representation theorem:
 - Additivity: `P(A ∪ B) = P(A) + P(B)` for disjoint A, B
 -/
 
-/-- A probability distribution GROUNDED in K&S representation.
-
-**Key difference from ungrounded version**: We explicitly mark that this
-structure arises from `KSBooleanRepresentation` via normalization.
-
-The field `grounding_note` documents the derivation path. -/
+/-- A probability triple used in this example. -/
 structure KSGroundedProb where
   /-- Probability of each state -/
   pSafe : ℝ
@@ -103,14 +78,14 @@ structure KSGroundedProb where
   nonneg_safe : 0 ≤ pSafe
   nonneg_risky : 0 ≤ pRisky
   nonneg_cat : 0 ≤ pCatastrophic
-  /-- Additivity (DERIVED from K&S modularity, not assumed!) -/
+  /-- Normalization on the three atoms. -/
   sum_one : pSafe + pRisky + pCatastrophic = 1
-  /-- Documentation: This comes from K&S -/
+  /-- Documentation-only marker. -/
   grounding_note : Unit := ()
 
 /-! ### Derivation Documentation
 
-The `sum_one` property is **derived** in the K&S framework as follows:
+In the K&S setting, additivity on disjoint joins is obtained from modularity on a Boolean algebra:
 
 ```
 KSBooleanRepresentation.probability_modular:
@@ -128,9 +103,8 @@ See `BooleanRepresentation.lean` for the formal proof.
 
 /-! ### Actual K&S Representations
 
-Here we construct explicit `KSBooleanRepresentation Event` instances for our
-probability distributions. This is the key difference from the documentary version:
-we actually build the Θ functions and prove they satisfy K&S axioms.
+Here we construct explicit `KSBooleanRepresentation Event` instances for the example
+distributions, so that finite additivity is available via the generic lemmas.
 -/
 
 /-- Θ function for low risk distribution (P(Cat) = 0.5%).
@@ -597,23 +571,21 @@ The bounds are: pCat_lo = inf{P(cat) : P ∈ credal set}, pCat_hi = sup{P(cat) :
 
 This connection will be proven in `uncertaintyCredal_matches_credalset` theorem later. -/
 
-/-! ## §3: Utility Theory (SEPARATE from K&S!)
+/-! ## §3: Utility Theory (separate from the K&S development)
 
-**IMPORTANT**: Expected utility maximization is NOT derived from K&S.
-It requires the von Neumann-Morgenstern axioms (1944):
+Expected-utility maximization is a decision-theoretic assumption (von Neumann--Morgenstern),
+not a consequence of the K\&S probability axioms.  We record this explicitly since the rest of the
+file compares different decision rules once probabilities are available.
+
+The usual vNM assumptions include:
 
 1. Completeness: Can compare any two lotteries
 2. Transitivity: Preferences are transitive
 3. Continuity: No infinitely good/bad outcomes
 4. Independence: Preference preserved under mixing
-
-These are ADDITIONAL axioms beyond K&S. We mark this clearly.
 -/
 
-/-- The utility function. This is EXTERNAL INPUT, not derived.
-
-**Foundational status**: K&S derives probability, not utility.
-The numbers here are modeling choices, not theorems. -/
+/-- Utility/payoff table (modeling input). -/
 def utility : Action → State → ℝ
   | normal, safe => 100
   | normal, risky => 50
@@ -622,19 +594,14 @@ def utility : Action → State → ℝ
   | cautious, risky => 70
   | cautious, catastrophic => 60
 
-/-- **von Neumann-Morgenstern Expected Utility**
-
-AXIOM (not derived from K&S): A rational agent maximizes expected utility.
-
-This is justified by vNM axioms, NOT by K&S. We state it as a definition
-with explicit documentation of its axiomatic status. -/
+/-- Expected utility of an action under a (finite) probability distribution. -/
 def expectedUtility (P : KSGroundedProb) (a : Action) : ℝ :=
   P.pSafe * utility a safe + P.pRisky * utility a risky + P.pCatastrophic * utility a catastrophic
 
 /-! ### Decision Theory Axiom Systems
 
-**CRITICAL**: The following axiom systems are INDEPENDENT of K&S. K&S derives probability
-calculus, but does NOT tell us how to make decisions. That requires separate axiom systems.
+The decision rules below are independent of the K\&S probability calculus: K\&S provides a
+probability representation, while decision-theoretic criteria supply a choice rule.
 -/
 
 /-- A lottery: a probability distribution over outcomes -/
@@ -679,33 +646,21 @@ structure VNMPreferences (Ω : Type*) where
 noncomputable def expectedValue {Ω : Type*} [Fintype Ω] (u : Ω → ℝ) (L : Lottery Ω) : ℝ :=
   ∑ ω, u ω * L ω
 
-/-- **Von Neumann-Morgenstern Representation Theorem** (AXIOMATIZED)
+/-!
+Remark (not formalized here).  The von Neumann--Morgenstern representation theorem states that,
+under suitable axioms on preferences over lotteries, there exists a utility function representing
+preferences via expected utility.
 
-If preferences satisfy the vNM axioms, there exists a utility function u : Ω → ℝ such that:
-  L₁ ≿ L₂  ⟺  𝔼[u(L₁)] ≥ 𝔼[u(L₂)]
-
-**We axiomatize this** because the full proof requires significant measure theory machinery.
-
-## Note on Foundations
-This is a META-THEOREM about the relationship between axiom systems:
-- K&S axioms → probability calculus P(·)
-- vNM axioms → expected utility representation
-- These are INDEPENDENT axiom systems
-
-You cannot derive vNM from K&S, or vice versa.
+We do not need this theorem for the computations in this file; it is included only as background
+about where the decision-theoretic ``maximize expected utility'' criterion usually comes from.
 -/
-axiom vNM_representation_theorem :
-  ∀ (Ω : Type*) [Fintype Ω] (prefs : VNMPreferences Ω),
-  ∃ (u : Ω → ℝ),
-    ∀ L₁ L₂, prefs.prefers L₁ L₂ ↔
-      expectedValue u L₁ ≥ expectedValue u L₂
 
 /-- **Gilboa-Schmeidler Axioms** (1989) for Maximin Expected Utility
 
 These axioms characterize preferences under ambiguity (imprecise probability).
 
-**Key insight**: When probabilities are imprecise (a credal set), the vNM independence
-axiom is TOO STRONG. Gilboa-Schmeidler replace it with "uncertainty aversion."
+When probabilities are imprecise (a credal set), the vNM independence axiom is typically
+replaced by an "uncertainty aversion" axiom (Gilboa--Schmeidler).
 
 ## References
 - Gilboa, I., & Schmeidler, D. (1989). "Maximin expected utility with non-unique prior"
@@ -745,30 +700,14 @@ noncomputable def actExpectedValue {Ω : Type*} [Fintype Ω]
     (u : ℝ → ℝ) (P : Ω → ℝ) (f : Ω → ℝ) : ℝ :=
   ∑ ω, P ω * u (f ω)
 
-/-- **Gilboa-Schmeidler Representation Theorem** (AXIOMATIZED)
+/-!
+Remark (not formalized here).  The Gilboa--Schmeidler representation theorem gives an axiomatic
+foundation for maximin expected utility under ambiguity: preferences can be represented as a
+worst-case expected utility over a (nonempty) credal set.
 
-If preferences satisfy the G-S axioms, there exists:
-1. A utility function u : ℝ → ℝ (often identity for monetary outcomes)
-2. A credal set C (set of probability measures)
-
-Such that:
-  f ≿ g  ⟺  min_{P ∈ C} 𝔼_P[u(f)] ≥ min_{P ∈ C} 𝔼_P[u(g)]
-
-This is the **maximin expected utility** criterion.
-
-**Foundational status**: SEPARATE from both K&S and vNM.
-- K&S → probability calculus
-- vNM → expected utility (precise probabilities)
-- G-S → maximin utility (imprecise probabilities)
+As above, this is background only; the remainder of the file fixes a particular decision rule and
+computes with it.
 -/
-axiom GilboaSchmeidler_representation_theorem :
-  ∀ (Ω : Type*) [Fintype Ω] (prefs : GilboaSchmeidlerPreferences Ω),
-  ∃ (u : ℝ → ℝ) (C : Set (Ω → ℝ)),
-    C.Nonempty ∧
-    ∀ f g : Ω → ℝ,
-      prefs.prefers f g ↔
-      (sInf { actExpectedValue u P f | P ∈ C }) ≥
-      (sInf { actExpectedValue u P g | P ∈ C })
 
 /-! ## §4: The Hypercube Position
 
@@ -776,8 +715,8 @@ Our example sits at specific positions in the probability hypercube, depending o
 whether we have precise or imprecise probability. The hypercube has `PrecisionAxis`
 which distinguishes these cases.
 
-**KEY INSIGHT**: The difference is NOT in the K&S axioms themselves, but in whether
-we have a UNIQUE representation or a SET of representations (credal set).
+Observation: the difference is not in the K\&S probability calculus itself, but in whether the
+constraints determine a unique representation or a set of representations (a credal set).
 -/
 
 /-- Completeness status for a K&S representation.
@@ -899,9 +838,8 @@ For our example, we use interval bounds as a simplified credal set.
 
 /-- A credal set represented by probability intervals.
 
-**Grounding**: This corresponds to `CredalSet` in PLNConnection.lean.
-Each consistent precise distribution corresponds to one `KSBooleanRepresentation`.
-The interval bounds are inf/sup over the credal set. -/
+Interpretation: each consistent precise distribution corresponds to one `KSBooleanRepresentation`;
+the interval bounds can be viewed as inf/sup over such a set. -/
 structure KSCredalSet where
   /-- Lower bounds (inf over credal set) -/
   pSafe_lo : ℝ
@@ -916,7 +854,7 @@ structure KSCredalSet where
   cat_valid : pCat_lo ≤ pCat_hi
   /-- Non-negativity -/
   all_nonneg : 0 ≤ pSafe_lo ∧ 0 ≤ pRisky_lo ∧ 0 ≤ pCat_lo
-  /-- CRITICAL: At least one valid distribution exists in the credal set -/
+  /-- At least one valid distribution exists in the credal set. -/
   nonempty : ∃ (ps pr pc : ℝ),
     pSafe_lo ≤ ps ∧ ps ≤ pSafe_hi ∧
     pRisky_lo ≤ pr ∧ pr ≤ pRisky_hi ∧
@@ -925,8 +863,8 @@ structure KSCredalSet where
 
 /-! ## §6: Decision Rules for Imprecise Probability
 
-**IMPORTANT**: How to decide with a credal set is NOT determined by K&S.
-Different axiom systems give different rules:
+How to decide with a credal set is not determined by the K\&S probability calculus; one must
+choose an additional decision rule.  Different axiom systems motivate different rules:
 
 | Rule | Axioms | Reference |
 |------|--------|-----------|
@@ -935,23 +873,10 @@ Different axiom systems give different rules:
 | Γ-maximax | - | Optimism |
 | Minimax regret | Savage (1951) | Regret minimization |
 
-We use **Γ-maximin** (Gilboa-Schmeidler) but MARK it as an additional axiom.
+In this file we use Γ-maximin (Gilboa--Schmeidler) as a concrete choice rule.
 -/
 
-/-- **Gilboa-Schmeidler Maximin** (SEPARATE AXIOM SYSTEM)
-
-This is NOT derived from K&S. Gilboa-Schmeidler (1989) axiomatize:
-"Maximize the minimum expected utility over the credal set"
-
-Axioms (informal):
-1. Certainty independence
-2. Uncertainty aversion
-3. Weak certainty independence
-4. Continuity
-5. Monotonicity
-
-These are decision-theoretic axioms, not probability axioms.
--/
+/-- (Decision-theoretic) Gilboa--Schmeidler-style maximin for a credal set. -/
 structure GilboaSchmeidlerAxioms where
   doc : String := "Maximin for ambiguity-averse agents (Gilboa-Schmeidler 1989)"
 
@@ -1077,8 +1002,6 @@ but actually constructs the mathematical objects from K&S:
 3. **Credal Sets**: Imprecise probability is formalized as sets of K&S representations
 4. **Hypercube Position**: Formal theorems connecting to `PrecisionAxis`
 5. **Axiom Independence**: Decision theory (vNM, G-S) is separate from K&S
-
-This is shareable with K&S/Mike Stay without embarrassment.
 -/
 theorem comprehensive_grounding :
     -- The fundamental K&S objects exist

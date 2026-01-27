@@ -454,11 +454,20 @@ PLN occupies a special position in the hypercube:
    - Extends Walley's imprecise probabilities
    - Adds lookahead parameter k for future evidence
 
+3. **Evidence PLN** (Evidence counts): different *semantics layer*
+   - Carrier: `Evidence := (n⁺, n⁻)` with the coordinatewise (partial) order
+   - Incomparables are fundamental ("more positive evidence but less negative evidence")
+   - Therefore there is **no faithful** point-valued representation `Θ : Evidence → ℝ`
+     (formalized in `Mettapedia.Logic.PLN_KS_Bridge`)
+   - `toStrength : Evidence → [0,1]` is a lossy *view* (a forgetful projection), not an identification
+
 The PLN deduction formula:
   sAC = sAB * sBC + (1 - sAB) * (pC - pB * sBC) / (1 - pB)
 
-is the quantale composition in the [0,1] commutative quantale!
-See PLNQuantaleConnection.lean for the formal proof.
+is best treated as a **strength-level view** of an underlying evidence semantics:
+- foundational carrier: `Mettapedia.Logic.PLNEvidence` (evidence counts `(n⁺, n⁻)`)
+- “no faithful point semantics” gate: `Mettapedia.Logic.PLN_KS_Bridge`
+- measure-theoretic derivation (with explicit independence assumptions): `Mettapedia.Logic.PLNDerivation`
 
 ### PLN vs K&S vs Cox Comparison
 
@@ -607,11 +616,14 @@ The PLN deduction rule is **not primitive** - it's DERIVED from:
 The Fréchet bounds (proven in PLNFrechetBounds.lean) ensure this is well-defined:
 - max(0, P(A)+P(B)-1) ≤ P(A∩B) ≤ min(P(A), P(B))
 
-**Key Insight**: PLN deduction = quantale composition in [0,1]!
-The "direct path" term sAB·sBC is the quantale tensor product.
-The "indirect path" term uses residuation (right adjoint to tensor).
-
-See: PLNQuantaleConnection.lean, PLNEvidence.lean
+**Key insight (consistent story)**:
+- The foundational carrier for PLN-style reasoning is **evidence** `(n⁺, n⁻)`, which has a natural
+  partial order with incomparables; see `Mettapedia.Logic.PLNEvidence` and
+  `Mettapedia.Logic.PLN_KS_Bridge`.
+- The familiar `[0,1]` strength formula is a lossy projection/view (via `toStrength`), not a
+  faithful identification of the underlying semantics.
+- In this view, the deduction formula decomposes into a “direct path” term `sAB * sBC` plus an
+  “indirect path” correction term derived from total probability.
 -/
 
 /-- The base rewrites used by each probability theory. -/
@@ -722,10 +734,11 @@ theorem quantum_different_from_classical :
 theorem noncommutativity_implies_uncertainty :
     ∀ v : ProbabilityVertex,
     v.commutativity = .noncommutative →
-    -- Heisenberg-Robertson uncertainty is possible
-    True := by  -- Placeholder for the actual uncertainty relation
-  intros
-  trivial
+    v ≠ kolmogorov := by
+  intro v hv hEq
+  have h_comm : v.commutativity = .commutative := by
+    simpa [kolmogorov] using congrArg ProbabilityVertex.commutativity hEq
+  cases (hv.symm.trans h_comm)
 
 /-!
 ## §8: Hypercube Navigation
@@ -1359,16 +1372,19 @@ theorem classicalLogic_most_specific :
 
 The hypercube has a deep connection to quantale theory:
 
-**Key Insight**: PLN deduction = quantale composition in [0,1]!
+**Key insight (consistent story)**:
 
-For commutative, tensor-independent vertices (like `kolmogorov`, `plnSimple`, `cox`),
-the conditional probability composition forms a **commutative quantale**:
+- The canonical “PLN” value space in this repo is **evidence** `(n⁺, n⁻)` (see
+  `Mettapedia.Logic.PLNEvidence`). This carrier has a natural *partial order* with incomparable
+  elements, so it does **not** admit a faithful point-valued representation `Θ : Evidence → ℝ`
+  (see `Mettapedia.Logic.PLN_KS_Bridge`).
 
-- **Objects**: Terms/concepts
-- **Morphisms**: Implications A → B with strength P(B|A) ∈ [0,1]
-- **Composition**: PLN deduction formula (or equivalently, law of total probability)
-- **Tensor**: Product of probabilities
-- **Residuation**: Conditional probability
+- The familiar strength-level formulas in `[0,1]` are therefore best treated as **views/projections**
+  (e.g. `toStrength`) of a richer underlying semantics, not as the foundational carrier.
+
+When a domain *does* support total comparability (the K&S gate), one recovers point-valued
+probability/conditioning and can express deduction in the usual `[0,1]` formulas; see
+`Mettapedia.Logic.PLNDerivation` for the explicit measure-theoretic derivation under independence.
 
 ### PLN Inference as Quantale Operations
 
@@ -1382,10 +1398,12 @@ the conditional probability composition forms a **commutative quantale**:
 
 ### Formalization Files
 
-- `Mettapedia.Logic.PLNQuantaleConnection` - Main quantale proof
-- `Mettapedia.Logic.PLNChapter5` - Complete Chapter 5 rules (similarity, MP, etc.)
-- `Mettapedia.Logic.PLNDeduction` - Core deduction formula
-- `Mettapedia.Logic.PLNEvidence` - Evidence counts as quantale carrier
+- `Mettapedia.Logic.PLNDeduction` - Core deduction formula (numeric)
+- `Mettapedia.Logic.PLNDerivation` - Measure-theoretic derivation (explicit independence)
+- `Mettapedia.Logic.PLNInferenceRules` - Chapter 5-style rules (similarity, MP, etc.)
+- `Mettapedia.Logic.PLNEvidence` - Evidence counts as a (Heyting/Frame) truth-value carrier
+- `Mettapedia.Logic.PLN_KS_Bridge` - Totality gate: no faithful `Θ : Evidence → ℝ`
+- `Mettapedia.Implementation.MettaVerification` - MeTTa parity (deduction + consistency helpers)
 - `Mettapedia.Algebra.QuantaleWeakness` - Abstract quantale theory
 
 ### The Categorical View
@@ -1393,9 +1411,11 @@ the conditional probability composition forms a **commutative quantale**:
 The hypercube vertices with `independence = tensor` form a subcategory where:
 1. Composition is associative (PLN deduction is approximately associative)
 2. Identity morphisms exist (P(A|A) = 1)
-3. The structure is enriched over [0,1]
+3. A chosen value space (often a quantale/frame) supplies the enrichment; `[0,1]` is one possible
+   *view*, while evidence carries strictly more information.
 
-This is NOT ad-hoc - PLN is the **probabilistic instance** of quantale weakness theory!
+This is NOT ad-hoc: it is the same “weakening maps between value spaces” perspective used in
+Goertzel-style weakness ordering.
 -/
 
 /-!
@@ -1475,10 +1495,11 @@ is the enrichment of that operad over [0,1] or ℝ≥0.
 
 ### Formalization Files
 
-- `Mettapedia.Algebra.QuantaleWeakness` - Commutative quantale, ENNReal
-- `Mettapedia.Algebra.QuantaleWeakness` - Quantale weakness (works for commutative and noncommutative quantales)
+- `Mettapedia.Algebra.QuantaleWeakness` - Quantale morphisms + weakness transport (`map_weakness`)
+- `Mettapedia.ProbabilityTheory.Hypercube.QuantaleSemantics` - Concrete quantale value spaces + morphisms
 - `Mettapedia.ProbabilityTheory.FreeProbability.Basic` - Noncrossing partitions
-- `Mettapedia.Logic.PLNQuantaleConnection` - PLN as quantale composition
+- `Mettapedia.Logic.PLNEvidence` - Evidence truth values (partial order + tensor + Heyting ops)
+- `Mettapedia.Logic.PLN_KS_Bridge` - Totality gate: no faithful `Θ : Evidence → ℝ`
 - Future: `Mettapedia.Algebra.IntervalQuantale` - Imprecise probability
 - Future: `Mettapedia.Algebra.FreeQuantale` - Free probability quantale
 -/

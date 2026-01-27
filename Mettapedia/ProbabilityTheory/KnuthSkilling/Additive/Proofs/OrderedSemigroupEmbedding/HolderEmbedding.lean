@@ -306,6 +306,48 @@ theorem representation_from_noAnomalousPairs [NoAnomalousPairs α] :
   use theta_from_embedding G iso
   exact ⟨theta_preserves_order G iso, theta_ident G iso, theta_additive G iso⟩
 
+/-- Archimedean-style bound from `NoAnomalousPairs`.
+
+Under the Hölder/Alimov embedding into `ℝ`, the real Archimedean property implies that for any
+base `a > ident` and any `x`, some iterate `a^n` bounds `x` from above. -/
+theorem archimedean_of_noAnomalousPairs [NoAnomalousPairs α] (a x : α) (ha : ident < a) :
+    ∃ n : ℕ, x ≤ iterate_op a n := by
+  obtain ⟨Θ, hΘ_order, hΘ_ident, hΘ_add⟩ := representation_from_noAnomalousPairs (α := α)
+
+  -- Positivity of Θ(a) from `ident < a`.
+  have hΘa_pos : 0 < Θ a := by
+    have hle : (0 : ℝ) ≤ Θ a := by
+      have : ident ≤ a := le_of_lt ha
+      simpa [hΘ_ident] using (hΘ_order ident a).1 this
+    have hnot : ¬ Θ a ≤ 0 := by
+      intro hle0
+      have : a ≤ ident := (hΘ_order a ident).2 (by simpa [hΘ_ident] using hle0)
+      exact not_lt.mpr this ha
+    have hneq : Θ a ≠ 0 := by
+      intro h0
+      exact hnot (by simp [h0])
+    exact lt_of_le_of_ne hle (Ne.symm hneq)
+
+  -- Iteration in Θ-coordinates: Θ(a^n) = n * Θ(a).
+  have hΘ_iter : ∀ n : ℕ, Θ (iterate_op a n) = (n : ℝ) * Θ a := by
+    intro n
+    induction n with
+    | zero =>
+      simp [iterate_op_zero, hΘ_ident]
+    | succ n ih =>
+      -- Θ(a^(n+1)) = Θ(a ⊕ a^n) = Θ(a) + Θ(a^n) = (n+1) * Θ(a)
+      simp [iterate_op_succ, hΘ_add, ih, Nat.cast_succ, add_mul, add_comm]
+
+  -- Use the Archimedean property of ℝ to choose `n` with Θ(x) ≤ n * Θ(a).
+  obtain ⟨n, hn⟩ := exists_nat_ge (Θ x / Θ a)
+  have hΘx_le : Θ x ≤ (n : ℝ) * Θ a := by
+    -- Multiply `Θ x / Θ a ≤ n` by `Θ a > 0`.
+    exact (div_le_iff₀ hΘa_pos).1 hn
+
+  refine ⟨n, (hΘ_order x (iterate_op a n)).2 ?_⟩
+  -- Rewrite the goal using the iteration lemma.
+  simpa [hΘ_iter n] using hΘx_le
+
 /-- Identity provides canonical normalization: Θ(ident) = 0.
     Without identity, Θ is defined only up to an additive constant c:
     if Θ is a valid representation, so is Θ' = Θ + c.

@@ -393,7 +393,6 @@ theorem deduction_formula_derives_from_total_probability
     (_hpA_pos : 0 < pA)
     (_hpB_pos : 0 < pB)
     (_hpB_lt : pB < 1)
-    (_h_indep : True)  -- Placeholder for independence assumption
     : let pC_given_notB := (pC - pB * sBC) / (1 - pB)
       let formula := sAB * sBC + (1 - sAB) * pC_given_notB
       -- This is exactly the law of total probability with the independence assumption

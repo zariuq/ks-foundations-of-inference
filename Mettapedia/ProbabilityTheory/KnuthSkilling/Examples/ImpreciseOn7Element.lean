@@ -5,44 +5,32 @@ import Mathlib.Tactic
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Counterexamples.NonModularDistributive
 
 /-!
-# The 7-Element Lattice: Boolean Probability Works!
+# Cautionary Example: 7-Element Lattice vs Boolean Event Modeling
 
-This file shows that the 7-element "software configuration" lattice from
-`NonModularDistributive.lean` **CAN be captured by standard Boolean probability**
-with appropriate constraints.
+This file accompanies the 7-element distributive lattice from
+`Counterexamples/NonModularDistributive.lean`.  It is kept as a *modeling* example:
+it explains why this lattice should not be used as evidence that ``imprecise probability is
+mathematically required.''
 
-## Key Insight
+## Key Point
 
-The original example seemed to show that imprecise probability was needed because
-the modular law failed. But this was a modeling artifact, not a fundamental limitation.
+The ideal-lattice operations in the 7-element example are **not** Boolean conjunction/disjunction
+of independent feature-variables.  If you want an event semantics on four features
+`{a,b,c,d}` with prerequisites (e.g. `c` and `d` require `a ∧ b`), the natural event space is a
+Boolean algebra, and prerequisites are represented by *constraints* (certain atoms have probability
+zero).  In that Boolean setting, standard probability works as usual.
 
-**With the right Boolean embedding:**
-- Prerequisites (c,d require a∧b) are captured by setting impossible atoms to 0
-- Standard additivity holds
-- The "modular law failure" disappears
+This file contrasts:
+1) a Boolean event model (6 atoms, excluding the optional ``cores-only'' state), and
+2) a 7-state model which includes that additional state and illustrates how different
+   interpretations of meet/join lead to different algebraic identities.
 
-## Two Approaches Compared
+## Takeaway
 
-### Approach 1: Boolean Probability (Standard)
-
-Embed into Boolean algebra on {a,b,c,d} with constraints:
-- P(c ∧ ¬a) = 0, P(c ∧ ¬b) = 0 (c requires both cores)
-- P(d ∧ ¬a) = 0, P(d ∧ ¬b) = 0 (d requires both cores)
-- P(a ∧ b ∧ ¬c ∧ ¬d) = 0 (cores-only state doesn't occur)
-
-Result: 6 atoms with nonzero probability, standard additivity, no imprecision needed.
-
-### Approach 2: Imprecise Probability (Allows cores-only)
-
-If we want to allow the "cores-only" state (a∧b without c or d), then the
-7-element lattice semantics differ from Boolean semantics, and we get imprecision.
-
-**This is a modeling choice, not a mathematical necessity!**
-
-## Conclusion
-
-The 7-element lattice is **NOT** a compelling example of needing imprecise probability.
-It's an example of how different modeling choices lead to different formalisms.
+This is a useful cautionary example about **semantics** (what the algebraic operations mean),
+not a canonical example motivating imprecise probability.
+Earlier drafts of this file mistakenly framed it as evidence for imprecise probability; the correct
+lesson is about modeling choices (Boolean events vs.\ ideal-lattice operations).
 
 ## References
 
@@ -65,7 +53,7 @@ inductive ConfigState
   | nothing    -- ¬a ∧ ¬b ∧ ¬c ∧ ¬d
   | justA      -- a ∧ ¬b ∧ ¬c ∧ ¬d
   | justB      -- ¬a ∧ b ∧ ¬c ∧ ¬d
-  | coresOnly  -- a ∧ b ∧ ¬c ∧ ¬d  (the "controversial" state)
+  | coresOnly  -- a ∧ b ∧ ¬c ∧ ¬d  (optional intermediate state)
   | analytics  -- a ∧ b ∧ c ∧ ¬d
   | alerts     -- a ∧ b ∧ ¬c ∧ d
   | full       -- a ∧ b ∧ c ∧ d
@@ -244,25 +232,15 @@ end FullProb
 
 The original counterexample had m(ab) = 3, m(abc) = 10, m(abd) = 20, m(top) = 30.
 
-Normalized to probabilities (dividing by 30):
-- P(ab) = 3/30 = 0.1
-- P(abc) = 10/30 ≈ 0.333
-- P(abd) = 20/30 ≈ 0.667
-- P(top) = 1
-
-But these are CUMULATIVE probabilities (P(ab) = "at least ab"),
-not state probabilities!
-
-**Converting to state probabilities:**
-- p_coresOnly = P(ab) - P(abc ∨ abd) = P(ab) - P(ab ∧ (c∨d))
-
-In the original:
-- P(ab) = 3/30
-- P(abc) + P(abd) - P(abcd) = P(ab ∧ (c∨d))
-- But P(abc) includes P(abcd), etc.
-
-This is getting complicated. The key point is:
-**If p_coresOnly = 0, everything works with Boolean probability.**
+Those numbers are valuations of lattice elements, not probabilities of Boolean events.
+If one *insists* on reading `abc`, `abd`, `abcd` as Boolean events in the 6-atom model
+(excluding \texttt{coresOnly}), then modularity forces:
+\[
+P(ab) = P(abc) + P(abd) - P(abcd).
+\]
+So choosing $P(abc)=10/30$, $P(abd)=20/30$, and $P(abcd)=3/30$ forces $P(ab)=27/30$.
+This is one concrete way to see that the lattice values do not directly define Boolean
+probabilities on the intended feature space.
 -/
 
 /-- Example: A valid 6-state Boolean probability (no cores-only) -/
@@ -305,8 +283,7 @@ end ConfigState
 | Modular law | ✓ Always holds | ✗ Fails if p(coresOnly)>0 |
 | Imprecise needed? | No | Only if insisting on lattice ops |
 
-**Conclusion**: The 7-element lattice is **NOT** a compelling example of
-needing imprecise probability. With appropriate Boolean modeling:
+**Conclusion**: This example is primarily about semantics.  With an appropriate Boolean event model:
 - Set impossible configurations to probability 0
 - If cores-only state doesn't occur, use 6-state model
 - Standard probability theory handles everything
@@ -316,10 +293,10 @@ lattice operations (∧ᴸ, ∨ᴸ) with probability expectations that
 assume Boolean operations. This is a modeling mismatch, not a
 fundamental limitation of probability theory.
 
-**When IS imprecise probability genuinely needed?**
-- When you have genuine uncertainty about the probability measure itself
-- When constraints don't determine a unique distribution
-- NOT just because a lattice isn't Boolean!
+In other settings, imprecise probability can still be mathematically and practically appropriate
+(e.g. when constraints do not determine a unique distribution).  The point here is only that the
+7-element lattice example, by itself, is primarily a warning about semantics rather than a
+motivation for imprecision.
 -/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Examples.ImpreciseOn7Element

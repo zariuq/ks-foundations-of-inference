@@ -2,26 +2,12 @@ import Mettapedia.ProbabilityTheory.KnuthSkilling.Information.InformationEntropy
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.FiniteProbability
 
 /-!
-# Concrete Probability Examples: Coin Flip and Die Roll
+# Coin Flip and Die Roll (`ProbDist` examples)
 
-This file provides **concrete, grounded** examples of probability distributions
-that are derived from K&S representation theory.
+This file provides small, concrete examples of finite probability distributions (`ProbDist`)
+and a basic notion of event probability for `Finset` events.
 
-## Key Points
-
-1. **These are not arbitrary definitions** - they arise from K&S representation
-2. **Finite additivity is proven** - `P(A ∪ B) = P(A) + P(B)` for disjoint A, B
-3. **Sum to 1 is proven** - `∑ P({ω}) = 1`
-
-## Examples
-
-* `fairCoin` - Fair coin with P(heads) = P(tails) = 1/2
-* `fairDie` - Fair 6-sided die with P(i) = 1/6
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012)
-- These examples demonstrate the "grounding" of ProbDist on KS derivation
+These are hand-constructed distributions meant as lightweight sanity checks and usage examples.
 -/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Examples.CoinDie
@@ -34,9 +20,7 @@ open Finset BigOperators
 /-- The fair coin probability distribution.
 
 This is `ProbDist 2` with P(heads) = P(tails) = 1/2.
-
-**Grounding**: In a full formalization, this would be derived from a
-K&S representation via `ToProbDist.lean` or `FiniteProbability.lean`. -/
+-/
 noncomputable def fairCoin : ProbDist 2 where
   p := fun _ => 1/2
   nonneg := by intro _; linarith
@@ -99,16 +83,8 @@ theorem eventProb_union_disjoint {n : ℕ} (P : ProbDist n)
 
 /-! ## §4: Summary
 
-These examples demonstrate:
-
-1. **ProbDist is constructible** - We can build concrete distributions
-2. **Properties are provable** - Sum to 1, non-negativity, bounds
-3. **Events have computable probabilities** - Via finite sums
-4. **Finite additivity holds** - P(A ∪ B) = P(A) + P(B) for disjoint sets
-
-In a complete formalization, each of these distributions would arise from
-a K&S representation via `ToProbDist.toProbDist`, making them truly
-*grounded* in the K&S derivation.
+Defined `fairCoin`, `fairDie`, and `eventProb`, and proved basic properties:
+nonnegativity, normalization on `univ`, and finite additivity for disjoint unions.
 -/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Examples.CoinDie

@@ -145,7 +145,6 @@ def OrthomodularPlausibilityAlgebra.toKnuthSkillingAlgebra
   op_ident_left := inst.op_ident_left
   op_strictMono_left := inst.op_strictMono_left
   op_strictMono_right := inst.op_strictMono_right
-  op_archimedean := inst.op_archimedean
   ident_le := inst.ident_le
 
 /-- The representation theorem for the plausibility space α.
@@ -156,9 +155,10 @@ def OrthomodularPlausibilityAlgebra.toKnuthSkillingAlgebra
 theorem oml_carrier_has_representation
     {L : Type*} {α : Type*} [OrthomodularLattice L] [LinearOrder α]
     (inst : OrthomodularPlausibilityAlgebra L α)
-    [hsep : @KnuthSkilling.KSSeparation α inst.toKnuthSkillingAlgebra.toKnuthSkillingAlgebraBase]
+    [hsep : @KnuthSkilling.KSSeparation α inst.toKnuthSkillingAlgebra.toKnuthSkillingMonoidBase]
     [hglob :
-      @KnuthSkilling.Additive.RepresentationGlobalization α inst.toKnuthSkillingAlgebra hsep] :
+      @KnuthSkilling.Additive.RepresentationGlobalization α
+        inst.toKnuthSkillingAlgebra.toKnuthSkillingMonoidBase] :
     ∃ θ : α → ℝ, (∀ x y, θ (inst.op x y) = θ x + θ y) ∧ StrictMono θ := by
   classical
   letI : KnuthSkilling.KnuthSkillingAlgebra α := inst.toKnuthSkillingAlgebra
@@ -1376,10 +1376,9 @@ def MaximalChain (C : Set α) : Prop :=
 
 /-- The K-S grid at stage k forms a chain.
     This is the key structural property that makes the inductive proof work! -/
-theorem ks_grid_is_chain :
-    -- For any atoms a₁, ..., aₖ where aᵢ^n are all comparable,
-    -- the grid {μ(n₁,...,nₖ) | nᵢ ∈ ℕ} is a chain.
-    True := trivial -- Placeholder for the real theorem
+theorem ks_grid_is_chain {β : Type*} [LinearOrder β] {μ : β → α} (hμ : Monotone μ) :
+    IsChain (· ≤ ·) (Set.range μ) := by
+  simpa using hμ.isChain_range
 
 /-!
 ## Potential Benefits for the Main K-S Proof (For Codex)

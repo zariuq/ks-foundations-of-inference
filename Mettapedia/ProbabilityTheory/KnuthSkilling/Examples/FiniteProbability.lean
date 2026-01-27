@@ -1,27 +1,23 @@
-/-
-# Finite Probability: Section 5.2 Inclusion-Exclusion on Generalized Boolean Algebras
-
-This file demonstrates that **classical finite probability** uses the structure formalized in
-K&S Section 5.2 (Additive/Proofs/GridInduction/InclusionExclusion.lean).
-
-## Key Insight
-
-`Set (Fin n)` is a **Generalized Boolean Algebra** (set difference `\` is relative complement).
-Therefore, the inclusion-exclusion theorem from Section 5.2 applies directly.
-
-This proves that K&S's abstract framework **captures** classical probability, not just axiomatizes it.
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012), Section 5.2
-- Additive/Proofs/GridInduction/InclusionExclusion.lean (this project)
-- Durrett, "Probability: Theory and Examples" (5th ed), Section 1.1
--/
-
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Tactic
+
+/-!
+# Finite Probability as a Special Case of K\&S Section 5.2
+
+This short file records the structural observation behind K\&S Section 5.2:
+finite probability on sets is an instance of the inclusion--exclusion identity on a
+generalized Boolean algebra (GBA).
+
+Concretely, for any type `α`, the lattice `Set α` is a GBA: set difference `s \\ t` is a relative
+complement of `t` inside `s`. Therefore, the K\&S inclusion--exclusion identity applies directly
+to finitely additive (disjoint-additive) set functions.
+
+References:
+- Knuth \& Skilling, *Foundations of Inference* (2012), Section 5.2.
+- This project: `Additive/Proofs/GridInduction/InclusionExclusion.lean`.
+-/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Examples
 
@@ -29,10 +25,9 @@ open Classical
 
 /-! ## Set α is a Generalized Boolean Algebra
 
-This is the KEY structural fact that connects classical probability to K&S Section 5.2.
-
-**Proof**: `Set α` has set difference `\` as relative complement, making it a GBA.
-**Consequence**: Inclusion-exclusion holds for ANY disjoint-additive measure on `Set α`. -/
+Mathlib provides `GeneralizedBooleanAlgebra (Set α)`: set difference `s \\ t` is the relative
+complement of `t` inside `s`.  This is the structural input for the inclusion--exclusion identity
+in K\&S Section 5.2. -/
 
 example {α : Type*} : GeneralizedBooleanAlgebra (Set α) := inferInstance
 
@@ -57,17 +52,9 @@ so Section 5.2 applies.
 
 ## Summary
 
-**Old approach** (`AdditiveValuation`, now archived):
-- Axiomatically added disjoint additivity
-- Didn't use the representation theorem
-- Just re-stated classical probability
-
-**New approach** (this file):
-- `Set α` is a GBA (proven by mathlib)
-- Section 5.2 derives inclusion-exclusion from GBA + disjoint additivity
-- Classical probability is a **consequence**, not an axiom
-
-This validates that K&S's framework **contains** classical probability theory.
+Finite probability on sets is naturally phrased at the level of generalized Boolean algebras.
+K\&S Section 5.2 isolates exactly the algebraic identity (inclusion--exclusion) that underlies
+finite additivity in this setting.
 -/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Examples

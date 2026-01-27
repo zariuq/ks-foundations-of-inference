@@ -1,47 +1,29 @@
-/-
-# K&S Advantages: Structures Measurable by K&S but NOT by Cox/Boolean Lattices
-
-This file demonstrates concrete examples where the Knuth-Skilling framework
-can assign coherent measures to structures that fall outside the scope of:
-1. Cox's theorem (requires Boolean algebra with negation)
-2. Standard probability (requires Boolean σ-algebra)
-
-## Key Insight
-
-**Cox**: Requires propositions with negation (Boolean algebra)
-**Standard probability**: Requires Boolean σ-algebra with complement
-**K&S**: Works on Generalized Boolean Algebras (relative complements only)
-       AND on ordered semigroups without identity (via Hölder embedding)
-
-## Three Categories of K&S Advantage
-
-### Category 1: Generalized Boolean Algebras (GBA) without Full Boolean Structure
-- Interval lattices: [a,b] has relative complement [a,b] \ [c,d], but no absolute complement
-- Ideal lattices of posets: ideals closed under relative complement within bounds
-- K&S's Section 5.2 applies; Cox cannot define p(¬A|B) for all A
-
-### Category 2: Identity-Free Structures
-- Positive reals (ℝ⁺, +): no additive identity
-- Multiplicative positive reals (ℝ⁺, ×): no multiplicative identity in (0,∞)
-- K&S identity-free representation applies; Cox requires "contradiction" as baseline
-
-### Category 3: Measures with Genuine Non-Additivity
-- Our 7-element counterexample shows distributive lattices can have non-modular measures
-- K&S correctly identifies where inclusion-exclusion applies (GBA) vs. where it doesn't
-- Cox's framework assumes additivity from the start
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012), Sections 5.1-5.2
-- Cox, "The Algebra of Probable Inference" (1961)
-- This project: Additive/ (Appendix A) and Counterexamples/NonModularDistributive.lean
--/
-
 import Mathlib.Data.Real.Basic
 import Mathlib.Order.Interval.Set.Basic
 import Mathlib.Order.BooleanAlgebra.Basic
 import Mathlib.Data.Set.Lattice
 import Mathlib.Tactic
+
+/-!
+# Knuth--Skilling Examples Beyond a Global Boolean Complement
+
+This file collects small examples illustrating two distinctions that are easy to miss when reading
+probability-theory statements in their most common (Boolean/complemented) setting:
+
+1. **Section 5.2 (inclusion--exclusion)** lives naturally on *generalized* Boolean algebras (relative
+   complements inside a container), not only on Boolean algebras with a global complement.
+2. **Appendix A (additive representation)** can be stated identity-free, so it applies to ordered
+   semigroups where there is no distinguished ``bottom''/``zero'' element.
+
+We also point to a 7-element distributive lattice counterexample showing that distributivity alone
+does not guarantee the modular identity used by inclusion--exclusion.
+
+References:
+- Knuth \& Skilling, *Foundations of Inference* (2012), Sections 5.1--5.2.
+- Cox, *The Algebra of Probable Inference* (1961).
+- This project: `Counterexamples/NonModularDistributive.lean` and
+  `Examples/ImpreciseOn7Element.lean` (modeling discussion).
+-/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Examples
 
@@ -105,17 +87,12 @@ theorem relativeComplement_lengths (container sub : BoundedInterval) (h : sub �
   simp only [leftRemainder, rightRemainder, length]
   ring
 
-/-- **Cox CANNOT apply here**: There's no absolute complement for a general interval.
+/-- Cox-style ``global negation'' is not available for bounded intervals.
 
-What would ¬[0.3, 0.7] be as a "bounded interval on [0,1]"?
-- It would need to be [0, 0.3) ∪ (0.7, 1], but that's TWO intervals, not one.
-- The interval lattice is NOT closed under absolute complement.
-
-Cox requires: For any A, there exists ¬A such that p(¬A|B) = G(p(A|B)).
-This fails when ¬A doesn't exist as a lattice element.
-
-The theorem below shows that no single interval can serve as the complement
-of a "middle" interval like [0.3, 0.7] within [0, 1]. -/
+If we restrict attention to *single* bounded intervals, there is no operation
+`neg : Interval -> Interval` behaving like a complement: the complement of a middle interval
+inside `[0,1]` is typically a union of two disjoint intervals, which is not a single interval.
+-/
 theorem no_single_interval_complement :
     ¬∃ (neg : BoundedInterval),
       -- neg should be the complement of [0.3, 0.7] within [0, 1]
@@ -129,10 +106,7 @@ theorem no_single_interval_complement :
   · -- neg.lo ≥ 0.7 but neg.lo = 0
     linarith
 
-/-- **K&S DOES apply**: We can define additive measures via Section 5.2.
-
-The GBA structure (relative complements within containers) is exactly what
-K&S Section 5.2 needs for the inclusion-exclusion decomposition. -/
+/-- K\&S Section 5.2 does apply: length is additive over relative complements. -/
 theorem ks_applies_to_intervals :
     ∃ (m : BoundedInterval → ℝ),
       (∀ I, 0 ≤ m I) ∧  -- Non-negative
@@ -219,15 +193,7 @@ theorem Theta_additive : ∀ x y : PosReal, Theta (x + y) = Theta x + Theta y :=
   intro x y
   rfl
 
-/-- **Cox CANNOT apply here**: No "contradiction" baseline.
-
-Cox's framework requires:
-- A "contradiction" proposition ⊥ with p(⊥|B) = 0
-- A "tautology" proposition ⊤ with p(⊤|B) = 1
-
-In (ℝ⁺, +), there's no bottom element (no minimal positive real).
-We cannot define "the plausibility of the impossible event" because
-there IS no impossible event in this structure. -/
+/-- No bottom element exists in `(ℝ⁺,+)`: there is no distinguished ``impossible'' baseline. -/
 theorem no_bottom : ¬∃ bot : PosReal, ∀ x : PosReal, bot ≤ x := by
   intro ⟨bot, hbot⟩
   -- For any bot > 0, we can find x = bot/2 < bot
@@ -242,53 +208,22 @@ end PosReal
 
 end PositiveReals
 
-/-! ## Example 3: The 7-Element Ideal Lattice
+/-! ## Example 3 (Pointer): A 7-Element Distributive Lattice Where Modularity Fails
 
-This example is fully developed in `Counterexamples/NonModularDistributive.lean`.
+See `Counterexamples/NonModularDistributive.lean` for a concrete 7-element distributive lattice with
+a monotone, disjoint-additive valuation where the modular identity fails.  This illustrates that
+Section 5.2 requires *relative complements* (GBA structure), not merely distributivity.
 
-**Key points**:
-- 7-element distributive lattice modeling "features with shared prerequisites"
-- Monotone + disjoint-additive valuation exists
-- But modular law FAILS: m(abc ⊔ abd) + m(abc ⊓ abd) ≠ m(abc) + m(abd)
-- This shows K&S's inclusion-exclusion requires GBA structure, not just distributivity
+For a discussion of event semantics (and why this lattice should not be used as a standalone
+motivation for imprecise probability), see `Examples/ImpreciseOn7Element.lean`. -/
 
-See `Counterexamples/NonModularDistributive.lean` for the full formalization. -/
+/-! ## Summary
 
-/-! ## Summary: When Does K&S Apply vs. Cox/Boolean?
-
-### K&S Section 5.2 (Inclusion-Exclusion) Applies When:
-1. Structure is a **Generalized Boolean Algebra** (relative complements exist)
-2. Measure is **monotone** and **disjoint-additive**
-3. Does NOT require: absolute complements, identity element, or full Boolean structure
-
-### K&S Identity-Free Representation Applies When:
-1. Structure is an **ordered cancellative semigroup**
-2. All elements are "positive" (∀ z, z < op x z)
-3. Does NOT require: identity element (⊥), top element (⊤)
-
-### Cox's Theorem Requires:
-1. **Boolean algebra** of propositions (with negation ¬A for all A)
-2. Baseline "contradiction" with p(⊥|B) = 0
-3. Baseline "tautology" with p(⊤|B) = 1
-
-### Standard Probability Requires:
-1. **Boolean σ-algebra** (closed under complement)
-2. Countable additivity on disjoint unions
-3. Probability space with Ω, ∅ as top/bottom
-
-### Practical Implications:
-
-**Intervals on the real line**: K&S ✓, Cox ✗
-- Can measure length/probability of intervals
-- Cannot define "probability of NOT [0.3, 0.7]" as a single interval
-
-**Positive quantities without baseline**: K&S ✓, Cox ✗
-- Can measure positive utilities, gains, etc.
-- Cannot define "probability of zero gain" when zero isn't in the structure
-
-**Systems with genuine synergy/entanglement**: K&S correctly identifies ✗
-- The 7-element counterexample shows where inclusion-exclusion fails
-- K&S doesn't claim to work there; it correctly requires GBA structure
--/
+- Section 5.2 (inclusion--exclusion) is naturally a statement about generalized Boolean algebras:
+  you need relative complements to state and use the decomposition cleanly.
+- Cox-style negation axioms are formulated for settings with a global complement operation on all
+  propositions; many natural ``interval-like'' lattices do not have such an operation.
+- Appendix A representation can be carried out without assuming a distinguished identity/minimum
+  element on the value scale. -/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Examples

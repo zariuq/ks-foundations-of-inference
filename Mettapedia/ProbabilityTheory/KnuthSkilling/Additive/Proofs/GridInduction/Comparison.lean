@@ -563,11 +563,44 @@ This packages both `ksSeparation_of_noAnomalousPairs` (positive side) and
 theorem separationBilateralProp_of_noAnomalousPairs
     (α : Type*) [KnuthSkillingMonoidBase α] [NoAnomalousPairs α] :
     SeparationBilateralProp (α := α) := by
+  classical
+  -- First build the identity-based `KSSeparation` instance, then use the standard conversion
+  -- `KSSeparation -> KSSeparationSemigroup` to get the ℕ+-iteration version.
+  letI : KSSeparation α :=
+    { separation := fun {a x y} ha hx hy hxy =>
+        ksSeparation_of_noAnomalousPairs (α := α) (a := a) (x := x) (y := y) ha hx hy hxy }
   refine ⟨?_, ?_⟩
-  · intro a x y ha hx hy hxy
-    exact ksSeparation_of_noAnomalousPairs (α := α) (a := a) (x := x) (y := y) ha hx hy hxy
-  · intro a x y ha hx hy hxy
-    exact ksSeparation_neg_of_noAnomalousPairs (α := α) (a := a) (x := x) (y := y) ha hx hy hxy
+  · -- Positive cone: use the existing `KSSeparation -> KSSeparationSemigroup` equivalence.
+    exact KSSeparationSemigroup.separationSemigroupProp (α := α)
+  · -- Negative cone: convert `IsNegative` to `< ident`, apply the identity-based theorem,
+    -- then convert ℕ-iteration back to ℕ+-iteration.
+    intro a x y ha hx hy hxy
+    have ha' : a < ident := (isNegative_iff_lt_ident (a := a)).1 ha
+    have hx' : x < ident := (isNegative_iff_lt_ident (a := x)).1 hx
+    have hy' : y < ident := (isNegative_iff_lt_ident (a := y)).1 hy
+    obtain ⟨n, m, hm_pos, h_lo, h_hi⟩ :=
+      ksSeparation_neg_of_noAnomalousPairs (α := α) (a := a) (x := x) (y := y) ha' hx' hy' hxy
+    -- `n` cannot be 0, otherwise the upper bound would force `ident ≤ y^m`, contradicting negativity.
+    by_cases hn : n = 0
+    · subst hn
+      have hy_iter_lt : iterate_op y m < ident :=
+        KnuthSkillingAlgebra.iterate_op_lt_ident_of_isNegative (y := y) hy m hm_pos
+      have h_contra : ¬ ident ≤ iterate_op y m := not_le_of_gt hy_iter_lt
+      have h_hi' : ident ≤ iterate_op y m := by
+        simpa [KnuthSkillingAlgebra.iterate_op_zero] using h_hi
+      exact (False.elim (h_contra h_hi'))
+    · have hn_pos : 0 < n := Nat.pos_of_ne_zero hn
+      let n' : ℕ+ := ⟨n, hn_pos⟩
+      let m' : ℕ+ := ⟨m, hm_pos⟩
+      have hx_eq : iterate_op_pnat x m' = iterate_op x m :=
+        KnuthSkillingAlgebra.iterate_op_pnat_eq x m'
+      have ha_eq : iterate_op_pnat a n' = iterate_op a n :=
+        KnuthSkillingAlgebra.iterate_op_pnat_eq a n'
+      have hy_eq : iterate_op_pnat y m' = iterate_op y m :=
+        KnuthSkillingAlgebra.iterate_op_pnat_eq y m'
+      refine ⟨n', m', ?_, ?_⟩
+      · simpa [hx_eq, ha_eq] using h_lo
+      · simpa [ha_eq, hy_eq] using h_hi
 
 /-! ## Section 6: Analysis Summary
 

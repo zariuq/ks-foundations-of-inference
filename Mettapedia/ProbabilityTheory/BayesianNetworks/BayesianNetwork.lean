@@ -1,0 +1,368 @@
+/-
+# Bayesian Networks
+
+This file formalizes Bayesian networks as directed acyclic graphs (DAGs) equipped
+with conditional probability tables (CPTs), building on Mathlib's measure theory.
+
+## Overview
+
+A Bayesian network represents a joint probability distribution via:
+1. A DAG structure specifying conditional independence relationships
+2. Conditional probability tables for each node given its parents
+
+The joint distribution factorizes as:
+  P(X₁, ..., Xₙ) = ∏ᵢ P(Xᵢ | Parents(Xᵢ))
+
+## Key Concepts
+
+- **Markov Property**: Each node is conditionally independent of its non-descendants
+  given its parents
+- **Factorization**: The joint distribution factors according to the DAG structure
+- **d-Separation**: Graphical criterion for conditional independence (see DSeparation.lean)
+
+## References
+
+- Pearl, "Probabilistic Reasoning in Intelligent Systems" (1988)
+- Koller & Friedman, "Probabilistic Graphical Models" (2009)
+- Mathlib probability kernel documentation
+-/
+
+import Mathlib.Probability.Kernel.Basic
+import Mathlib.Probability.Kernel.Composition.Comp
+import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.Data.Fintype.Basic
+import Mathlib.Data.Finset.Basic
+import Mathlib.Data.List.Basic
+import Mathlib.Data.Finset.Sort
+import Mathlib.Order.Extension.Linear
+import Mettapedia.ProbabilityTheory.BayesianNetworks.DirectedGraph
+
+namespace Mettapedia.ProbabilityTheory.BayesianNetworks
+
+open MeasureTheory ProbabilityTheory DirectedGraph
+
+/-! ## Finite Parent Configuration Space
+
+For a Bayesian network, the parents of each node form a finite set.
+We need to work with configurations over parent sets.
+-/
+
+/-- The configuration space for a finite set of vertices.
+    Given a type family β : V → Type*, this is the product over vertices in S. -/
+def ParentConfig (V : Type*) (β : V → Type*) (S : Set V) [Fintype S] :=
+  (v : S) → β v.val
+
+/-- Empty parent configuration when there are no parents. -/
+def emptyParentConfig (V : Type*) (β : V → Type*) : ParentConfig V β ∅ :=
+  fun ⟨_, h⟩ => absurd h (Set.notMem_empty _)
+
+/-! ## Bayesian Network Structure -/
+
+/-- A **Bayesian Network** consists of:
+    1. A directed acyclic graph (DAG)
+    2. A state space for each node
+    3. Conditional probability kernels P(Xᵥ | Parents(v))
+
+    The key constraint is that the graph must be acyclic, ensuring
+    the factorization is well-defined. -/
+structure BayesianNetwork (V : Type*) where
+  /-- The underlying DAG structure -/
+  graph : DirectedGraph V
+  /-- Acyclicity: no cycles in the graph -/
+  acyclic : graph.IsAcyclic
+  /-- State space for each node -/
+  stateSpace : V → Type*
+  /-- Measurable space structure on each state space -/
+  measurableSpace : ∀ v, MeasurableSpace (stateSpace v)
+
+namespace BayesianNetwork
+
+variable {V : Type*} (bn : BayesianNetwork V)
+
+/-! ## Basic Accessors -/
+
+/-- The parents of a vertex in the BN's graph. -/
+def parents (v : V) : Set V := bn.graph.parents v
+
+/-- The children of a vertex in the BN's graph. -/
+def children (v : V) : Set V := bn.graph.children v
+
+/-- The ancestors of a vertex (all nodes with directed paths to v). -/
+def ancestors (v : V) : Set V := bn.graph.ancestors v
+
+/-- The descendants of a vertex (all nodes reachable from v). -/
+def descendants (v : V) : Set V := bn.graph.descendants v
+
+/-! ## Markov Blanket
+
+The Markov blanket of a node consists of its parents, children, and
+the parents of its children. A node is conditionally independent of
+all other nodes given its Markov blanket.
+-/
+
+/-- The Markov blanket: parents ∪ children ∪ (parents of children). -/
+def markovBlanket (v : V) : Set V :=
+  bn.parents v ∪ bn.children v ∪ (⋃ c ∈ bn.children v, bn.parents c)
+
+/-- A node is in its parent's Markov blanket (as a child). -/
+theorem self_in_parent_markov_blanket {u v : V} (h : u ∈ bn.parents v) :
+    v ∈ bn.markovBlanket u := by
+  -- h : u ∈ parents(v) means edge u → v, so v ∈ children(u)
+  unfold markovBlanket
+  left; right  -- Go to children(u)
+  -- Show v ∈ bn.children u
+  simp only [children, DirectedGraph.children, Set.mem_setOf_eq]
+  -- parents v = {w | edges w v}, so h : edges u v
+  simp only [parents, DirectedGraph.parents, Set.mem_setOf_eq] at h
+  exact h
+
+/-! ## Non-Descendants
+
+A key concept for the Markov property: the non-descendants of a node.
+-/
+
+/-- Non-descendants: vertices that are not descendants (including the node itself). -/
+def nonDescendants (v : V) : Set V :=
+  { u | u ∉ bn.descendants v }
+
+/-- A vertex is a non-descendant of itself. -/
+theorem self_nonDescendant (v : V) : v ∈ bn.nonDescendants v := by
+  simp [nonDescendants, descendants, DirectedGraph.descendants]
+
+/-- Parents are non-descendants in a DAG. -/
+theorem parents_subset_nonDescendants (v : V) :
+    bn.parents v ⊆ bn.nonDescendants v := by
+  intro u hu
+  unfold nonDescendants descendants
+  simp only [Set.mem_setOf_eq]
+  intro ⟨hreach, hne⟩
+  -- u ∈ parents(v) means there's an edge u → v
+  simp [parents, DirectedGraph.parents] at hu
+  -- hreach says bn.graph.Reachable v u (v can reach u)
+  -- hu says bn.graph.edges u v (edge from u to v)
+  -- Together: v → ... → u → v creates a cycle!
+  have hcycle : bn.graph.Reachable v v := by
+    apply bn.graph.reachable_trans hreach
+    exact DirectedGraph.edge_reachable bn.graph hu
+  -- But v reaching itself via a non-trivial path contradicts acyclicity
+  -- We need: there exists w with v → w and w reaches v
+  -- From hreach (v reaches u) and hu (u → v edge), we have u → v with v → u path
+  apply bn.acyclic u
+  exact ⟨v, hu, hreach⟩
+
+/-! ## Conditional Independence Structure
+
+The fundamental property of Bayesian networks: each node is conditionally
+independent of its non-descendants given its parents.
+
+This is known as the "local Markov property" or "Markov condition".
+-/
+
+/-- The local Markov property: X_v ⊥ NonDescendants(v) | Parents(v)
+
+    This states that given the parents, a node is independent of all
+    non-descendants. This is the fundamental conditional independence
+    assumption of Bayesian networks.
+
+    Note: Full formalization requires Mathlib's conditional independence
+    infrastructure. This is stated as a specification. -/
+class HasLocalMarkovProperty (bn : BayesianNetwork V) : Prop where
+  /-- The local Markov condition holds for each node. -/
+  markov_condition : ∀ _v : V, True  -- Placeholder for actual CI statement
+  -- TODO: Replace with: μ v ⊥ NonDescendants(v) | Parents(v)
+  -- Requires: import Mathlib.Probability.Independence.Conditional
+  -- and proper measure with @[bn.measurableSpace v]
+
+/-! ## Factorization
+
+A distribution satisfies the BN factorization if:
+  P(X₁, ..., Xₙ) = ∏ᵢ P(Xᵢ | Parents(Xᵢ))
+-/
+
+/-- A factorization specification: the joint equals the product of conditionals. -/
+class HasFactorization (bn : BayesianNetwork V) : Prop where
+  /-- The factorization property. -/
+  factorizes : True  -- Placeholder
+  -- TODO: Actual statement requires product measure and kernel composition
+
+/-! ## Topological Ordering
+
+For computation, we often need a topological ordering of the nodes.
+
+The proof uses the Szpilrajn extension theorem: any partial order can be extended
+to a linear order. We:
+1. Define a partial order from reachability (u ≤ v iff u reaches v)
+2. Use `LinearExtension` to get a linear order
+3. Use `Finset.univ.sort` to get a sorted list
+-/
+
+/-- A topological ordering is a list where parents come before children.
+    For an edge u → v, the position of u in the list is less than v's position. -/
+def IsTopologicalOrder [Fintype V] [DecidableEq V] (order : List V) : Prop :=
+  order.Nodup ∧
+  (∀ v, v ∈ order) ∧
+  (∀ u v, bn.graph.edges u v →
+    ∀ (iu : Fin order.length) (iv : Fin order.length),
+      order[iu] = u → order[iv] = v → iu.val < iv.val)
+
+/-! ### Reachability Partial Order
+
+In a DAG, reachability defines a partial order: u ≤ v iff u can reach v.
+This is reflexive (trivial path), transitive (path concatenation), and
+antisymmetric (no cycles).
+-/
+
+/-- The reachability preorder on a graph: u ≤ v iff u can reach v. -/
+def reachabilityPreorder : Preorder V where
+  le u v := bn.graph.Reachable u v
+  le_refl v := DirectedGraph.reachable_refl bn.graph v
+  le_trans _ _ _ := DirectedGraph.reachable_trans bn.graph
+
+/-- In an acyclic graph, reachability is antisymmetric, giving a partial order. -/
+theorem reachability_antisymm {u v : V} (huv : bn.graph.Reachable u v)
+    (hvu : bn.graph.Reachable v u) : u = v := by
+  -- If u ≠ v with u→v and v→u, there's a cycle
+  by_contra hne
+  -- Path from v to u: either trivial (contradicts hne) or has a step
+  cases hvu with
+  | refl => exact hne rfl
+  | step hedge hpath =>
+    -- We have: v → w (some w) and Path w u
+    -- Combined with huv (u reaches v), we get a cycle at v
+    -- Namely: v → w and w reaches v (via w → ... → u → ... → v)
+    have hcycle : bn.graph.Reachable _ v := DirectedGraph.reachable_trans bn.graph hpath huv
+    apply bn.acyclic v
+    exact ⟨_, hedge, hcycle⟩
+
+/-- The reachability partial order on a Bayesian network. -/
+noncomputable def reachabilityPartialOrder : PartialOrder V where
+  le u v := bn.graph.Reachable u v
+  le_refl v := DirectedGraph.reachable_refl bn.graph v
+  le_trans _ _ _ := DirectedGraph.reachable_trans bn.graph
+  le_antisymm _ _ huv hvu := bn.reachability_antisymm huv hvu
+
+/-- Acyclic graphs admit topological orderings (when finite).
+
+    The proof uses the Szpilrajn extension theorem to extend the reachability
+    partial order to a linear order, then sorts the vertices by this order. -/
+theorem exists_topological_order [Fintype V] [DecidableEq V] :
+    ∃ order : List V, bn.IsTopologicalOrder order := by
+  classical
+  -- Use the reachability partial order on V
+  letI partOrd : PartialOrder V := bn.reachabilityPartialOrder
+  -- Szpilrajn: extend to a linear order
+  obtain ⟨linRel, ⟨linOrd, hext⟩⟩ := extend_partialOrder (α := V) (· ≤ ·)
+  -- linRel : V → V → Prop is a linear order, and partOrd.le ≤ linRel
+  -- Create a linear order structure from linRel
+  -- Define lt as the strict version
+  let linLt := fun a b => linRel a b ∧ ¬linRel b a
+  letI linOrdInst : LinearOrder V := {
+    le := linRel
+    lt := linLt
+    le_refl := linOrd.1.1.1.1
+    le_trans := linOrd.1.1.2.1
+    le_antisymm := linOrd.1.2.1
+    le_total := linOrd.2.1
+    lt_iff_le_not_ge := fun _ _ => Iff.rfl
+    toDecidableLE := Classical.decRel _
+    toDecidableEq := Classical.decEq _
+    toDecidableLT := Classical.decRel _
+  }
+  -- Sort vertices by this linear order
+  let order := Finset.univ.sort linRel
+  use order
+  constructor
+  · -- Nodup: sort produces no duplicates
+    exact Finset.sort_nodup _ _
+  constructor
+  · -- All vertices appear: univ contains everything
+    intro v
+    have hmem : v ∈ Finset.univ := Finset.mem_univ v
+    rw [Finset.mem_sort]
+    exact hmem
+  · -- Edge ordering: if u → v, then u comes before v
+    intro u v hedge iu iv hu hv
+    -- Key: u → v implies u ≤ v in the reachability partial order
+    have hle_partial : @LE.le V partOrd.toLE u v := DirectedGraph.edge_reachable bn.graph hedge
+    -- The linear order extends the partial order: (· ≤ ·) ≤ linRel
+    -- hext : ∀ a b, @LE.le V partOrd.toLE a b → linRel a b
+    have hle_linear : linRel u v := @hext u v hle_partial
+    -- u ≠ v (edges don't create self-loops in acyclic graphs)
+    have hne : u ≠ v := by
+      intro heq
+      subst heq
+      exact bn.acyclic u ⟨u, hedge, DirectedGraph.reachable_refl bn.graph u⟩
+    -- In a sorted list, ≤ in the order implies ≤ in index
+    have hsorted : List.Sorted linRel order := Finset.sort_sorted (r := linRel) Finset.univ
+    -- Goal: show iu.val < iv.val
+    by_contra hge
+    push_neg at hge  -- hge : iv.val ≤ iu.val
+    rcases Nat.lt_or_eq_of_le hge with hlt | heq'
+    · -- iv.val < iu.val: v comes before u in the sorted list
+      -- Since list is sorted, order[iv] ≤ order[iu], so linRel v u
+      have hsorted' := List.Sorted.rel_get_of_lt hsorted hlt
+      -- hsorted' : linRel (order.get iv) (order.get iu)
+      -- order.get iv = order[iv.val] = v (from hv) and similarly for u
+      simp only [List.get_eq_getElem] at hsorted'
+      -- hsorted' : linRel order[↑iv] order[↑iu]
+      -- Substitute using hu and hv (which use order[iu] not order[↑iu])
+      -- Since Fin.val gives ↑, these should match
+      have hv' : order[iv.val] = v := hv
+      have hu' : order[iu.val] = u := hu
+      rw [hv', hu'] at hsorted'
+      -- hsorted' : linRel v u, hle_linear : linRel u v, so u = v
+      have heq'' := linOrd.1.2.1 _ _ hle_linear hsorted'
+      exact hne heq''
+    · -- iu.val = iv.val but order[iu] = u ≠ v = order[iv]
+      have hfin : iu = iv := Fin.ext heq'.symm
+      rw [hfin, hv] at hu
+      exact hne hu.symm
+
+end BayesianNetwork
+
+/-! ## Simple Bayesian Networks
+
+For concrete examples, we define simpler versions with explicit types.
+-/
+
+/-- A simple BN where all nodes have the same state space. -/
+structure SimpleBayesianNetwork (V : Type*) (β : Type*)
+    [MeasurableSpace β] where
+  graph : DirectedGraph V
+  acyclic : graph.IsAcyclic
+
+namespace SimpleBayesianNetwork
+
+variable {V β : Type*} [MeasurableSpace β]
+
+/-- Convert to general BayesianNetwork. -/
+noncomputable def toBayesianNetwork (sbn : SimpleBayesianNetwork V β) :
+    BayesianNetwork V where
+  graph := sbn.graph
+  acyclic := sbn.acyclic
+  stateSpace := fun _ => β
+  measurableSpace := fun _ => inferInstance
+
+end SimpleBayesianNetwork
+
+/-! ## Summary
+
+This file establishes:
+
+1. **BayesianNetwork structure**: DAG + state spaces + measurability
+2. **Graph-theoretic notions**: parents, children, ancestors, descendants
+3. **Markov blanket**: The minimal conditioning set for independence
+4. **Local Markov property**: X_v ⊥ NonDesc(v) | Parents(v)
+5. **Factorization**: P(X) = ∏ P(Xᵢ | Parents(Xᵢ))
+6. **Topological ordering**: Linear order respecting edge direction
+
+The full connection to Mathlib's kernel infrastructure and conditional
+independence requires additional development in:
+- Conditional probability kernels for each node
+- Product kernel construction for joint distribution
+- Conditional independence API from Mathlib
+
+See DSeparation.lean for graphical conditional independence criteria.
+-/
+
+end Mettapedia.ProbabilityTheory.BayesianNetworks

@@ -3,28 +3,24 @@ import Mathlib.Data.Rat.Cast.Defs
 import Mathlib.Tactic
 
 /-!
-# Precise vs Imprecise Probability: When Decisions Differ
+# Precise vs. Imprecise Probability (Toy Decision Example)
 
-This file provides a **fully formal** example showing when precise and imprecise
-probability lead to different decisions.
+This file is a small, self-contained decision-theory example showing how different
+decision criteria can lead to different recommendations when probabilities are not
+known precisely.
 
-## The Setup
+## Setup
 
 A decision problem with:
 - 3 states of the world: Safe, Risky, Catastrophic
 - 2 actions: Normal, Cautious
 - Asymmetric payoffs (catastrophic outcome is very bad)
 
-## Key Results
+## What is shown
 
 1. With precise probability, the optimal action depends sensitively on P(Catastrophic)
-2. With imprecise probability + maximin, the decision is robust
+2. With interval uncertainty + maximin, the decision is robust (worst-case based)
 3. There exist probability ranges where EU and maximin disagree
-
-## The Point
-
-When you genuinely don't know P(Catastrophic), imprecise probability + maximin
-gives a robust answer without forcing you to pretend you know.
 -/
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Examples.PreciseVsImprecise
@@ -249,26 +245,13 @@ theorem breakeven_EU_equal :
 
 /-! ## Summary
 
-This example formally proves:
+This file proves (by direct calculation):
 
-1. **Precise probability is fragile**: The optimal action flips at P(Cat) ≈ 1.48%
-
-2. **Imprecise probability is robust**: Maximin chooses Cautious for any
-   P(Cat) ∈ [0.5%, 5%], without needing the exact value
-
-3. **The gap is significant**:
-   - Worst case Normal: 40
-   - Worst case Cautious: 78
-   - Ratio: nearly 2x better worst-case for Cautious
-
-4. **When to use which**:
-   - If you KNOW P(Cat) < 1.48%: Normal is optimal (higher EU)
-   - If you KNOW P(Cat) > 1.48%: Cautious is optimal
-   - If you DON'T KNOW: Maximin says Cautious (robust choice)
-
-This is the formal basis for why imprecise probability + maximin is appropriate
-for existential risk: we genuinely don't know P(x-risk), and the asymmetric
-payoffs make the robust choice (safety) clearly preferable under maximin.
+* for a low catastrophic probability (`lowRiskDist`), expected utility prefers `normal`,
+* for a higher catastrophic probability (`highRiskDist`), expected utility prefers `cautious`,
+* for an interval of catastrophic probabilities (`uncertaintyRange`), the maximin rule prefers
+  `cautious` (since it has a higher worst-case payoff),
+* and the breakeven threshold for expected utility is `pCat = 2/135`.
 -/
 
 end Mettapedia.ProbabilityTheory.KnuthSkilling.Examples.PreciseVsImprecise

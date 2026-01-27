@@ -193,6 +193,29 @@ theorem iterate_op_pos (y : α) (hy : ident < y) (m : ℕ) (hm : m > 0) :
   calc ident = iterate_op y 0 := (iterate_op_zero y).symm
     _ < iterate_op y m := iterate_op_strictMono y hy hm
 
+/-- Negative iterates stay below the identity: if `y` is negative (in the identity-free sense),
+then `y^m < ident` for all `m > 0`. -/
+theorem iterate_op_lt_ident_of_isNegative (y : α) (hy : IsNegative y) (m : ℕ) (hm : 0 < m) :
+    iterate_op y m < ident := by
+  cases m with
+  | zero => cases hm
+  | succ k =>
+    -- `hm` is redundant in the successor case; clear it to avoid dependent generalization.
+    clear hm
+    induction k with
+    | zero =>
+      -- m = 1
+      have h1 : op y ident < ident := hy ident
+      -- `iterate_op y 1 = y = op y ident`
+      simpa [iterate_op_one, op_ident_right] using h1
+    | succ k ih =>
+      -- m = k+2
+      have hstep : op y (iterate_op y (k + 1)) < iterate_op y (k + 1) :=
+        hy (iterate_op y (k + 1))
+      have hstep' : iterate_op y (k + 1 + 1) < iterate_op y (k + 1) := by
+        simpa [iterate_op] using hstep
+      exact lt_trans hstep' ih
+
 /-- Connection: `iterate_op_pnat` equals `iterate_op` when n is positive.
     This bridges identity-free ℕ+ iteration with identity-based ℕ iteration. -/
 theorem iterate_op_pnat_eq (x : α) (n : ℕ+) :
@@ -382,41 +405,37 @@ def SeparationStrictProp [KnuthSkillingMonoidBase α] : Prop :=
       KnuthSkillingAlgebra.iterate_op x m < KnuthSkillingAlgebra.iterate_op a n ∧
       KnuthSkillingAlgebra.iterate_op a n < KnuthSkillingAlgebra.iterate_op y m
 
-/-- **Negative separation property (identity-based version)**.
+/-- **Negative separation property (identity-free, semigroup version)**.
 
-For `a < ident` and `x < y < ident`, there exist `n, m ∈ ℕ` with `0 < m` such that
-`x^m < a^n ≤ y^m`.
+This is the negative-cone analogue of `SeparationSemigroupProp`: for negative elements
+`a, x, y` with `x < y`, some power of `a` can be sandwiched between powers of `x` and `y`.
 
-This is the natural “other side” of `SeparationProp`, and is what you get automatically from a
-Hölder-style additive embedding `Θ : α → ℝ`: the same rational-density argument works in `ℝ_{<0}`.
+We use `IsNegative` and ℕ+ iteration (`iterate_op_pnat`) so the statement makes sense without
+an identity element. -/
+def SeparationNegProp [KSSemigroupBase α] : Prop :=
+  ∀ {a x y : α}, IsNegative a → IsNegative x → IsNegative y → x < y →
+    ∃ n m : ℕ+, iterate_op_pnat x m < iterate_op_pnat a n ∧
+               iterate_op_pnat a n ≤ iterate_op_pnat y m
 
-In the probability-theory setting (`ident` is a minimum), this property is vacuous because there
-are no elements strictly below `ident`. -/
-def SeparationNegProp [KnuthSkillingMonoidBase α] : Prop :=
-  ∀ {a x y : α}, a < ident → x < ident → y < ident → x < y →
-    ∃ n m : ℕ, 0 < m ∧
-      KnuthSkillingAlgebra.iterate_op x m < KnuthSkillingAlgebra.iterate_op a n ∧
-      KnuthSkillingAlgebra.iterate_op a n ≤ KnuthSkillingAlgebra.iterate_op y m
+/-- **Bilateral separation property (identity-free, semigroup version)**.
 
-/-- **Bilateral separation property (identity-based version)**.
-
-This is just `SeparationProp` on the positive cone together with `SeparationNegProp` on the
-negative cone. The “crossing” case `x < ident < y` is intentionally excluded: with ℕ-iteration
-only, there is no meaningful rational-sandwich statement spanning both sides without introducing
-additional signed structure. -/
-def SeparationBilateralProp [KnuthSkillingMonoidBase α] : Prop :=
-  SeparationProp (α := α) ∧ SeparationNegProp (α := α)
+Positive-side separation together with negative-side separation.
+The mixed-sign “crossing” case is intentionally excluded: the rational-sandwich statement
+is formulated cone-wise. -/
+def SeparationBilateralProp [KSSemigroupBase α] : Prop :=
+  SeparationSemigroupProp (α := α) ∧ SeparationNegProp (α := α)
 
 theorem separationNegProp_of_identIsMinimum
     {α : Type*} [KnuthSkillingAlgebraBase α] :
     SeparationNegProp (α := α) := by
   intro a x y _ha hx _hy _hxy
-  -- In the probability setting, `ident` is the minimum, so `x < ident` is impossible.
-  exact (False.elim (not_lt_of_ge (ident_le x) hx))
+  -- In the probability setting, `ident` is the minimum, so `IsNegative x` is impossible.
+  have hx_lt : x < ident := (isNegative_iff_lt_ident (a := x)).1 hx
+  exact (False.elim (not_lt_of_ge (ident_le x) hx_lt))
 
-theorem separationBilateralProp_iff_separationProp_of_identIsMinimum
+theorem separationBilateralProp_iff_separationSemigroupProp_of_identIsMinimum
     {α : Type*} [KnuthSkillingAlgebraBase α] :
-    SeparationBilateralProp (α := α) ↔ SeparationProp (α := α) := by
+    SeparationBilateralProp (α := α) ↔ SeparationSemigroupProp (α := α) := by
   constructor
   · intro h
     exact h.1
@@ -468,11 +487,44 @@ theorem separationNegProp : SeparationNegProp (α := α) :=
   KSSeparationBilateral.separation_neg
 
 theorem separationBilateralProp : SeparationBilateralProp (α := α) :=
-  ⟨KSSeparation.separation, KSSeparationBilateral.separation_neg⟩
+by
+  classical
+  refine ⟨?_, KSSeparationBilateral.separation_neg⟩
+  -- Build the positive-side semigroup separation from the (identity-based) `KSSeparation` field.
+  intro a x y ha hx hy hxy
+  -- Convert `IsPositive` assumptions to `ident <`.
+  have ha' : ident < a := (isPositive_iff_ident_lt a).1 ha
+  have hx' : ident < x := (isPositive_iff_ident_lt x).1 hx
+  have hy' : ident < y := (isPositive_iff_ident_lt y).1 hy
+  -- Apply the standard identity-based separation.
+  obtain ⟨n, m, hm_pos, h_lo, h_hi⟩ := KSSeparation.separation ha' hx' hy' hxy
+  -- Convert ℕ to ℕ+ (as in `KSSeparationSemigroup_of_KSSeparation`).
+  by_cases hn : n = 0
+  · -- n = 0: contradiction since `x^m < ident` is impossible for positive `x`.
+    exfalso
+    simp only [hn, KnuthSkillingAlgebra.iterate_op_zero] at h_lo
+    have hxm_pos : ident < KnuthSkillingAlgebra.iterate_op x m :=
+      KnuthSkillingAlgebra.iterate_op_pos x hx' m hm_pos
+    exact not_lt.mpr (le_of_lt hxm_pos) h_lo
+  · have hn_pos : 0 < n := Nat.pos_of_ne_zero hn
+    let n' : ℕ+ := ⟨n, hn_pos⟩
+    let m' : ℕ+ := ⟨m, hm_pos⟩
+    -- Connect `iterate_op_pnat` to `iterate_op` *before* splitting goals, so the lemmas are
+    -- available to both subgoals.
+    have hx_eq : iterate_op_pnat x m' = KnuthSkillingAlgebra.iterate_op x m :=
+      KnuthSkillingAlgebra.iterate_op_pnat_eq x m'
+    have ha_eq : iterate_op_pnat a n' = KnuthSkillingAlgebra.iterate_op a n :=
+      KnuthSkillingAlgebra.iterate_op_pnat_eq a n'
+    have hy_eq : iterate_op_pnat y m' = KnuthSkillingAlgebra.iterate_op y m :=
+      KnuthSkillingAlgebra.iterate_op_pnat_eq y m'
+    refine ⟨n', m', ?_, ?_⟩
+    · simpa [hx_eq, ha_eq] using h_lo
+    · simpa [ha_eq, hy_eq] using h_hi
 
 end KSSeparationBilateral
 
--- In the probability setting, there are no elements below `ident`, so the negative-side sandwich is trivial.
+-- In the probability setting (`ident` is a minimum), `IsNegative` is impossible, so the
+-- negative-side sandwich is trivial.
 theorem ksSeparationBilateral_of_ksSeparation
     {α : Type*} [KnuthSkillingAlgebraBase α] [KSSeparation α] :
     KSSeparationBilateral α :=

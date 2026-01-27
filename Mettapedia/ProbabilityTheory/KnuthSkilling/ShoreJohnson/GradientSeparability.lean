@@ -699,7 +699,7 @@ theorem exists_gradient_representation
     -- globally well-defined. This assumption can be removed by using a dynamic reference point
     -- or by extending g via cocycle globalization.
     (hBounded : ∀ {n : ℕ} (q : ProbDist n), ∀ i, q.p i < 3/8) :
-    ∃ _gr : GradientRepresentation F, True := by
+    Nonempty (GradientRepresentation F) := by
   -- **Strategy**: Define g via the cocycle with a fixed reference point.
   --
   -- The key insight is that by deriv_local, the derivative value h(a, α, b, β) is
@@ -731,7 +731,7 @@ theorem exists_gradient_representation
   let scale : ∀ {n : ℕ}, ProbDist n → ProbDist n → ℝ := fun _ _ => 1
   have scale_ne : ∀ {n : ℕ} (p q : ProbDist n), scale p q ≠ 0 := by
     intro n p q; simp [scale]
-  refine ⟨⟨g, scale, scale_ne, ?_⟩, trivial⟩
+  refine ⟨⟨g, scale, scale_ne, ?_⟩⟩
 
   -- The derivative formula verification
   intro n p q i j hij hp hq
@@ -1715,7 +1715,7 @@ theorem gradientRepresentation_from_sj_axioms
       ∃ gradF : Fin n → ℝ, ∀ (i j : Fin n) (hij : i ≠ j),
         Classical.choose (hDiff.deriv_exists p q i j hij hp hq) = gradF i - gradF j)
     (hBounded : ∀ {n : ℕ} (q : ProbDist n), ∀ i, q.p i < 3/8) :
-    ∃ _gr : GradientRepresentation F, True := by
+    Nonempty (GradientRepresentation F) := by
   -- Step 1: Get ExtractGRegularity from SJ axioms
   have hExtract : ExtractGRegularity F :=
     extractGRegularity_from_sj_axioms I F hSJ hRealize hDiff hLocal hRich hPartial
