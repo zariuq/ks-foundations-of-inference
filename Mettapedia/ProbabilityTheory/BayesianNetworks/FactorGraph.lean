@@ -36,6 +36,7 @@ Every Bayesian network induces a factor graph where:
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Fintype.Basic
+import Mathlib.Data.Fintype.Pi
 import Mathlib.Data.ENNReal.Basic
 import Mettapedia.ProbabilityTheory.BayesianNetworks.DirectedGraph
 import Mettapedia.ProbabilityTheory.BayesianNetworks.BayesianNetwork
@@ -96,9 +97,15 @@ noncomputable def unnormalizedJoint (fg : FactorGraph V) [Fintype fg.factors]
     Note: This requires summing over all configurations, which needs Fintype instances. -/
 noncomputable def partitionFunction (fg : FactorGraph V) [Fintype V]
     [∀ v, Fintype (fg.stateSpace v)] [Fintype fg.factors] [DecidableEq V] : ENNReal :=
-  -- This would require Fintype (FullConfig fg) which needs dependent type handling
-  -- For now, we state this conceptually
-  1  -- Placeholder: proper implementation needs Fintype (∀ v, fg.stateSpace v)
+  by
+    classical
+    -- Since `V` is finite and each `stateSpace v` is finite, the dependent function type
+    -- `FullConfig fg = ∀ v, stateSpace v` is also finite, so the partition function is a
+    -- finite sum.
+    -- We sum over all configurations using `Fintype.piFinset`.
+    exact
+      (Fintype.piFinset (fun v : V => (Finset.univ : Finset (fg.stateSpace v)))).sum
+        (fun x => fg.unnormalizedJoint x)
 
 /-! ## Factor Graph Properties -/
 

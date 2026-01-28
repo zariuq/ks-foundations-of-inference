@@ -1,13 +1,8 @@
 # K&S Codex Literature (Lean)
 
-This folder is the Lean-facing “codex” for background literature used to understand and (eventually)
-close the remaining Knuth–Skilling Appendix A gaps.
+Maps background literature (PDFs) to Lean modules.
 
-Source PDFs live under `literature/KS_codex/` (outside the Lean project); see
-`literature/KS_codex/LITERATURE_INDEX.md` for a curated reading guide.
-
-Important: per project policy, this `README.md` is **LLM-generated working documentation**; the user
-decides what to commit.
+Source PDFs: `literature/KS_codex/`
 
 ## Files
 

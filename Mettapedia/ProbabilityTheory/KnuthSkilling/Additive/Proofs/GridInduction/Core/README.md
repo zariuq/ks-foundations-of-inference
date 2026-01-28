@@ -171,6 +171,6 @@ example [KSSeparationStrict α] {F : AtomFamily α 2} (R : MultiGridRep F)
 
 ## Status
 
-**Complete** (2026-01-11):
-- ✅ All key theorems proven
-- ✅ Builds as part of `Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem` with 0 sorries and 0 warnings
+Complete (2026-01-11). Zero sorries, zero warnings.
+
+See parent: `../README.md` for the full GridInduction overview.

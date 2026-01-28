@@ -13,36 +13,25 @@ probability theory without assuming additivity, continuity, or differentiability
 This means no negation/complements are required—a genuine generalization of
 classical probability.
 
-## Primary Assumption: NoAnomalousPairs (NAP)
+## Axiom Choices
 
-The **canonical proof path** uses `NoAnomalousPairs` from the 1950s ordered-semigroup
-literature (Alimov 1950, Fuchs 1963), formalized via Eric Luap's OrderedSemigroups library.
+Two main regularity axioms suffice for the representation theorem:
 
-**Why NAP is primary**:
-- Historical precedent: NAP (1950s) predates K&S's `KSSeparation` (2012) by 60+ years
-- Strictly weaker: NAP is identity-free; `KSSeparation` requires identity
-- The relationship: `KSSeparation + IdentIsMinimum ⇒ NoAnomalousPairs` (proven)
+- **NoAnomalousPairs (NAP)**: From ordered semigroup theory (Alimov 1950, Fuchs 1963)
+- **KSSeparation**: A sandwich property relating iterates (added by necessity in the process of formalization)
 
-See `Additive/Main.lean` for the canonical assumption hierarchy.
+Both imply commutativity and Archimedean property. NAP is identity-free; KSSeparation requires identity. Under `IdentIsMinimum`, they are equivalent.
 
-## Two Proof Approaches
+## Three Proof Paths
 
-We formalize **both** proofs of the representation theorem:
+1. **Hölder/Alimov embedding** (`Additive/Proofs/OrderedSemigroupEmbedding/`):
+   Uses NAP. Shortest proof via [Eric Paul's OrderedSemigroups](https://github.com/ericluap/OrderedSemigroups).
 
-1. **Hölder/Alimov embedding** (`Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean`):
-   Uses `NoAnomalousPairs` — **CANONICAL PATH**
-   Direct embedding via Eric Luap's OrderedSemigroups library.
+2. **Dedekind cuts** (`Additive/Proofs/DirectCuts/`):
+   Uses KSSeparation. Classical construction.
 
-2. **Dedekind cuts** (`Additive/Proofs/DirectCuts/Main.lean`):
-   Uses `KSSeparationStrict` — alternative path
-   Classical Dedekind cuts construction.
-
-3. **Grid induction** (`Additive/Proofs/GridInduction/Main.lean`):
-   Uses `KSSeparationStrict` — K&S paper's original approach
-   Most complex; kept for historical fidelity.
-
-The Hölder/Alimov approach is modeled on Alimov (1950) and Hölder (1901),
-adapted for ordered semigroups without identity.
+3. **Grid induction** (`Additive/Proofs/GridInduction/`):
+   Uses KSSeparation. Follows K&S paper structure.
 
 ## Main Result (Representation Theorem; Appendix A in the paper)
 
@@ -119,12 +108,12 @@ KnuthSkilling/
 ├── Additive/                    # Appendix A: additive representation
 │   ├── Main.lean                # Public API: HasRepresentationTheorem
 │   ├── Axioms/                  # Axiom definitions
-│   │   ├── AnomalousPairs.lean  # NoAnomalousPairs (NAP) - PRIMARY
+│   │   ├── AnomalousPairs.lean  # NoAnomalousPairs (NAP)
 │   │   └── SandwichSeparation.lean  # KSSeparation ⇒ Commutativity + Archimedean
 │   └── Proofs/                  # Three proof paths
-│       ├── OrderedSemigroupEmbedding/  # Hölder path (NAP) - CANONICAL
-│       ├── DirectCuts/          # Dedekind cuts (KSSeparationStrict)
-│       └── GridInduction/       # K&S induction (KSSeparationStrict)
+│       ├── OrderedSemigroupEmbedding/  # Hölder path (NAP)
+│       ├── DirectCuts/          # Dedekind cuts (KSSeparation)
+│       └── GridInduction/       # K&S paper's induction (KSSeparation)
 ├── Multiplicative/              # Appendix B: product operation
 │   ├── Main.lean                # Public entry point
 │   └── Proofs/                  # Proof alternatives
@@ -148,36 +137,31 @@ KnuthSkilling/
 
 | File | Description |
 |------|-------------|
-| `FoundationsOfInference.lean` | **Reviewer entrypoint**: imports Core + Appendices A/B/C |
+| `FoundationsOfInference.lean` | Main entrypoint (imports Core + Appendices A/B/C) |
 | `Core/Basic.lean` | Core definitions: `KSSemigroupBase`, `KnuthSkillingMonoidBase` |
-| `Additive/Axioms/AnomalousPairs.lean` | **NoAnomalousPairs (NAP)**: primary assumption |
-| `Additive/Axioms/SandwichSeparation.lean` | **Key derivations**: `KSSeparation` ⇒ Commutativity + Archimedean |
-| `Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean` | **Appendix A (Hölder)**: NAP → representation — CANONICAL |
-| `Additive/Proofs/DirectCuts/Main.lean` | **Appendix A (cuts)**: KSSeparationStrict → representation |
-| `Additive/Main.lean` | **Appendix A API**: `HasRepresentationTheorem` |
-| `Multiplicative/Main.lean` | **Appendix B**: product theorem |
-| `Variational/Main.lean` | **Appendix C**: variational/Cauchy theorem |
-| `Probability/ProbabilityCalculus.lean` | **Canonical interface**: sum rule, product rule, Bayes |
+| `Additive/Axioms/AnomalousPairs.lean` | NoAnomalousPairs (NAP) definition |
+| `Additive/Axioms/SandwichSeparation.lean` | KSSeparation ⇒ Commutativity + Archimedean |
+| `Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean` | Appendix A via Hölder (NAP) |
+| `Additive/Proofs/DirectCuts/Main.lean` | Appendix A via Dedekind cuts (KSSeparation) |
+| `Additive/Main.lean` | Appendix A: `HasRepresentationTheorem` |
+| `Multiplicative/Main.lean` | Appendix B: product theorem |
+| `Variational/Main.lean` | Appendix C: variational/Cauchy theorem |
+| `Probability/ProbabilityCalculus.lean` | Sum rule, product rule, Bayes |
 | `Examples/CoinDie.lean` | **Full pipeline example**: coin/die → ℝ |
 | `Examples/PreciseVsImpreciseGrounded.lean` | **Decision theory**: K&S → credal sets → EU vs maximin |
 
 ## The Hypercube Connection
 
-The K&S foundations fit naturally into the **Stay-Wells hypercube framework**
-for generating type systems:
+The K&S foundations fit into the **Probability Hypercube** (inspired by Stay-Wells).
 
-| Hypercube Concept | K&S Interpretation |
-|-------------------|-------------------|
-| Lambda Theory | KnuthSkillingAlgebra with `op`, `ident` |
-| Modal Types | Separation sets A(d,u), B(d,u), C(d,u) |
-| Sort Slots | Precision levels: ∗ = intervals, □ = points |
-| Equational Center | Structures where Θ representation exists |
-| Hypercube Vertices | Different probability theories |
+The hypercube organizes probability theories by axes:
+- **Commutativity**: commutative (classical) vs non-commutative (quantum)
+- **Distributivity**: Boolean, distributive lattice, orthomodular
+- **Precision**: precise (point-valued) vs imprecise (interval-valued)
+- **Ordering**: linear (K&S) vs partial
+- **Additivity**: σ-additive (Kolmogorov) vs derived (Cox, K&S)
 
-The **spectrum of probability foundations** forms a hypercube where:
-- **Axes**: Commutativity, Completeness, Precision profile
-- **Vertices**: Different probability theories (imprecise → classical)
-- **Paths**: Refinement processes (interval bounds → point values)
+K&S sits at: (commutative, distributive, precise, linear, derived-additive).
 
 See `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Connection.lean` for the full development.
 
@@ -187,7 +171,7 @@ Note: the hypercube-related K&S analysis files now live under:
 - `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Proofs.lean`
 - `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Theory.lean`
 
-For the hypercube’s “weakness preorder” + quantale-semantics layer, see:
+For the hypercube's "weakness preorder" + quantale-semantics layer (inspired by Goertzel and Bennett), see:
 - `Mettapedia/ProbabilityTheory/Hypercube/WeaknessOrder.lean`
 - `Mettapedia/ProbabilityTheory/Hypercube/QuantaleSemantics.lean`
 - `Mettapedia/ProbabilityTheory/Hypercube/ThetaSemantics.lean`
@@ -203,98 +187,14 @@ nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationT
 
 ## Status
 
-**Appendix A (Representation Theorem): COMPLETE** (2026-01-11)
-- Full representation theorem proven (no `sorry`)
-- Two proof approaches: K&S induction AND direct Dedekind cuts
-- Separation ⇒ commutativity + Archimedean (see `Additive/Axioms/SandwichSeparation.lean`)
-- Faithful representation ⇒ separation (see `AxiomSystemEquivalence.lean`)
-- Builds warning-free
+Complete. Roughly human-checked. Zero `sorry`, zero `axiom`.
 
-**Appendix B (Product Theorem): COMPLETE** (2026-01-14)
-- **No `sorry`, no `axiom`, no smuggling** - all ProductTheorem files are clean
-- Two Lean routes:
-  1. **Main.lean**: assumes `AdditiveOrderIsoRep PosReal tensor` + `DistributesOverAdd`
-  2. **AczelTheorem.lean**: assumes only `TensorRegularity` + `DistributesOverAdd`
-- `TensorRegularity` = associativity + injectivity; **injectivity is DERIVED** from distributivity + commutativity via `TensorRegularity.of_assoc_of_distrib_of_comm`
+## Examples
 
-### WARNING: Circular Reasoning Anti-Pattern
-
-A previous file `EventBridge.lean` was **DELETED** because it contained circular reasoning.
-It defined `mulTensor := multiplication` and then "proved" multiplication equals scaled
-multiplication. **This proves nothing!**
-
-**DO NOT** try to "bridge" event-level to scalar-level by:
-```lean
-abbrev mulTensor := mulPos  -- WRONG: assumes tensor IS multiplication
-```
-
-The **correct approach** (what `AczelTheorem.lean` does):
-1. Start with an ABSTRACT tensor `⊗` satisfying K&S Axioms 3-4
-2. Prove that ANY such tensor must equal scaled multiplication
-3. The tensor's identity is derived, not assumed
-
-## Open Gaps
-
-### 1. Event Lattice → Plausibility Scale Connection ✅ RESOLVED
-
-**Implemented** in `Model.lean`:
-
-```lean
-structure KSModel (E S : Type*)
-    [PlausibilitySpace E] [KnuthSkillingAlgebraBase S] where
-  v : E → S
-  mono : Monotone v
-  v_bot : v ⊥ = ident
-  v_sup_of_disjoint : ∀ {a b : E}, Disjoint a b → v (a ⊔ b) = op (v a) (v b)
-```
-
-This follows GPT-5 Pro's suggestion: keep the scale S already equipped with its
-K&S algebra structure. The bridge is the single axiom `v(a ⊔ b) = v(a) ⊕ v(b)`.
-
-**Also includes**:
-- `KSModelWithRepresentation`: Composition with the representation theorem (Θ : S → ℝ)
-- `instKSAlgebraNNReal`: NNReal with addition forms a `KnuthSkillingAlgebraBase`
-- `Three'.threeKSModel`: Concrete example on the 3-element chain with NNReal scale
-
-### 2. Non-Boolean Examples
-
-K&S claims to work on distributive lattices without complements.
-
-The `Examples/` directory contains concrete examples demonstrating K&S applied to finite lattices:
-- `CoinDie.lean`: Full pipeline coin/die → ℝ
-- `PreciseVsImpreciseGrounded.lean`: K&S → credal sets → decision theory
-- `ImpreciseOn7Element.lean`: Imprecise probability on 7-element lattice
-
-Counterexamples showing why axioms matter are in `Additive/Counterexamples/`.
-
-### 3. Decision Theory Example ✅ COMPLETE (2026-01-21)
-
-**Implemented** in `Examples/PreciseVsImpreciseGrounded.lean` (910 lines, 0 sorry):
-
-Demonstrates the complete pipeline from K&S axioms to decision theory:
-- **K&S grounding**: Actual `Θ : Event → ℝ` satisfying modularity/monotonicity/non-negativity
-- **Probability extraction**: `P(a) = Θ(a) / Θ(⊤)` via `KSBooleanRepresentation.probability`
-- **Credal sets**: Sets of K&S representations for imprecise probability (epistemic uncertainty)
-- **Hypercube positioning**: Formal connection to `PrecisionAxis.precise` vs `.imprecise`
-- **Decision rules**: Expected utility (von Neumann-Morgenstern) vs maximin (Gilboa-Schmeidler)
-
-**Key theorems**:
-- Connection: probability distributions arise from K&S representations (not ad-hoc)
-- Completeness: when K&S axioms fail to uniquely determine probabilities → credal sets
-- Independence: decision theory axioms (vNM, G-S) are ADDITIONAL to K&S probability
-- Decisions differ: EU and maximin give opposite recommendations under uncertainty
-
-Axiom stack is honest: clearly separates what K&S derives (probability calculus) from what requires additional axioms (decision rules).
-
-### 4. Cauchy's Functional Equation
-
-Appendix B exponential characterization needs:
-```lean
-theorem continuous_additive_is_linear (f : ℝ → ℝ)
-    (h_cont : Continuous f) (h_add : ∀ x y, f(x+y) = f(x) + f(y)) :
-    ∃ c, ∀ x, f(x) = c * x
-```
-Not in Mathlib. Classical result but requires density argument.
+- `Examples/CoinDie.lean`: Full pipeline coin/die → ℝ
+- `Examples/PreciseVsImpreciseGrounded.lean`: K&S → credal sets → decision theory
+- `Examples/ImpreciseOn7Element.lean`: Imprecise probability on 7-element lattice
+- `Bridges/Model.lean`: Event lattice → plausibility scale connection
 
 ## Countermodels (why the extra axioms matter)
 
@@ -316,6 +216,6 @@ Not in Mathlib. Classical result but requires density argument.
 - Aczél, "Lectures on Functional Equations" — rational homogeneity
 - Stay & Wells, "Generating Hypercubes of Type Systems"
 
-## Paper
+## Papers
 
-See `paper/ks-formalization.tex` for a detailed writeup of the formalization.
+See `papers/ks-lean-overview.pdf` for a Lean code walkthrough with line numbers.
