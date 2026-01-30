@@ -12,18 +12,12 @@ name = "Mettapedia"
 name = "mettapedia"
 root = "Main"
 
-# LeanHammer dependency (MUST come before mathlib to avoid recompiling mathlib)
-[[require]]
-name = "Hammer"
-git = "https://github.com/JOSHCLUNE/LeanHammer"
-rev = "v4.25.0"
-
-# Mathlib dependency (matching LeanHammer version)
+# Mathlib dependency
 # NOTE: batteries comes automatically as a transitive dependency - do NOT add it separately
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.25.0"
+rev = "v4.27.0"
 
 # Eric Luap's OrderedSemigroups (local dependency)
 [[require]]

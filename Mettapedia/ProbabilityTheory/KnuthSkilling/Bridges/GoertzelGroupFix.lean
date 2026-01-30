@@ -66,8 +66,8 @@ theorem existsTheta_strictMono_additive_of_biOrdered_archimedeanNC (G : Type*)
   have hadd : ∀ x y : G, x + y = y + x := add_comm_of_biOrdered_archimedeanNC (G := G)
   letI : AddCommGroup G := { toAddGroup := (inferInstance : AddGroup G), add_comm := hadd }
   letI : IsOrderedAddMonoid G :=
-    { add_le_add_left := fun a b hab c => HolderNonAbelian.add_le_add_left (G := G) hab c
-      add_le_add_right := fun a b hab c => HolderNonAbelian.add_le_add_right (G := G) hab c }
+    { add_le_add_left := fun a b hab c => HolderNonAbelian.add_le_add_right (G := G) hab c
+      add_le_add_right := fun a b hab c => HolderNonAbelian.add_le_add_left (G := G) hab c }
   letI : Archimedean G :=
     { arch := fun x {y} hy => ArchimedeanNC.arch (G := G) x hy }
   exact existsTheta_strictMono_additive (G := G)

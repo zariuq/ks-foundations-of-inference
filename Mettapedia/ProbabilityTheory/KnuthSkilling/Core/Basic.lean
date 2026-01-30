@@ -31,7 +31,6 @@ import Mathlib.Data.Fintype.Prod
 import Mathlib.Order.BoundedOrder.Basic
 import Mathlib.Data.Prod.Lex
 import Mathlib.Algebra.Order.Group.Pointwise.CompleteLattice
-import Hammer
 import Mettapedia.ProbabilityTheory.Structures.Valuation.Basic
 import Mettapedia.ProbabilityTheory.Common.Lattice
 

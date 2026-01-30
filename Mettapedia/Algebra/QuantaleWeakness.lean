@@ -32,8 +32,6 @@ import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.Algebra.BigOperators.Group.Finset.Sigma
 import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
-import Hammer
-
 namespace Mettapedia.Algebra.QuantaleWeakness
 
 open scoped ENNReal

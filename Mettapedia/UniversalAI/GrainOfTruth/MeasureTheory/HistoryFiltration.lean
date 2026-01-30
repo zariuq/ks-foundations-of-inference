@@ -572,11 +572,17 @@ theorem transitionMeasureWithPolicy_finite (μ : Environment) (π : Agent) (n : 
       have h_wf : (iicPrefixToHistory n x).wellFormed := iicPrefixToHistory_wellFormed n x
       have h_le_one :
           π.policy (iicPrefixToHistory n x) s.action ≤ (1 : ENNReal) := by
+        have hsum : (∑ a : Action, π.policy (iicPrefixToHistory n x) a) = 1 := by
+          simpa [tsum_fintype] using π.policy_sum_one _ h_wf
         have h_le_tsum :
             π.policy (iicPrefixToHistory n x) s.action ≤
               (∑' a : Action, π.policy (iicPrefixToHistory n x) a) :=
           ENNReal.le_tsum s.action
-        simpa [π.policy_sum_one _ h_wf] using h_le_tsum
+        have h_le_sum :
+            π.policy (iicPrefixToHistory n x) s.action ≤
+              (∑ a : Action, π.policy (iicPrefixToHistory n x) a) := by
+          simpa [tsum_fintype] using h_le_tsum
+        simpa [hsum] using h_le_sum
       exact lt_of_le_of_lt h_le_one ENNReal.one_lt_top
     · -- μ.prob(...) < ⊤, because μ.prob(...) ≤ 1
       let hist := iicPrefixToHistory n x ++ [HistElem.act s.action]
@@ -908,10 +914,11 @@ theorem initialStepMeasureWithPolicy_finite (μ : Environment) (π : Agent) :
     · -- π(∅)(a) < ⊤, because π(∅)(a) ≤ 1
       have h_wf : History.wellFormed ([] : History) := rfl
       have h_le_one : π.policy ([] : History) s.action ≤ (1 : ENNReal) := by
-        have h_le_tsum :
-            π.policy ([] : History) s.action ≤ (∑' a : Action, π.policy ([] : History) a) :=
-          ENNReal.le_tsum s.action
-        simpa [π.policy_sum_one _ h_wf] using h_le_tsum
+        have hsum : (∑ a : Action, π.policy ([] : History) a) = 1 := by
+          simpa [tsum_fintype] using π.policy_sum_one ([] : History) h_wf
+        have h_le_sum : π.policy ([] : History) s.action ≤ (∑ a : Action, π.policy ([] : History) a) := by
+          simpa [tsum_fintype] using (ENNReal.le_tsum s.action : _)
+        simpa [hsum] using h_le_sum
       exact lt_of_le_of_lt h_le_one ENNReal.one_lt_top
     · -- μ.prob([act a])(x) < ⊤, because ≤ 1
       let hist : History := [HistElem.act s.action]
@@ -1323,8 +1330,8 @@ theorem prefixToHistory_eq_trajectoryToHistory (t : ℕ) (traj : Trajectory) :
   -- In reverse: l.flatMap (g ∘ f) = (l.map f).flatMap g
   -- We have LHS: (List.finRange t).flatMap (fun i => [act (traj i.val).., per (traj i.val)..])
   -- We want: (List.range t).flatMap (fun n => [act (traj n).., per (traj n)..])
-  -- Key: (List.finRange t).map Fin.val = List.range t (by List.map_coe_finRange)
-  rw [← List.map_coe_finRange t]
+  -- Key: (List.finRange t).map Fin.val = List.range t
+  rw [← List.map_coe_finRange_eq_range (n := t)]
   rw [List.flatMap_map]
 
 /-! ### Inverting `prefixToHistory` on well-formed histories -/

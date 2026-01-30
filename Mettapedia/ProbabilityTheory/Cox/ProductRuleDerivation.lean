@@ -1630,7 +1630,7 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
           C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ + (y - x) := le_of_lt hlt
     have hle' :
         C.g_star c hc_pos hc_lt m₁ n₁ hm₁_pos hn₁_ge2 ≤ x + (y - x) :=
-      le_trans hle (add_le_add_right hg₂_le_x _)
+      le_trans hle (add_le_add_left hg₂_le_x _)
     simpa [add_sub_cancel] using hle'
 
   have hr₁_mem_Sy : ((m₁ : ℝ) / n₁) ∈ Sy := by
@@ -3051,7 +3051,7 @@ theorem negation_power_family :
         (differentiableAt_id).rpow_const (Or.inl hxne)
       have hderiv_pow : deriv (fun x => x ^ (1 - r)) x = (1 - r) * x ^ (-r) := by
         simpa [sub_eq_add_neg] using
-          (Real.deriv_rpow_const (x := x) (p := 1 - r) (Or.inl hxne))
+          (Real.deriv_rpow_const (x := x) (p := 1 - r))
       have hderivK' : deriv K x =
           (r - 1) * H x / x * x ^ (1 - r) + H x * ((1 - r) * x ^ (-r)) := by
         have hderivH := hderiv_H x hx
@@ -3179,7 +3179,7 @@ theorem negation_power_family :
       simpa using (deriv_rpow_const (f := G) (x := x) (p := r)
         (N.G_differentiableAt hxpos) (Or.inl hGne))
     have hderiv_xpow : deriv (fun x => x ^ r) x = r * x ^ (r - 1) := by
-      simpa using (Real.deriv_rpow_const (x := x) (p := r) (Or.inl hxne))
+      simpa using (Real.deriv_rpow_const (x := x) (p := r))
     have hdiffGpow : DifferentiableAt ℝ (fun x => G x ^ r) x :=
       (N.G_differentiableAt hxpos).rpow_const (Or.inl hGne)
     have hdiff_xpow : DifferentiableAt ℝ (fun x => x ^ r) x :=

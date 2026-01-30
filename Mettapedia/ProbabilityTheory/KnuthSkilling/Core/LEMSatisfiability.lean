@@ -29,7 +29,6 @@ import Mathlib.Order.Heyting.Regular
 import Mathlib.Data.Fintype.Card
 import Mathlib.Algebra.Order.Field.Basic
 import Mathlib.Tactic
-import Hammer
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Core.RegularityLEMCounterexample
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Heyting.LEMSatisfiability

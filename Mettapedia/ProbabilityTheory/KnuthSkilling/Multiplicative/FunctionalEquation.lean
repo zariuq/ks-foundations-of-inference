@@ -247,7 +247,7 @@ theorem exists_mul_const_of_add_of_pos
       field_simp [hc_ne] at hmul
       simpa [mul_add, add_mul, mul_assoc, mul_left_comm, mul_comm] using hmul
     have : c * u < f (q : ℝ) + ε := by simpa [hfq] using hmul'
-    exact lt_of_lt_of_le this (add_le_add_right hfq_le _)
+    exact lt_of_lt_of_le this (add_le_add_left hfq_le _)  -- constant ε on right
 
   exact le_antisymm hfu_le hcu_le
 

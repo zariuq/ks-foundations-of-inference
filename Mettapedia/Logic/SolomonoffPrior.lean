@@ -183,7 +183,7 @@ theorem binToReal_plus_kraftTerm_le_one (s : BinString) :
         _ = (List.foldr (fun b acc => acc / 2 + if b then 1 / 2 else 0) 0 s +
              (2 : ℝ)^(-(s.length : ℤ))) / 2 + 1 / 2 := h2
         _ ≤ 1 / 2 + 1 / 2 := by
-            apply add_le_add_right
+            apply add_le_add_left  -- constant on right
             apply div_le_div_of_nonneg_right
             exact ih
             norm_num
@@ -822,7 +822,7 @@ theorem cylinder_partition (x : BinString) :
     | inl h0 =>
       unfold Cylinder isPrefixOf at h0
       intro i
-      have hi' : i.val < (x ++ [false]).length := by simp; omega
+      have hi' : i.val < (x ++ [false]).length := by simp_all
       have step := h0 (Fin.mk i.val hi')
       calc x[i]
           = (x ++ [false])[i.val]'hi' := (List.getElem_append_left i.isLt).symm
@@ -830,7 +830,7 @@ theorem cylinder_partition (x : BinString) :
     | inr h1 =>
       unfold Cylinder isPrefixOf at h1
       intro i
-      have hi' : i.val < (x ++ [true]).length := by simp; omega
+      have hi' : i.val < (x ++ [true]).length := by simp_all
       have step := h1 (Fin.mk i.val hi')
       calc x[i]
           = (x ++ [true])[i.val]'hi' := (List.getElem_append_left i.isLt).symm
@@ -913,7 +913,7 @@ theorem produces_append_implies_produces (U : MonotoneMachine) (p x : BinString)
   intro h
   unfold MonotoneMachine.produces at *
   intro i
-  have hi' : i.val < (x ++ [b]).length := by simp; omega
+  have hi' : i.val < (x ++ [b]).length := by simp_all
   have step := h (Fin.mk i.val hi')
   -- step : U.step p i.val = some (x ++ [b])[i.val]'hi'
   -- goal : U.step p i.val = some x[i]

@@ -6,8 +6,6 @@ import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.Algebra.BigOperators.Group.Finset.Piecewise
 import Mettapedia.UniversalAI.BayesianAgents.Core
 import Mettapedia.Logic.UniversalPrediction
-import Hammer
-
 /-!
 # Universal Bayesian Agents (Hutter 2005, Chapter 4)
 
@@ -1592,7 +1590,7 @@ theorem qValue_le_optimalQValue_strong (μ : Environment) (γ : DiscountFactor) 
             (x.reward + γ.val * optimalValue μ γ (h ++ [HistElem.act a] ++ [HistElem.per x]) i) := by
         intro x
         apply mul_le_mul_of_nonneg_left
-        · apply add_le_add_left
+        · apply add_le_add_right
           apply mul_le_mul_of_nonneg_left _ γ.nonneg
           -- Use ih at horizon i < i + 1 = n
           exact ih i (Nat.lt_succ_self i) _
@@ -1811,7 +1809,7 @@ theorem greedyAgent_ge_optimalValue (ξ : BayesianMixture) (γ : DiscountFactor)
                             γ.val * value μ πG γ (h ++ [HistElem.act a_sel] ++ [HistElem.per x]) j) := by
                     intro x
                     apply mul_le_mul_of_nonneg_left
-                    · apply add_le_add_left
+                    · apply add_le_add_right
                       apply mul_le_mul_of_nonneg_left _ γ.nonneg
                       have hIH :=
                         ih j (by omega) (h ++ [HistElem.act a_sel, HistElem.per x])

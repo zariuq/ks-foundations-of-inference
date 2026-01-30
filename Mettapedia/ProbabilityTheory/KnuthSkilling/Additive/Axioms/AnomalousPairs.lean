@@ -140,7 +140,8 @@ theorem noAnomalousPairs_of_KSSeparation_with_IdentMin [IdentIsMinimum α] : NoA
     have h_m_le : m ≤ n - 1 := PNat.le_sub_one_of_lt hmn
     have h1 : 1 < n := PNat.one_lt_of_lt hmn
     have h_m1_le : m + 1 ≤ n := by
-      have h' : m + 1 ≤ (n - 1) + 1 := add_le_add_right h_m_le 1
+      have h' : m + 1 ≤ (n - 1) + 1 := by
+        simpa [add_comm, add_left_comm, add_assoc] using (add_le_add_left h_m_le 1)
       simpa [PNat.sub_add_of_lt h1] using h'
 
     have h_a_m1_le : iterate_op_pnat a (m + 1) ≤ iterate_op_pnat a n :=

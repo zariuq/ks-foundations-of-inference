@@ -599,7 +599,7 @@ theorem qValue_le_optimalQValue_strong {Action : Type uA} {Percept : Type uP}
                 have hadd :
                     PerceptReward.reward x + γ.val * value μ π γ (h ++ [HistElem.act a, HistElem.per x]) n ≤
                       PerceptReward.reward x + γ.val * optimalValue μ γ (h ++ [HistElem.act a, HistElem.per x]) n :=
-                  add_le_add_left hmul (PerceptReward.reward x)
+                  add_le_add_right hmul (PerceptReward.reward x)  -- constant on left
                 have hprob : 0 ≤ (μ.prob (h ++ [HistElem.act a]) x).toReal := ENNReal.toReal_nonneg
                 exact mul_le_mul_of_nonneg_left hadd hprob))
 

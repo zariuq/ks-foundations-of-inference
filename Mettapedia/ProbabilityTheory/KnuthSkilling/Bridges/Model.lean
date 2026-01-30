@@ -184,21 +184,25 @@ The nonnegative reals NNReal with addition form a KnuthSkillingAlgebraBase:
 
 /-- NNReal with addition forms a KnuthSkillingAlgebraBase. -/
 noncomputable instance instKSAlgebraNNReal : KnuthSkillingAlgebraBase NNReal where
+  toLinearOrder := inferInstance
   op := (· + ·)
   ident := 0
   op_assoc := add_assoc
   op_ident_right := add_zero
   op_ident_left := zero_add
-  op_strictMono_left := fun _ => fun _ _ h => add_lt_add_right h _
-  op_strictMono_right := fun _ => fun _ _ h => add_lt_add_left h _
+  op_strictMono_left := fun y => fun _ _ h => add_lt_add_left h y
+  op_strictMono_right := fun x => fun _ _ h => add_lt_add_right h x
   ident_le := zero_le
 
 /-- In instKSAlgebraNNReal, op is addition -/
 theorem nnreal_op_is_add :
-    @op NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase.toKSSemigroupBase = (· + ·) := rfl
+    @op NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase.toKSSemigroupBase = (· + ·) := by
+  funext _ _
+  rfl
 
 /-- In instKSAlgebraNNReal, ident is zero -/
-theorem nnreal_ident_is_zero : @ident NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase = 0 := rfl
+theorem nnreal_ident_is_zero : @ident NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase = 0 := by
+  rfl
 
 /-! ## Example: Three-Element Chain with NNReal Scale -/
 
@@ -272,23 +276,25 @@ noncomputable def threeKSModel (p : NNReal) (hp0 : 0 < p) (hp1 : p < 1) :
     | mid => p
     | top => 1
   mono := fun a b hab => by
-    cases a <;> cases b <;> simp only []
-    case bot.bot => exact le_refl _
-    case bot.mid => exact le_of_lt hp0
-    case bot.top => exact zero_le _
-    case mid.bot => exact absurd hab (by decide)
-    case mid.mid => exact le_refl _
-    case mid.top => exact le_of_lt hp1
-    case top.bot => exact absurd hab (by decide)
-    case top.mid => exact absurd hab (by decide)
-    case top.top => exact le_refl _
-  v_bot := rfl
+    cases a <;> cases b
+    · exact le_rfl
+    · exact hp0.le
+    · exact zero_le _
+    · exfalso; exact (by decide : ¬mid ≤ bot) hab
+    · exact le_rfl
+    · exact hp1.le
+    · exfalso; exact (by decide : ¬top ≤ bot) hab
+    · exfalso; exact (by decide : ¬top ≤ mid) hab
+    · exact le_rfl
+  v_bot := nnreal_ident_is_zero.symm  -- v ⊥ = 0 = ident
   v_sup_of_disjoint := fun {a b} h => by
     rw [disjoint_iff_has_bot] at h
     -- The key insight: op on NNReal is (+), and ident is 0
     -- So op x 0 = x + 0 = x and op 0 x = 0 + x = x
-    have h_op_zero_left : ∀ x : NNReal, op (0 : NNReal) x = x := op_ident_left
-    have h_op_zero_right : ∀ x : NNReal, op x (0 : NNReal) = x := op_ident_right
+    have h_op_zero_left : ∀ x : NNReal, op (0 : NNReal) x = x := by
+      intro x; simp only [nnreal_op_is_add]; exact zero_add x
+    have h_op_zero_right : ∀ x : NNReal, op x (0 : NNReal) = x := by
+      intro x; simp only [nnreal_op_is_add]; exact add_zero x
     cases h with
     | inl ha =>
       subst ha
