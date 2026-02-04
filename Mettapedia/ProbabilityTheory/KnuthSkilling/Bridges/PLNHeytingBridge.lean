@@ -36,7 +36,7 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Order.BoundedOrder.Basic
 import Mathlib.Data.ENNReal.Basic
 import Mathlib.Tactic
-import Mettapedia.Logic.PLNEvidence
+import Mettapedia.Logic.EvidenceQuantale
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Core.HeytingValuation
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Core.HeytingBounds
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Core.HeytingIntervalRepresentation

@@ -684,16 +684,39 @@ theorem modusPonens' {Q : Type*} [CommSemigroup Q] [CompleteLattice Q] [IsQuanta
   modusPonens_left A B
 
 omit [IsQuantale Q] in
+/-- **Monotonicity of Left Residuation (Right argument)**
+
+If B ≤ C, then (A →_L B) ≤ (A →_L C).
+This is a direct consequence of the Galois connection. -/
+theorem leftResiduate_mono_right (A : Q) {B C : Q} (h : B ≤ C) :
+    leftResiduate A B ≤ leftResiduate A C := by
+  unfold leftResiduate
+  apply sSup_le_sSup
+  intro z hz
+  exact hz.trans h
+
+/-- **Antitonicity of Left Residuation (Left argument)**
+
+If A ≤ B, then (B →_L C) ≤ (A →_L C).
+Stronger hypotheses give weaker implications. -/
+theorem leftResiduate_antitone_left {A B : Q} (C : Q) (h : A ≤ B) :
+    leftResiduate B C ≤ leftResiduate A C := by
+  unfold leftResiduate
+  apply sSup_le_sSup
+  intro z hz
+  -- z * B ≤ C, need to show z * A ≤ C
+  calc z * A ≤ z * B := mul_le_mul_right h z
+    _ ≤ C := hz
+
+omit [IsQuantale Q] in
 /-- **Monotonicity of Implication (Right)**
 
 If B ≤ C, then (A → B) ≤ (A → C).
 Stronger conclusions from the same premise give stronger implications. -/
 theorem quantaleImplies_mono_right (A : Q) {B C : Q} (h : B ≤ C) :
     quantaleImplies A B ≤ quantaleImplies A C := by
-  unfold quantaleImplies leftResiduate
-  apply sSup_le_sSup
-  intro z hz
-  exact hz.trans h
+  unfold quantaleImplies
+  exact leftResiduate_mono_right A h
 
 /-- **Monotonicity of Implication (Left, Contravariant)**
 

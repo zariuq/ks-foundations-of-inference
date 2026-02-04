@@ -349,14 +349,16 @@ theorem exists_topological_order [Fintype V] [DecidableEq V] :
       subst heq
       exact bn.acyclic u ⟨u, hedge, DirectedGraph.reachable_refl bn.graph u⟩
     -- In a sorted list, ≤ in the order implies ≤ in index
-    have hsorted : List.Sorted linRel order := Finset.sort_sorted (r := linRel) Finset.univ
+    have hsorted : List.Pairwise linRel order := by
+      dsimp [order]
+      exact (Finset.pairwise_sort (s := (Finset.univ : Finset V)) (r := linRel))
     -- Goal: show iu.val < iv.val
     by_contra hge
     push_neg at hge  -- hge : iv.val ≤ iu.val
     rcases Nat.lt_or_eq_of_le hge with hlt | heq'
     · -- iv.val < iu.val: v comes before u in the sorted list
       -- Since list is sorted, order[iv] ≤ order[iu], so linRel v u
-      have hsorted' := List.Sorted.rel_get_of_lt hsorted hlt
+      have hsorted' := List.Pairwise.rel_get_of_lt hsorted hlt
       -- hsorted' : linRel (order.get iv) (order.get iu)
       -- order.get iv = order[iv.val] = v (from hv) and similarly for u
       simp only [List.get_eq_getElem] at hsorted'

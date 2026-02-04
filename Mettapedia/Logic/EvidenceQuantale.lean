@@ -1,28 +1,27 @@
 /-
-# Evidence as a Quantale: Connecting Weakness, Heyting, and Beta
+# Evidence Quantale: Extended Theory and Interpretations
 
 ## Overview
 
-This file shows that PLN Evidence forms a **commutative quantale**, unifying:
+This file provides **additional theory** for Evidence as a quantale, building on the
+canonical instance defined in `Mettapedia.Logic.PLNEvidence`.
 
-1. **Goertzel's Weakness Theory**: Evidence with quantale operations
-2. **Heyting K&S**: Non-Boolean complement behavior gives bounds [lower, upper]
-3. **Beta-Bayesian**: Evidence (n⁺, n⁻) ↔ Beta(n⁺+α, n⁻+β) sufficient statistic
+**Quantale Instance**: See `PLNEvidence.lean` (lines 584-589)
 
-## The H × H^op Perspective
-
-Evidence = ENNReal × ENNReal can be viewed as H × H^op where H = ENNReal:
-- First component (n⁺): positive evidence, ordered normally
-- Second component (n⁻): negative evidence, conceptually H^op ordering
-
-The H^op perspective captures: "more negative evidence makes the proposition weaker"
+This file adds:
+1. **Confidence Monotonicity**: Evidence addition increases confidence
+2. **H × H^op Perspective**: Evidence as a product with dual ordering
+3. **Beta-Bayesian Interpretation**: Connection to Beta distributions
+4. **Weakness Theory**: Evidence measures for relations
+5. **Transitivity**: Quantale multiplication respects evidential implication
 
 ## Key Results
 
-1. `Evidence.isQuantale`: Evidence with tensor is a commutative quantale
-2. `evidence_tensor_transitivity`: (A→B) ⊗ (B→C) ≤ (A→C) for evidential implications
-3. `evidence_heyting_connection`: Connection to Heyting K&S structure
-4. `evidence_beta_conjugate`: Beta interpretation of quantale operations
+1. `confidence_monotone_in_total`: Adding evidence increases confidence
+2. `evidence_tensor_transitivity`: (A→B) ⊗ (B→C) ≤ (A→C)
+3. `hplus_is_beta_update`: Evidence addition = Beta conjugate update
+4. `tensor_is_confidence_compounding`: Tensor = confidence compounding
+5. `evidenceWeakness_mono`: Weakness is monotone in evidence
 
 ## References
 
@@ -61,99 +60,9 @@ namespace Evidence
 
 /-! ### Quantale Distributivity
 
-The key property: tensor distributes over suprema.
-This follows from ENNReal's quantale structure on each component.
+All quantale structure (including distributivity lemmas and instances) is defined
+in `PLNEvidence.lean`. This file only provides **additional** theory and interpretations.
 -/
-
-/-- Helper: (sSup S).pos = sSup (pos '' S) -/
-theorem sSup_pos (S : Set Evidence) :
-    (sSup S).pos = sSup (Evidence.pos '' S) := rfl
-
-/-- Helper: (sSup S).neg = sSup (neg '' S) -/
-theorem sSup_neg (S : Set Evidence) :
-    (sSup S).neg = sSup (Evidence.neg '' S) := rfl
-
-/-- Tensor distributes over suprema on the left:
-    `a ⊗ (⨆ S) = ⨆ₛ (a ⊗ s)`
-
-    The proof follows from ENNReal.mul_sSup on each component. -/
-theorem mul_sSup_distrib' (a : Evidence) (S : Set Evidence) :
-    a * sSup S = ⨆ s ∈ S, a * s := by
-  apply le_antisymm
-  · -- LHS ≤ RHS: a * sSup S ≤ ⨆ s ∈ S, a * s
-    simp only [Evidence.le_def, Evidence.tensor_def]
-    constructor
-    · -- Positive component: a.pos * (sSup S).pos ≤ (⨆ s ∈ S, a * s).pos
-      rw [sSup_pos]
-      rw [ENNReal.mul_sSup]
-      apply iSup₂_le
-      intro p hp
-      simp only [Set.mem_image] at hp
-      obtain ⟨e, he, rfl⟩ := hp
-      -- a.pos * e.pos ≤ (⨆ s ∈ S, a * s).pos
-      have h : a * e ≤ ⨆ s ∈ S, a * s := by
-        apply le_iSup_of_le e
-        apply le_iSup_of_le he
-        exact le_refl _
-      exact h.1
-    · -- Negative component
-      rw [sSup_neg]
-      rw [ENNReal.mul_sSup]
-      apply iSup₂_le
-      intro n hn
-      simp only [Set.mem_image] at hn
-      obtain ⟨e, he, rfl⟩ := hn
-      have h : a * e ≤ ⨆ s ∈ S, a * s := by
-        apply le_iSup_of_le e
-        apply le_iSup_of_le he
-        exact le_refl _
-      exact h.2
-  · -- RHS ≤ LHS: ⨆ s ∈ S, a * s ≤ a * sSup S
-    apply iSup₂_le
-    intro s hs
-    -- a * s ≤ a * sSup S because s ≤ sSup S and tensor is monotone
-    simp only [Evidence.le_def, Evidence.tensor_def]
-    have hle : s ≤ sSup S := le_sSup hs
-    constructor
-    · exact mul_le_mul_left' hle.1 a.pos
-    · exact mul_le_mul_left' hle.2 a.neg
-
-/-- Tensor distributes over suprema on the right.
-
-    Proof: By commutativity, sSup S * b = b * sSup S = ⨆ s ∈ S, b * s = ⨆ s ∈ S, s * b -/
-theorem sSup_mul_distrib' (S : Set Evidence) (b : Evidence) :
-    sSup S * b = ⨆ s ∈ S, s * b := by
-  -- Use commutativity: sSup S * b = b * sSup S
-  rw [mul_comm]
-  -- Apply mul_sSup_distrib': b * sSup S = ⨆ s ∈ S, b * s
-  rw [mul_sSup_distrib']
-  -- Use commutativity inside the biSup: ⨆ s ∈ S, b * s = ⨆ s ∈ S, s * b
-  simp_rw [mul_comm b]
-
-/-- Evidence with tensor multiplication is a quantale!
-
-    This follows from ENNReal being a quantale and Evidence = ENNReal × ENNReal
-    inheriting the structure coordinatewise. -/
-instance : IsQuantale Evidence where
-  mul_sSup_distrib := mul_sSup_distrib'
-  sSup_mul_distrib := sSup_mul_distrib'
-
-/-- Evidence is a commutative quantale. -/
-instance : IsCommQuantale Evidence where
-
-/-! ### Mathlib Quantale Theorems Now Available
-
-After the `IsQuantale Evidence` instance above, these Mathlib theorems apply automatically:
-- `mul_sSup_distrib` : `x * sSup S = ⨆ y ∈ S, x * y` (left distributivity)
-- `sSup_mul_distrib` : `sSup S * x = ⨆ y ∈ S, y * x` (right distributivity)
-- Other quantale theorems from `Mathlib.Algebra.Order.Quantale`
-
-Use these directly via typeclass inference rather than the primed versions (`mul_sSup_distrib'`).
-The primed versions above are the proofs establishing that Evidence satisfies the quantale axioms;
-after the instance, general quantale theory applies.
--/
-
-end Evidence
 
 /-! ## The H × H^op Perspective
 
@@ -261,7 +170,15 @@ theorem confidence_monotone_in_total (κ : ℝ≥0∞) (e e' : Evidence)
   -- Prove by showing x * (y + κ) ≤ y * (x + κ)
   have key : x * (y + κ) ≤ y * (x + κ) := by
     calc x * (y + κ) = x * y + x * κ := by ring
-      _ ≤ x * y + y * κ := add_le_add_left (mul_le_mul_right' he' κ) _
+      _ ≤ x * y + y * κ := by
+            -- use monotonicity of multiplication in ENNReal
+            have hmul : x * κ ≤ y * κ := by
+              -- multiply on the left and commute
+              have h' : κ * x ≤ κ * y := mul_le_mul_right he' κ
+              simpa [mul_comm] using h'
+            have hmul2 : x * κ + x * y ≤ y * κ + x * y :=
+              add_le_add_left hmul (x * y)
+            simpa [add_comm, add_left_comm, add_assoc] using hmul2
       _ = y * x + y * κ := by ring
       _ = y * (x + κ) := by ring
   -- Cross-multiplication equivalence for division comparison
@@ -380,5 +297,7 @@ from the intersection of:
 - Heyting algebra theory (non-Boolean K&S)
 - Bayesian statistics (Beta conjugacy)
 -/
+
+end Evidence
 
 end Mettapedia.Logic.EvidenceQuantale
