@@ -62,6 +62,20 @@ theorem measurable_eventOfConstraints
   | cons c cs ih =>
       simp [eventOfConstraints_cons, measurable_eventEq, ih]
 
+/-- For BNs where stateSpace v is Bool, `eventEq v false = (eventEq v true)ᶜ`. -/
+theorem eventEq_false_eq_compl_true_of_bool
+    {bn : BayesianNetwork V} (v : V)
+    (valTrue valFalse : bn.stateSpace v)
+    (h_ne : valTrue ≠ valFalse)
+    (h_exhaust : ∀ x : bn.stateSpace v, x = valTrue ∨ x = valFalse) :
+    eventEq (bn := bn) v valFalse = (eventEq (bn := bn) v valTrue)ᶜ := by
+  ext ω; simp only [eventEq, Set.mem_setOf_eq, Set.mem_compl_iff]
+  constructor
+  · intro hf ht; exact h_ne (ht ▸ hf ▸ rfl)
+  · intro hnt; rcases h_exhaust (ω v) with h | h
+    · exact absurd h hnt
+    · exact h
+
 end BayesianNetwork
 
 end Mettapedia.ProbabilityTheory.BayesianNetworks
