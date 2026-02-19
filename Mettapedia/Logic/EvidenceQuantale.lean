@@ -801,6 +801,37 @@ theorem toLogOdds_power_mul (e : Evidence) (w : ℝ)
     _ = w * toLogOdds e := by
           simp [toLogOdds]
 
+/-- Regraduation composes multiplicatively in the exponent. -/
+@[simp] theorem power_power (e : Evidence) (a b : ℝ) :
+    power (power e a) b = power e (a * b) := by
+  apply Evidence.ext'
+  · simp [power, ENNReal.rpow_mul]
+  · simp [power, ENNReal.rpow_mul]
+
+/-- Inverse regraduation recovers the original evidence for nonzero exponent. -/
+@[simp] theorem power_power_inv (e : Evidence) (w : ℝ) (hw : w ≠ 0) :
+    power (power e w) w⁻¹ = e := by
+  apply Evidence.ext'
+  · simpa [power] using (ENNReal.rpow_rpow_inv hw e.pos)
+  · simpa [power] using (ENNReal.rpow_rpow_inv hw e.neg)
+
+/-- Regraduation and inverse-regraduation commute in the opposite order as well. -/
+@[simp] theorem power_inv_power (e : Evidence) (w : ℝ) (hw : w ≠ 0) :
+    power (power e w⁻¹) w = e := by
+  apply Evidence.ext'
+  · simpa [power] using (ENNReal.rpow_inv_rpow hw e.pos)
+  · simpa [power] using (ENNReal.rpow_inv_rpow hw e.neg)
+
+/-- Canary theorem: odds are unchanged by regrade-then-unregrade. -/
+@[simp] theorem toOdds_power_power_inv (e : Evidence) (w : ℝ) (hw : w ≠ 0) :
+    toOdds (power (power e w) w⁻¹) = toOdds e := by
+  simp [power_power_inv (e := e) (w := w) hw]
+
+/-- Canary theorem: log-odds are unchanged by regrade-then-unregrade. -/
+@[simp] theorem toLogOdds_power_power_inv (e : Evidence) (w : ℝ) (hw : w ≠ 0) :
+    toLogOdds (power (power e w) w⁻¹) = toLogOdds e := by
+  simp [power_power_inv (e := e) (w := w) hw]
+
 /-- Evidence weight corresponding to the standard confidence↔weight transform.
 
 For a prior size `κ`, PLN confidence is:
