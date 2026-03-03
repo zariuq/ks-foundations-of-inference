@@ -37,7 +37,7 @@ Both imply commutativity and Archimedean property. NAP is identity-free; KSSepar
 
 ```lean
 theorem associativity_representation
-    (α : Type*) [KnuthSkillingAlgebra α] [KSSeparation α] [RepresentationGlobalization α] :
+    (α : Type*) [KnuthSkillingMonoidBase α] [KSSeparation α] [RepresentationGlobalization α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧   -- Order embedding
       Θ ident = 0 ∧                        -- Identity maps to 0
@@ -182,7 +182,7 @@ For the hypercube's "weakness preorder" + quantale-semantics layer (inspired by 
 ```bash
 cd lean-projects/mettapedia
 export LAKE_JOBS=3
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem
+nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling
 ```
 
 ## Status

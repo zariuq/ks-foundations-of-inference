@@ -98,7 +98,7 @@
 \newtheorem{remark}[theorem]{Remark}
 
 \title{Knuth-Skilling Lean Overview}
-\author{Codex 5.2, Claude 4.5, Zar Goertzel\thanks{This document was drafted collaboratively by humans and AI systems (GPT/Codex, Claude). While formal claims are machine-checked in Lean 4.27.0, prose descriptions may contain human or AI hallucinations. Caveat lector.}}
+\author{Codex 5.2, Claude 4.5, Zar Goertzel\thanks{This document was drafted collaboratively by humans and AI systems (GPT/Codex, Claude). While formal claims are machine-checked in Lean 4.28.0, prose descriptions may contain human or AI hallucinations. Caveat lector.}}
 \date{\today}
 
 \begin{document}
@@ -719,14 +719,14 @@ The grid-based proof is packaged as the typeclass \texttt{RepresentationGlobaliz
 which is automatically instantiated when \texttt{[KSSeparationStrict $\alpha$]} is available.
 
 \begin{definition}[\texttt{RepresentationGlobalization}]
-\textbf{Lines 54--60, Globalization.lean}
+\textbf{Lines 27--33, GlobalizationInterface.lean}
 
 A typeclass packaging the existence of $\Theta$.
 \end{definition}
 
 \begin{lstlisting}[caption={RepresentationGlobalization typeclass}]
 class RepresentationGlobalization (alpha : Type*)
-    [KnuthSkillingAlgebra alpha] [KSSeparation alpha] : Prop where
+    [KnuthSkillingMonoidBase alpha] : Prop where
   exists_Theta :
     exists Theta : alpha -> Real,
       (forall a b : alpha, a <= b <-> Theta a <= Theta b) /\
@@ -736,7 +736,7 @@ class RepresentationGlobalization (alpha : Type*)
 
 \subsubsection{The Globalization Construction (``Triple Family Trick'')}
 
-The instance \texttt{representationGlobalization\_of\_KSSeparationStrict} (lines 93--850, Globalization.lean)
+The instance \texttt{representationGlobalization\_of\_KSSeparationStrict} (lines 101--850, Globalization.lean)
 constructs $\Theta$ globally using a multi-step process:
 
 \begin{enumerate}
@@ -814,7 +814,7 @@ All the actual work happens in the instance construction:
 
 \texttt{representationGlobalization\_of\_KSSeparationStrict}
 \\
-(starts at line 105, \path{Additive/Proofs/GridInduction/Globalization.lean})
+(starts at line 101, \path{Additive/Proofs/GridInduction/Globalization.lean})
 
 This design keeps the public API clean while hiding the complex globalization machinery.
 \end{remark}
@@ -884,7 +884,7 @@ The cuts-based representation theorem.
 
 \begin{lstlisting}[caption={Appendix A (cuts proof)}]
 theorem associativity_representation_cuts
-    (alpha : Type*) [KnuthSkillingAlgebra alpha] [KSSeparation alpha]
+    (alpha : Type*) [KnuthSkillingAlgebraBase alpha] [KSSeparation alpha]
     [KSSeparationStrict alpha] :
     exists Theta : alpha -> Real,
       (forall a b : alpha, a <= b <-> Theta a <= Theta b) /\
@@ -898,7 +898,7 @@ theorem associativity_representation_cuts
 \begin{remark}[Comparison to Grid Proof]
 The cuts proof is significantly more compact:
 \begin{itemize}
-\item \textbf{Grid proof}: 6,612 lines (ThetaPrime: 3,613 + MultiGrid: 2,999 --- induction machinery, extension lemmas, path independence)
+\item \textbf{Grid proof}: 6,604 lines (ThetaPrime: 3,609 + MultiGrid: 2,995 --- induction machinery, extension lemmas, path independence)
 \item \textbf{Cuts proof}: 2,079 lines (DirectCuts.lean --- direct construction, no induction)
 \end{itemize}
 
@@ -1463,7 +1463,7 @@ The Lean formalization respects the \textbf{logical dependency order}, not K\&S'
 \subsection{Bivaluation and Axiom 5}
 
 \begin{definition}[\texttt{Bivaluation}]
-\textbf{Lines 59--73, Basic.lean}
+\textbf{Lines 77--91, Basic.lean}
 
 A bivaluation $p : \alpha \to \alpha \to \mathbb{R}$ represents conditional plausibility on a lattice with:
 \begin{itemize}
@@ -1482,7 +1482,7 @@ The lattice operations ($\vee$, $\wedge$, $\bot$) describe the \emph{event algeb
 \end{remark}
 
 \begin{definition}[Axiom 5: Chaining Associativity]
-\textbf{Lines 109--128 (ChainingOp structure), Basic.lean}
+\textbf{Lines 127--142 (ChainingOp structure), Basic.lean}
 
 The chaining operation $\odot : \mathbb{R} \to \mathbb{R} \to \mathbb{R}$ on plausibility values satisfies:
 \end{definition}
@@ -1538,7 +1538,7 @@ This is \textbf{left-distributivity over addition} - exactly the Appendix B hypo
 \subsection{Chain-Product Rule}
 
 \begin{theorem}[\texttt{chainProductRule}]
-\textbf{Line 345, Basic.lean}
+\textbf{Line 348, Basic.lean}
 
 For chains $a \leq b \leq c$ in a lattice with normalized bivaluation ($p(t|t) = 1$):
 \[ \Pr(a|c) = \Pr(a|b) \cdot \Pr(b|c) \]
@@ -1563,7 +1563,7 @@ theorem chainProductRule
 \subsection{Bayes' Theorem}
 
 \begin{theorem}[\texttt{bayesTheorem}]
-\textbf{Line 421, Basic.lean}
+\textbf{Line 424, Basic.lean}
 
 For $x, \theta \leq t$ in a distributive lattice:
 \[ \Pr(x|\theta) \cdot \Pr(\theta|t) = \Pr(\theta|x) \cdot \Pr(x|t) \]
@@ -1584,7 +1584,7 @@ theorem bayesTheorem
 \subsection{Probability as Ratio of Measures}
 
 \begin{theorem}[\texttt{prob\_eq\_measure\_ratio}]
-\textbf{Line 462, Basic.lean}
+\textbf{Line 714, Basic.lean}
 
 Define the \textbf{unconditional measure} by $m(x) := p(x|\top)$. Then for any context $t \neq \bot$:
 \[ \Pr(x|t) = \frac{m(x \wedge t)}{m(t)} \]

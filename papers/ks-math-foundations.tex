@@ -834,19 +834,19 @@ Separation axiom & \texttt{KSSeparation} & \path{Core/Algebra.lean} \\
 \hline
 No anomalous pairs & \texttt{NoAnomalousPairs} & \path{Additive/Axioms/AnomalousPairs.lean} \\
 \hline
-H\"older embedding & \texttt{holder\_embedding} & \path{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean} \\
+H\"older embedding & \texttt{holder\_embedding\_of\_noAnomalousPairs} & \path{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean} \\
 \hline
-$\oplus$, $\otimes$, $\star$ & \texttt{op}, \texttt{tensor}, \texttt{condOp} & \path{Core/Basic.lean} \\
+$\oplus$, $\otimes$ & \texttt{op}, \texttt{tensor} & \path{Core/Basic.lean}, \path{Multiplicative/Basic.lean} \\
 \hline
 $x^{(n)}$ (iteration) & \texttt{iterate\_op\_pnat} & \path{Core/Basic.lean} \\
 \hline
-Additive representation & \texttt{representation\_theorem} & \path{Additive/Main.lean} \\
+Additive representation & \texttt{HasRepresentationTheorem} & \path{Additive/Representation.lean} \\
 \hline
-Product representation & \texttt{product\_representation} & \path{Multiplicative/Main.lean} \\
+Product representation & \texttt{tensor\_coe\_eq\_mul\_div\_const} & \path{Multiplicative/Main.lean} \\
 \hline
-Variational theorem & \texttt{variational\_classification} & \path{Variational/Main.lean} \\
+Variational theorem & \texttt{variationalEquation\_solution\_measurable} & \path{Variational/Main.lean} \\
 \hline
-KL divergence & \texttt{klDiv} & \path{Information/DivergenceMathlib.lean} \\
+KL divergence bridge & \texttt{klDiv\_toMeasure\_eq\_divergenceInfTop} & \path{Information/DivergenceMathlib.lean} \\
 \hline
 Regraduation & order isomorphism & various \\
 \hline
@@ -858,7 +858,7 @@ Scott continuity & \texttt{KSScottContinuous} & \path{Core/ScaleCompleteness.lea
 \hline
 $\sigma$-additivity theorem & \texttt{ks\_sigma\_additive} & \path{Core/ScaleCompleteness.lean} \\
 \hline
-$\oplus \to +$ (derived) & \texttt{op\_is\_addition\_via\_Theta} & \path{Additive/Axioms/OpIsAddition.lean} \\
+$\oplus \to +$ (derived) & \texttt{op\_is\_addition\_via\_Θ} & \path{Additive/Axioms/OpIsAddition.lean} \\
 \hline
 Mathlib bridge & \texttt{toProbabilityMeasure} & \path{Bridges/MathlibProbability.lean} \\
 \hline

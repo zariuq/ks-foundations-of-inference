@@ -89,7 +89,7 @@
 \maketitle
 
 \begin{abstract}
-We present a complete formalization in Lean 4 of Knuth \& Skilling's axiomatic foundations for inference (2012).
+We present a complete formalization in Lean 4.28.0 (Mathlib v4.28.0) of Knuth \& Skilling's axiomatic foundations for inference (2012).
 Their approach derives the probability calculus, measure theory, and information theory from elementary symmetries, without assuming continuity or differentiability.
 Our formalization makes explicit the implicit assumptions in their derivation, provides \textbf{three independent proof paths} for the main representation theorem (grid-based induction, Dedekind cuts, and H\"older embedding), and extends their framework to handle independence and product measures.
 We demonstrate K\&S's claim that the framework applies to non-Boolean distributive lattices (chains, open sets of $\mathbb{R}$).
@@ -175,15 +175,19 @@ These determine the multiplicative form of $\otimes$ (Appendix B).
 
 We formalize the basic K\&S algebra structure as a linearly ordered monoid with strict monotonicity:
 
-\begin{lstlisting}[caption={Core K\&S algebra axioms}]
-class KnuthSkillingAlgebra (α : Type*) extends LinearOrder α where
+\begin{lstlisting}[caption={Core K\&S algebra axioms (identity-free hierarchy)}]
+class KSSemigroupBase (α : Type*) extends LinearOrder α where
   op : α → α → α                                    -- ⊕ combination
-  ident : α                                         -- identity element
   op_assoc : ∀ x y z, op (op x y) z = op x (op y z)  -- Axiom 2
-  op_ident_right : ∀ x, op x ident = x
-  op_ident_left : ∀ x, op ident x = x
   op_strictMono_left : ∀ y, StrictMono (fun x => op x y)   -- Axiom 1a
   op_strictMono_right : ∀ x, StrictMono (fun y => op x y)  -- Axiom 1b
+
+class KnuthSkillingMonoidBase (α : Type*) extends KSSemigroupBase α where
+  ident : α
+  op_ident_right : ∀ x, op x ident = x
+  op_ident_left : ∀ x, op ident x = x
+
+class KnuthSkillingAlgebraBase (α : Type*) extends KnuthSkillingMonoidBase α where
   ident_le : ∀ x, ident ≤ x                        -- Axiom 0
 \end{lstlisting}
 
@@ -212,7 +216,7 @@ This is implicit in their ``induction to more than one type of atom'' constructi
 Following a suggestion by B.\ Goertzel, we isolate this as an explicit axiom---the \emph{separation property}:
 
 \begin{lstlisting}[caption={Separation axiom}]
-class KSSeparation (α : Type*) [KnuthSkillingAlgebra α] where
+class KSSeparation (α : Type*) [KnuthSkillingMonoidBase α] where
   separation : ∀ {a x y : α}, ident < a → ident < x → ident < y → x < y →
     ∃ n m : ℕ, 0 < m ∧
       iterate_op x m < iterate_op a n ∧
@@ -250,12 +254,12 @@ These are proven in \texttt{Additive/Axioms/SandwichSeparation.lean} and \texttt
 
 \begin{theorem}[K\&S Appendix A]
 \label{thm:representation}
-Let $\alpha$ be a type with \texttt{KnuthSkillingAlgebraBase}.
+Let $\alpha$ be a type with \texttt{KSSemigroupBase}.
 Under appropriate regularity conditions (see below), there exists an order embedding $\Theta : \alpha \to \mathbb{R}$ such that:
 \begin{enumerate}
-\item $\Theta(\text{ident}) = 0$
 \item $\forall x, y : \alpha,\; \Theta(\text{op}\, x\, y) = \Theta(x) + \Theta(y)$
 \end{enumerate}
+When an identity element is present (\texttt{KnuthSkillingMonoidBase} or \texttt{KnuthSkillingAlgebraBase}), we additionally get $\Theta(\text{ident}) = 0$.
 \end{theorem}
 
 This is K\&S's main result: Axioms 1--2 plus regularity uniquely determine that $\oplus$ corresponds to addition in $\mathbb{R}$ (up to order-preserving regrade).
@@ -276,15 +280,15 @@ Our formalization provides \textbf{three independent proof paths}, each with dif
 \item \textbf{Globalization}: Show this extends to all combinations consistently (the ``triple family trick'').
 \end{enumerate}
 
-\textbf{Files}: \texttt{Additive/Proofs/GridInduction/Core/Induction/ThetaPrime.lean} (3,613 lines), \\
-\hspace*{2em} \texttt{Additive/Proofs/GridInduction/Core/MultiGrid.lean} (2,999 lines)
+\textbf{Files}: \texttt{Additive/Proofs/GridInduction/Core/Induction/ThetaPrime.lean} (3,609 lines), \\
+\hspace*{2em} \texttt{Additive/Proofs/GridInduction/Core/MultiGrid.lean} (2,995 lines)
 
 \textbf{Pros}: Follows K\&S paper closely; self-contained \\
 \textbf{Cons}: Complex grid management; hard to maintain
 
 \begin{lstlisting}[caption={Grid-based representation theorem}]
 theorem associativity_representation
-    (α : Type*) [KnuthSkillingAlgebra α] [KSSeparation α]
+    (α : Type*) [KnuthSkillingMonoidBase α] [KSSeparation α]
     [RepresentationGlobalization α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
@@ -311,7 +315,7 @@ theorem associativity_representation
 
 \begin{lstlisting}[caption={Cuts-based representation theorem}]
 theorem associativity_representation_cuts
-    (α : Type*) [KnuthSkillingAlgebra α] [KSSeparation α]
+    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparation α]
     [KSSeparationStrict α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
@@ -325,7 +329,7 @@ theorem associativity_representation_cuts
 
 \textbf{Technique}: Leverage Eric Paul's formalized H\"older theorem for ordered semigroups:
 \begin{enumerate}
-\item Show \texttt{KnuthSkillingAlgebraBase} provides an \texttt{IsOrderedCancelSemigroup} instance
+\item Show \texttt{KnuthSkillingMonoidBase} provides an \texttt{IsOrderedCancelSemigroup} instance
 \item Translate our \texttt{AnomalousPair} definition to Eric's \texttt{anomalous\_pair}
 \item Apply Eric's \texttt{holder\_not\_anom}: $\neg\text{has\_anomalous\_pair} \Rightarrow \alpha \hookrightarrow (\mathbb{R}, +)$
 \item Extract $\Theta$ from the multiplicative order isomorphism
@@ -338,7 +342,7 @@ theorem associativity_representation_cuts
 
 \begin{lstlisting}[caption={H\"older-based representation theorem (classical route)}]
 theorem representation_from_noAnomalousPairs
-    (α : Type*) [KnuthSkillingAlgebraBase α] [NoAnomalousPairs α] :
+    (α : Type*) [KnuthSkillingMonoidBase α] [NoAnomalousPairs α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       Θ ident = 0 ∧
@@ -392,17 +396,16 @@ For pedagogical purposes or K\&S paper alignment, the cuts approach provides a g
 All three approaches provide instances of a common interface:
 
 \begin{lstlisting}[caption={Unified representation theorem interface}]
-class HasRepresentationTheorem (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
+class HasRepresentationTheorem (α : Type*) [KSSemigroupBase α] : Prop where
   exists_representation :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
-      Θ ident = 0 ∧
       ∀ x y : α, Θ (op x y) = Θ x + Θ y
 
 -- Instances from each approach:
-instance holder_hasRepresentationTheorem [NoAnomalousPairs α]
-instance grid_hasRepresentationTheorem [KSSeparation α] [RepresentationGlobalization α]
-instance cuts_hasRepresentationTheorem [KSSeparation α] [KSSeparationStrict α]
+instance holder_hasRepresentationTheorem [KSSemigroupBase α] [NoAnomalousPairs α]
+instance grid_hasRepresentationTheorem [KSSemigroupBase α] [RepresentationGlobalizationSemigroup α]
+instance cuts_hasRepresentationTheorem [KnuthSkillingAlgebraBase α] [KSSeparation α] [KSSeparationStrict α]
 \end{lstlisting}
 
 \textbf{File}: \texttt{Additive/Proofs/GridInduction/Comparison.lean}
@@ -715,7 +718,7 @@ In a discrete, summand-level setting:
 
 We formalize this ``Dirac extraction $\to$ log'' lemma as
 \texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable}
-in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson.lean}.
+in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/SystemIndependence.lean} (re-exported via \texttt{ShoreJohnson/Theorem.lean}).
 This provides a clean comparison point between Shore--Johnson's system-independence intuition and
 K\&S Appendix~C: both rely on the same functional-equation rigidity, and both require an explicit
 anti-pathology hypothesis to exclude Hamel-basis solutions.
@@ -866,7 +869,8 @@ It requires the \emph{separation property}.
 \textbf{Proof:} Theorem in \texttt{Additive/Proofs/GridInduction/Core/SeparationImpliesCommutative.lean}:
 \begin{lstlisting}
 theorem op_comm_of_associativity
-    (α : Type*) [KnuthSkillingAlgebra α] [KSSeparation α] :
+    (α : Type*) [KnuthSkillingMonoidBase α] [KSSeparation α]
+    [RepresentationGlobalization α] :
     ∀ x y : α, op x y = op y x
 \end{lstlisting}
 
@@ -881,8 +885,8 @@ K\&S's proofs implicitly use the Archimedean property: for any $a > \text{ident}
 \textbf{Proof:} Theorem in \texttt{Additive/Axioms/SandwichSeparation.lean}:
 \begin{lstlisting}
 theorem op_archimedean_of_separation
-    [KSSeparation α] (a x : α) (ha : ident < a) :
-    ∃ n : ℕ, x < iterate_op a n
+    [KSSeparation α] (a : α) (x : α) (ha : ident < a) :
+    ∃ n : ℕ, x < Nat.iterate (op a) n a
 \end{lstlisting}
 
 This is formalization-revealed structure, not a correction to K\&S.
@@ -1104,7 +1108,7 @@ theorem holder_not_anom [LinearOrder α] [Semigroup α]
 
 This theorem states: if a linearly ordered cancellative semigroup has no anomalous pairs, it embeds (as an ordered multiplicative isomorphism) into $(\mathbb{R}, +)$.
 
-\textbf{Our contribution}: We show that \texttt{KnuthSkillingAlgebraBase} satisfies all the hypotheses of Eric's theorem:
+\textbf{Our contribution}: We show that \texttt{KnuthSkillingMonoidBase} satisfies all the hypotheses of Eric's theorem:
 \begin{itemize}
 \item \texttt{Semigroup}: $\text{mul} := \text{op}$, $\text{mul\_assoc} := \text{op\_assoc}$
 \item \texttt{IsOrderedCancelSemigroup}: From \texttt{op\_strictMono\_left/right}
@@ -1249,7 +1253,7 @@ The bridge is implemented in \texttt{Bridges/Model.lean} as:
 
 \begin{lstlisting}
 structure KSModel (E S : Type*)
-    [PlausibilitySpace E] [KnuthSkillingAlgebraBase S] where
+    [PlausibilitySpace E] [KnuthSkillingMonoidBase S] where
   v : E → S
   mono : Monotone v
   v_bot : v ⊥ = ident
