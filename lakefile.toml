@@ -34,6 +34,11 @@ path = "Mettapedia/Logic/Foundation"
 name = "exchangeability"
 path = "Mettapedia/external/exchangeability"
 
+# Provenance semiring library (local dependency)
+[[require]]
+name = "provenance"
+path = "Mettapedia/external/provenance-lean"
+
 # BorelDeterminacy (local dependency)
 [[require]]
 name = "borel_det"
