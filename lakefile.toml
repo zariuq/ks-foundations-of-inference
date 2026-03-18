@@ -64,6 +64,11 @@ path = "../algorithms"
 name = "mettail_core"
 path = "../batteries/mettail-core"
 
+# GFCore — GF ↔ Lean AST bridge (shared with algorithms)
+[[require]]
+name = "gf_core"
+path = "../batteries/gf-core"
+
 # CertifyingDatalog (Tantow et al., ITP 2025) — local dependency
 [[require]]
 name = "certifyingDatalog"

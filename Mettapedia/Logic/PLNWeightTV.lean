@@ -39,7 +39,7 @@ STV (strength, confidence) ← for users/interfaces
 
 - EvidenceQuantale.lean: BinaryEvidence quantale definitions
 - PLNInferenceCalculus.lean: Inference rules (being refactored to use WTV)
-- PLNCorrectedFormulas.lean: Documents why weight-space operations are correct
+- PLNBugAnalysis.lean: Documents why weight-space operations are correct
 -/
 
 namespace Mettapedia.Logic.PLNWeightTV
