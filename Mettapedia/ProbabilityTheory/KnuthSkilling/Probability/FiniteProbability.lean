@@ -3,7 +3,7 @@ import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Card
 import Mathlib.Data.Set.Finite.Lattice
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mettapedia.ProbabilityTheory.KnuthSkilling.Additive.Proofs.GridInduction.BooleanRepresentation
+import Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.BooleanRepresentation
 import Mettapedia.ProbabilityTheory.KnuthSkilling.Information.InformationEntropy
 
 /-!
@@ -49,7 +49,7 @@ The key theorem is that these singleton probabilities sum to 1 because:
 
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.FiniteProbability
 
-open Mettapedia.ProbabilityTheory.KnuthSkilling.BooleanRepresentation
+open Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.BooleanRepresentation
 open Mettapedia.ProbabilityTheory.KnuthSkilling.Information.InformationEntropy
 open Set Finset BigOperators
 open Classical

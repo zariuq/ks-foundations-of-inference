@@ -1,7 +1,7 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Rat.Cast.Defs
 import Mathlib.Tactic
-import Mettapedia.ProbabilityTheory.KnuthSkilling.Additive.Proofs.GridInduction.BooleanRepresentation
+import Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.BooleanRepresentation
 import Mettapedia.ProbabilityTheory.Hypercube.Basic
 
 /-!
@@ -28,7 +28,7 @@ We also relate the example to the "precision axis" used in
 namespace Mettapedia.ProbabilityTheory.KnuthSkilling.Examples.PreciseVsImpreciseGrounded
 
 open Classical
-open Mettapedia.ProbabilityTheory.KnuthSkilling.BooleanRepresentation
+open Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.BooleanRepresentation
 open Mettapedia.ProbabilityTheory.Hypercube
 
 /-! ## §1: The Event Space (Boolean Algebra) -/
@@ -98,7 +98,7 @@ For exhaustive events (a ⊔ b ⊔ c = ⊤, pairwise disjoint):
   P(⊤) = P(a) + P(b) + P(c) = 1
 ```
 
-See `BooleanRepresentation.lean` for the formal proof.
+See `Probability/BooleanRepresentation.lean` for the formal proof.
 -/
 
 /-! ### Actual K&S Representations
@@ -825,7 +825,7 @@ theorem hypercube_positioning_theorem :
 /-! ## §5: Imprecise Probability = Credal Set
 
 When K&S completeness fails, we get multiple valid representations.
-This is formalized as a **credal set** in PLNConnection.lean:
+This is formalized as a **credal set** in `Logic/PLNIndefiniteTruthBridge.lean`:
 
 ```lean
 structure CredalSet (α : Type*) [BooleanAlgebra α] where
