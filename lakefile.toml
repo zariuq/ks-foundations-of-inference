@@ -1,80 +1,21 @@
-name = "Mettapedia"
+name = "ks-foundations-of-inference-lean"
 version = "0.1.0"
-defaultTargets = ["Mettapedia"]
-# Lean 4 can fail to create its default thread pool under the project's 6GB ulimit.
-# For reproducible builds in this environment, force single-threaded elaboration.
+defaultTargets = ["KnuthSkilling"]
 weakLeanArgs = ["-j", "1"]
 
 [[lean_lib]]
 name = "Mettapedia"
+globs = ["Mettapedia.+"]
 
-[[lean_exe]]
-name = "mettapedia"
-root = "Main"
+[[lean_lib]]
+name = "KnuthSkilling"
 
-# Mathlib dependency
-# NOTE: batteries comes automatically as a transitive dependency - do NOT add it separately
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.28.0"
 
-# Eric Luap's OrderedSemigroups (local dependency)
 [[require]]
 name = "ordered_semigroups"
-path = "Mettapedia/Algebra/OrderedSemigroups"
-
-# Foundation (local dependency)
-[[require]]
-name = "Foundation"
-path = "Mettapedia/Logic/Foundation"
-
-# Exchangeability (local dependency; includes ForMathlib support library)
-[[require]]
-name = "exchangeability"
-path = "Mettapedia/external/exchangeability"
-
-# Provenance semiring library (local dependency)
-[[require]]
-name = "provenance"
-path = "Mettapedia/external/provenance-lean"
-
-# BorelDeterminacy (local dependency)
-[[require]]
-name = "borel_det"
-path = "Mettapedia/SetTheory/BorelDeterminacy"
-
-# CategoricalLogic (local dependency)
-[[require]]
-name = "catLogic"
-path = "Mettapedia/CategoricalLogic"
-
-# Metatheory (local dependency)
-[[require]]
-name = "Metatheory"
-path = "Mettapedia/Metatheory"
-
-# Pure algorithm checker kernels (Init-only)
-[[require]]
-name = "algorithms"
-path = "../algorithms"
-
-# Shared batteries-only MeTTaIL executable core
-[[require]]
-name = "mettail_core"
-path = "../batteries/mettail-core"
-
-# GFCore — GF ↔ Lean AST bridge (shared with algorithms)
-[[require]]
-name = "gf_core"
-path = "../batteries/gf-core"
-
-# CertifyingDatalog (Tantow et al., ITP 2025) — local dependency
-[[require]]
-name = "certifyingDatalog"
-path = "Mettapedia/external/CertifyingDatalog"
-
-# Verified Metamath checker (local dependency)
-[[require]]
-name = "mm-lean4"
-path = "../../hyperon/metamath/mm-lean4"
+git = "https://github.com/zariuq/OrderedSemigroups.git"
+rev = "63e9c6c3457420c16749837102966a5c32f27825"
