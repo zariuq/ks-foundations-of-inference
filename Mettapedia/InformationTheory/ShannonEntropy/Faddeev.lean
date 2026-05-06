@@ -14,8 +14,8 @@ import Mathlib.Tactic.Convert
 
 This file formalizes Faddeev's 1956 axiomatization of Shannon entropy and the
 uniqueness route: any function satisfying Faddeev's axioms must equal the Shannon
-entropy (up to a multiplicative constant determined by normalization). The current
-Lean 4.28 recovery build has one explicit proof gap at `faddeev_c_prime_all_equal`.
+entropy (up to a multiplicative constant determined by normalization). The Lean
+4.28 recovery build proves the Lemma 9 coefficient-squeeze route explicitly.
 
 ## The Key Insight: Faddeev is MINIMAL
 
@@ -54,7 +54,7 @@ Faddeev's axioms are the **minimal** characterization of Shannon entropy:
 * `FaddeevEntropy` - Structure encoding Faddeev's 4 axioms
 * `shannonFaddeev` - Shannon entropy satisfies Faddeev's axioms
 * `faddeev_c_prime_all_equal` - Key lemma: all c_p = c_2 = 1/log(2);
-  currently the explicit recovered proof gap.
+  this is Faddeev's Lemma 9 coefficient-squeeze step.
 * `faddeev_F_eq_log2` - F(n) = log₂(n), downstream of the key lemma.
 * `faddeev_F_monotone` - Derived: F is monotone (Faddeev proves, Shannon assumes).
 
@@ -4589,6 +4589,167 @@ theorem faddeev_c_prime_has_min_aux (E : FaddeevEntropy) :
   -- These contradict each other
   linarith
 
+/-- Prime powers have the expected logarithmic form once the prime coefficient is fixed. -/
+theorem prime_power_F_eq_c_log (E : FaddeevEntropy) {p k : ℕ} (hp : Nat.Prime p)
+    (hpk : 0 < p ^ k) :
+    F E (p ^ k) hpk = c_prime E p hp * Real.log (p ^ k) := by
+  have hpow := faddeev_F_pow E hp.pos k
+  have hFp := F_prime_eq_c_times_log E hp
+  have hpow' : F E (p ^ k) hpk = (k : ℝ) * F E p hp.pos := by
+    simp only [F] at hpow ⊢
+    convert hpow using 2
+  calc F E (p ^ k) hpk
+      = (k : ℝ) * F E p hp.pos := hpow'
+    _ = (k : ℝ) * (c_prime E p hp * Real.log p) := by rw [hFp]
+    _ = c_prime E p hp * Real.log (p ^ k) := by
+        rw [Real.log_pow]
+        ring
+
+/-- If `n` is even and all prime coefficients are at most `C > c₂`, the forced
+factor `2 | n` gives a one-`log 2` gap below the coarse bound `C log n`. -/
+theorem F_even_upper_bound_with_gap (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n)
+    (heven : Even n) (C : ℝ) (hC : c_prime E 2 Nat.prime_two < C)
+    (h_dom : ∀ q : ℕ, ∀ hq : Nat.Prime q, c_prime E q hq ≤ C) :
+    F E n hn ≤ C * Real.log n - (C - c_prime E 2 Nat.prime_two) * Real.log 2 := by
+  obtain ⟨a, m, h2_not_dvd, hn_eq⟩ :=
+    Nat.exists_eq_pow_mul_and_not_dvd hn.ne' 2 (by decide : (2 : ℕ) ≠ 1)
+  have hm_pos : 0 < m := by
+    by_contra hm_not_pos
+    push_neg at hm_not_pos
+    simp [Nat.le_zero.mp hm_not_pos] at hn_eq
+    omega
+  have hm_odd : Odd m := Nat.odd_iff.mpr (Nat.two_dvd_ne_zero.mp h2_not_dvd)
+  have h2_dvd : 2 ∣ n := Even.two_dvd heven
+  have ha_pos : 0 < a := by
+    by_contra ha_zero
+    push_neg at ha_zero
+    have ha_eq : a = 0 := Nat.le_zero.mp ha_zero
+    simp [ha_eq] at hn_eq
+    rw [hn_eq] at h2_dvd
+    exact h2_not_dvd h2_dvd
+  have hFn_two := F_two_pow_mul E a hm_pos
+  have h2am_pos : 0 < 2 ^ a * m := by positivity
+  have hFn_eq : F E n hn = (a : ℝ) + F E m hm_pos := by
+    have h1 : F E n hn = F E (2 ^ a * m) h2am_pos := by
+      simp_rw [hn_eq]
+    rw [h1, hFn_two]
+  have h_dom_m : ∀ q : ℕ, ∀ hq : q.Prime, q ∣ m → Odd q → c_prime E q hq ≤ C :=
+    fun q hq _ _ => h_dom q hq
+  have hFm_le := F_odd_upper_bound E hm_pos hm_odd C h_dom_m
+  have hc2_log2 : c_prime E 2 Nat.prime_two * Real.log 2 = 1 := by
+    rw [c_prime_two E]
+    field_simp
+  have h2a_real_pos : (0 : ℝ) < (2 : ℝ) ^ a := by positivity
+  have hm_real_pos : (0 : ℝ) < m := Nat.cast_pos.mpr hm_pos
+  have hcast : (n : ℝ) = (2 : ℝ) ^ a * (m : ℝ) := by
+    rw [hn_eq]
+    norm_num [Nat.cast_mul, Nat.cast_pow]
+  have hlog_n : Real.log n = (a : ℝ) * Real.log 2 + Real.log m := by
+    calc Real.log n = Real.log ((2 : ℝ) ^ a * (m : ℝ)) := by rw [hcast]
+      _ = Real.log ((2 : ℝ) ^ a) + Real.log m := by
+          rw [Real.log_mul h2a_real_pos.ne' hm_real_pos.ne']
+      _ = (a : ℝ) * Real.log 2 + Real.log m := by rw [Real.log_pow]
+  have hgap_nonneg : 0 ≤ (C - c_prime E 2 Nat.prime_two) * Real.log 2 := by
+    nlinarith [hC, log_two_pos]
+  have ha_ge_one : (1 : ℝ) ≤ a := by exact_mod_cast ha_pos
+  have hgap_le_agap :
+      (C - c_prime E 2 Nat.prime_two) * Real.log 2 ≤
+        (a : ℝ) * ((C - c_prime E 2 Nat.prime_two) * Real.log 2) := by
+    simpa using mul_le_mul_of_nonneg_right ha_ge_one hgap_nonneg
+  calc F E n hn
+      = (a : ℝ) + F E m hm_pos := hFn_eq
+    _ ≤ (a : ℝ) + C * Real.log m := by linarith [hFm_le]
+    _ = C * ((a : ℝ) * Real.log 2 + Real.log m) -
+          (a : ℝ) * ((C - c_prime E 2 Nat.prime_two) * Real.log 2) := by
+        nlinarith [hc2_log2]
+    _ = C * Real.log n -
+          (a : ℝ) * ((C - c_prime E 2 Nat.prime_two) * Real.log 2) := by rw [hlog_n]
+    _ ≤ C * Real.log n - (C - c_prime E 2 Nat.prime_two) * Real.log 2 := by
+        linarith [hgap_le_agap]
+
+/-- Dual forced-factor gap for a global lower coefficient `C < c₂`. -/
+theorem F_even_lower_bound_with_gap (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n)
+    (heven : Even n) (C : ℝ) (hC : C < c_prime E 2 Nat.prime_two)
+    (h_dom : ∀ q : ℕ, ∀ hq : Nat.Prime q, C ≤ c_prime E q hq) :
+    C * Real.log n + (c_prime E 2 Nat.prime_two - C) * Real.log 2 ≤ F E n hn := by
+  obtain ⟨a, m, h2_not_dvd, hn_eq⟩ :=
+    Nat.exists_eq_pow_mul_and_not_dvd hn.ne' 2 (by decide : (2 : ℕ) ≠ 1)
+  have hm_pos : 0 < m := by
+    by_contra hm_not_pos
+    push_neg at hm_not_pos
+    simp [Nat.le_zero.mp hm_not_pos] at hn_eq
+    omega
+  have hm_odd : Odd m := Nat.odd_iff.mpr (Nat.two_dvd_ne_zero.mp h2_not_dvd)
+  have h2_dvd : 2 ∣ n := Even.two_dvd heven
+  have ha_pos : 0 < a := by
+    by_contra ha_zero
+    push_neg at ha_zero
+    have ha_eq : a = 0 := Nat.le_zero.mp ha_zero
+    simp [ha_eq] at hn_eq
+    rw [hn_eq] at h2_dvd
+    exact h2_not_dvd h2_dvd
+  have hFn_two := F_two_pow_mul E a hm_pos
+  have h2am_pos : 0 < 2 ^ a * m := by positivity
+  have hFn_eq : F E n hn = (a : ℝ) + F E m hm_pos := by
+    have h1 : F E n hn = F E (2 ^ a * m) h2am_pos := by
+      simp_rw [hn_eq]
+    rw [h1, hFn_two]
+  have h_dom_m : ∀ q : ℕ, ∀ hq : q.Prime, q ∣ m → Odd q → C ≤ c_prime E q hq :=
+    fun q hq _ _ => h_dom q hq
+  have hFm_ge := F_odd_lower_bound E hm_pos hm_odd C h_dom_m
+  have hc2_log2 : c_prime E 2 Nat.prime_two * Real.log 2 = 1 := by
+    rw [c_prime_two E]
+    field_simp
+  have h2a_real_pos : (0 : ℝ) < (2 : ℝ) ^ a := by positivity
+  have hm_real_pos : (0 : ℝ) < m := Nat.cast_pos.mpr hm_pos
+  have hcast : (n : ℝ) = (2 : ℝ) ^ a * (m : ℝ) := by
+    rw [hn_eq]
+    norm_num [Nat.cast_mul, Nat.cast_pow]
+  have hlog_n : Real.log n = (a : ℝ) * Real.log 2 + Real.log m := by
+    calc Real.log n = Real.log ((2 : ℝ) ^ a * (m : ℝ)) := by rw [hcast]
+      _ = Real.log ((2 : ℝ) ^ a) + Real.log m := by
+          rw [Real.log_mul h2a_real_pos.ne' hm_real_pos.ne']
+      _ = (a : ℝ) * Real.log 2 + Real.log m := by rw [Real.log_pow]
+  have hgap_nonneg : 0 ≤ (c_prime E 2 Nat.prime_two - C) * Real.log 2 := by
+    nlinarith [hC, log_two_pos]
+  have ha_ge_one : (1 : ℝ) ≤ a := by exact_mod_cast ha_pos
+  have hgap_le_agap :
+      (c_prime E 2 Nat.prime_two - C) * Real.log 2 ≤
+        (a : ℝ) * ((c_prime E 2 Nat.prime_two - C) * Real.log 2) := by
+    simpa using mul_le_mul_of_nonneg_right ha_ge_one hgap_nonneg
+  calc C * Real.log n + (c_prime E 2 Nat.prime_two - C) * Real.log 2
+      ≤ C * Real.log n +
+          (a : ℝ) * ((c_prime E 2 Nat.prime_two - C) * Real.log 2) := by
+        linarith [hgap_le_agap]
+    _ = C * ((a : ℝ) * Real.log 2 + Real.log m) +
+          (a : ℝ) * ((c_prime E 2 Nat.prime_two - C) * Real.log 2) := by rw [hlog_n]
+    _ = (a : ℝ) + C * Real.log m := by
+        nlinarith [hc2_log2]
+    _ ≤ (a : ℝ) + F E m hm_pos := by linarith [hFm_ge]
+    _ = F E n hn := hFn_eq.symm
+
+/-- A logarithmic successor ratio bound used to make the minimum-case correction small. -/
+theorem log_nat_sub_one_lt_inv {n : ℕ} (hn : 1 < n) :
+    Real.log n - Real.log (n - 1) < 1 / ((n : ℝ) - 1) := by
+  have hn_real_pos : (0 : ℝ) < n := Nat.cast_pos.mpr (Nat.lt_trans Nat.zero_lt_one hn)
+  have hn1_real_pos : (0 : ℝ) < (n : ℝ) - 1 := by
+    have : (1 : ℝ) < n := Nat.one_lt_cast.mpr hn
+    linarith
+  have hn1_ne : (n : ℝ) - 1 ≠ 0 := by linarith
+  have hlog_div : Real.log n - Real.log (n - 1) = Real.log ((n : ℝ) / ((n : ℝ) - 1)) := by
+    rw [Real.log_div hn_real_pos.ne' hn1_real_pos.ne']
+  have hratio : (n : ℝ) / ((n : ℝ) - 1) = 1 + 1 / ((n : ℝ) - 1) := by
+    field_simp [hn1_ne]
+    ring
+  have hx_pos : 0 < 1 / ((n : ℝ) - 1) := by positivity
+  have hy_pos : 0 < 1 + 1 / ((n : ℝ) - 1) := by linarith
+  have hy_ne_1 : 1 + 1 / ((n : ℝ) - 1) ≠ 1 := by linarith
+  have hlog_lt := Real.log_lt_sub_one_of_pos hy_pos hy_ne_1
+  calc Real.log n - Real.log (n - 1)
+      = Real.log (1 + 1 / ((n : ℝ) - 1)) := by rw [hlog_div, hratio]
+    _ < (1 + 1 / ((n : ℝ) - 1)) - 1 := hlog_lt
+    _ = 1 / ((n : ℝ) - 1) := by ring
+
 set_option maxHeartbeats 800000 in
 /-- **Faddeev's Lemma 9**: All c_p are equal.
 
@@ -4599,9 +4760,250 @@ set_option maxHeartbeats 800000 in
 theorem faddeev_c_prime_all_equal (E : FaddeevEntropy) :
     ∀ p q : ℕ, ∀ hp : Nat.Prime p, ∀ hq : Nat.Prime q,
       c_prime E p hp = c_prime E q hq := by
-  -- TODO: complete Faddeev's Lemma 9 in Lean 4.28.
-  -- This is the current recovered proof gap for the Faddeev uniqueness route.
-  sorry
+  obtain ⟨pMax, hpMax, hMax⟩ := faddeev_c_prime_has_max E
+  obtain ⟨pMin, hpMin, hMin⟩ := faddeev_c_prime_has_min_aux E
+
+  have hMax_le_c2 : c_prime E pMax hpMax ≤ c_prime E 2 Nat.prime_two := by
+    by_cases hpMax_eq_two : pMax = 2
+    · subst hpMax_eq_two
+      exact le_rfl
+    · by_contra hnot
+      push_neg at hnot
+      set C := c_prime E pMax hpMax with hC_def
+      set c2 := c_prime E 2 Nat.prime_two with hc2_def
+      set δ := (C - c2) * Real.log 2 with hδ_def
+      have hC_gt_c2 : c2 < C := by simpa [C, c2] using hnot
+      have hδ_pos : 0 < δ := by
+        rw [hδ_def]
+        exact mul_pos (sub_pos.mpr hC_gt_c2) log_two_pos
+      have hlim := faddeev_lambda_tendsto_zero E
+      rw [Metric.tendsto_atTop] at hlim
+      obtain ⟨N, hN⟩ := hlim (δ / 2) (by linarith)
+      set k := N + 2 with hk_def
+      set n := pMax ^ k with hn_def
+      have hpMax_ge_three : 3 ≤ pMax := by
+        have h2le := hpMax.two_le
+        omega
+      have hk_pos : 0 < k := by omega
+      have hpMax_odd : Odd pMax := hpMax.odd_of_ne_two hpMax_eq_two
+      have hn_pos : 0 < n := by
+        rw [hn_def]
+        exact Nat.pow_pos hpMax.pos
+      have hn_ge_N2 : N + 2 ≤ n := by
+        have hbase : 2 ≤ pMax := hpMax.two_le
+        have h1 : 2 ^ k ≤ pMax ^ k := Nat.pow_le_pow_left hbase k
+        have h2 : k ≤ 2 ^ k := (@Nat.lt_two_pow_self k).le
+        omega
+      have hn_ge_two : 2 ≤ n := by omega
+      have hn_gt_one : 1 < n := by omega
+      have hn_minus_one_pos : 0 < n - 1 := by omega
+      have hn_odd : Odd n := by
+        rw [hn_def]
+        exact hpMax_odd.pow
+      have hn_minus_one_even : Even (n - 1) := by
+        rcases hn_odd with ⟨t, ht⟩
+        use t
+        omega
+      have hFn : F E n hn_pos = C * Real.log n := by
+        calc F E n hn_pos
+            = F E (pMax ^ k) (by rw [← hn_def]; exact hn_pos) := by congr 1
+          _ = c_prime E pMax hpMax * Real.log (pMax ^ k) :=
+              prime_power_F_eq_c_log E hpMax (by rw [← hn_def]; exact hn_pos)
+          _ = C * Real.log n := by
+              rw [hC_def, hn_def]
+              norm_num [Nat.cast_pow]
+      have hFn_minus_upper :
+          F E (n - 1) hn_minus_one_pos ≤
+            C * Real.log ((n - 1 : ℕ) : ℝ) - (C - c2) * Real.log 2 := by
+        have hgap := F_even_upper_bound_with_gap E hn_minus_one_pos hn_minus_one_even C
+          (by simpa [hc2_def] using hC_gt_c2)
+          (fun q hq => by simpa [hC_def] using hMax q hq)
+        simpa [hc2_def] using hgap
+      have hlogdiff_nonneg : 0 ≤ C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) := by
+        have hC_pos : 0 < C := by
+          have hc2_pos : 0 < c2 := by simpa [hc2_def] using c_prime_two_pos E
+          linarith
+        have hn1_real_pos : (0 : ℝ) < ((n - 1 : ℕ) : ℝ) := Nat.cast_pos.mpr hn_minus_one_pos
+        have hlog_le : Real.log ((n - 1 : ℕ) : ℝ) ≤ Real.log n := by
+          apply Real.log_le_log hn1_real_pos
+          exact_mod_cast (Nat.sub_le n 1)
+        nlinarith
+      have hLambda_lower : δ ≤ entropyIncrement E n hn_gt_one := by
+        calc δ
+            ≤ C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) + δ := by linarith [hlogdiff_nonneg]
+          _ = C * Real.log n - (C * Real.log ((n - 1 : ℕ) : ℝ) - δ) := by ring
+          _ ≤ F E n hn_pos - F E (n - 1) hn_minus_one_pos := by
+              linarith [hFn, hFn_minus_upper]
+          _ = entropyIncrement E n hn_gt_one := by
+              unfold entropyIncrement
+              have hF1 : F E n (Nat.lt_trans Nat.zero_lt_one hn_gt_one) = F E n hn_pos :=
+                F_congr E _ _
+              have hF2 : F E (n - 1) (Nat.sub_pos_of_lt hn_gt_one) =
+                  F E (n - 1) hn_minus_one_pos := F_congr E _ _
+              rw [hF1, hF2]
+      have hN_le : N ≤ n - 2 := by omega
+      have hLambda_small := hN (n - 2) hN_le
+      simp only [Nat.sub_add_cancel hn_ge_two] at hLambda_small
+      rw [Real.dist_eq, sub_zero] at hLambda_small
+      have hLambda_abs_eq : |entropyIncrement E n hn_gt_one| = entropyIncrement E n hn_gt_one := by
+        apply abs_of_nonneg
+        exact le_trans (le_of_lt hδ_pos) hLambda_lower
+      rw [hLambda_abs_eq] at hLambda_small
+      linarith
+
+  have hMin_ge_c2 : c_prime E 2 Nat.prime_two ≤ c_prime E pMin hpMin := by
+    by_cases hpMin_eq_two : pMin = 2
+    · subst hpMin_eq_two
+      exact le_rfl
+    · by_contra hnot
+      push_neg at hnot
+      set C := c_prime E pMin hpMin with hC_def
+      set c2 := c_prime E 2 Nat.prime_two with hc2_def
+      set δ := (c2 - C) * Real.log 2 with hδ_def
+      have hC_lt_c2 : C < c2 := by simpa [C, c2] using hnot
+      have hc2_pos : 0 < c2 := by simpa [hc2_def] using c_prime_two_pos E
+      have hδ_pos : 0 < δ := by
+        rw [hδ_def]
+        exact mul_pos (sub_pos.mpr hC_lt_c2) log_two_pos
+      have hlim := faddeev_lambda_tendsto_zero E
+      rw [Metric.tendsto_atTop] at hlim
+      obtain ⟨N, hN⟩ := hlim (δ / 2) (by linarith)
+      have harch := exists_nat_gt (2 * (c2 + 1) / δ)
+      obtain ⟨P, hP⟩ := harch
+      set k := max (N + 4) (P + 2) with hk_def
+      set n := pMin ^ k with hn_def
+      have hpMin_ge_three : 3 ≤ pMin := by
+        have h2le := hpMin.two_le
+        omega
+      have hk_pos : 0 < k := by
+        have : N + 4 ≤ k := by rw [hk_def]; exact le_max_left _ _
+        omega
+      have hk_ge_N4 : N + 4 ≤ k := by rw [hk_def]; exact le_max_left _ _
+      have hk_ge_P2 : P + 2 ≤ k := by rw [hk_def]; exact le_max_right _ _
+      have hpMin_odd : Odd pMin := hpMin.odd_of_ne_two hpMin_eq_two
+      have hn_pos : 0 < n := by
+        rw [hn_def]
+        exact Nat.pow_pos hpMin.pos
+      have htwo_pow_ge : k ≤ 2 ^ k := (@Nat.lt_two_pow_self k).le
+      have hn_ge_k : k ≤ n := by
+        have hbase : 2 ≤ pMin := hpMin.two_le
+        have h1 : 2 ^ k ≤ pMin ^ k := Nat.pow_le_pow_left hbase k
+        omega
+      have hn_ge_N4 : N + 4 ≤ n := le_trans hk_ge_N4 hn_ge_k
+      have hn_ge_two : 2 ≤ n := by omega
+      have hn_gt_one : 1 < n := by omega
+      have hn_minus_one_pos : 0 < n - 1 := by omega
+      have hn_odd : Odd n := by
+        rw [hn_def]
+        exact hpMin_odd.pow
+      have hn_minus_one_even : Even (n - 1) := by
+        rcases hn_odd with ⟨t, ht⟩
+        use t
+        omega
+      have hFn : F E n hn_pos = C * Real.log n := by
+        calc F E n hn_pos
+            = F E (pMin ^ k) (by rw [← hn_def]; exact hn_pos) := by congr 1
+          _ = c_prime E pMin hpMin * Real.log (pMin ^ k) :=
+              prime_power_F_eq_c_log E hpMin (by rw [← hn_def]; exact hn_pos)
+          _ = C * Real.log n := by
+              rw [hC_def, hn_def]
+              norm_num [Nat.cast_pow]
+      have hFn_minus_lower :
+          C * Real.log ((n - 1 : ℕ) : ℝ) + (c2 - C) * Real.log 2 ≤
+            F E (n - 1) hn_minus_one_pos := by
+        have hgap := F_even_lower_bound_with_gap E hn_minus_one_pos hn_minus_one_even C
+          (by simpa [hc2_def] using hC_lt_c2)
+          (fun q hq => by simpa [hC_def] using hMin q hq)
+        simpa [hc2_def] using hgap
+      have hn1_real_pos : (0 : ℝ) < (n : ℝ) - 1 := by
+        have : (1 : ℝ) < n := Nat.one_lt_cast.mpr hn_gt_one
+        linarith
+      have hn1_cast : ((n - 1 : ℕ) : ℝ) = (n : ℝ) - 1 := by
+        rw [Nat.cast_sub (by omega : 1 ≤ n), Nat.cast_one]
+      have h_inv_small : (1 : ℝ) / ((n : ℝ) - 1) < δ / (2 * (c2 + 1)) := by
+        have hP_real : (P : ℝ) > 2 * (c2 + 1) / δ := hP
+        have hn_large : (n : ℝ) - 1 > 2 * (c2 + 1) / δ := by
+          have hk_real : (k : ℝ) ≥ P + 2 := by exact_mod_cast hk_ge_P2
+          have hn_real_ge : (n : ℝ) ≥ k := by exact_mod_cast hn_ge_k
+          linarith
+        have hthreshold_pos : 0 < 2 * (c2 + 1) / δ := by positivity
+        have hrecip := one_div_lt_one_div_of_lt hthreshold_pos hn_large
+        calc (1 : ℝ) / ((n : ℝ) - 1)
+            < 1 / (2 * (c2 + 1) / δ) := hrecip
+          _ = δ / (2 * (c2 + 1)) := by field_simp
+      have hlogdiff_bound : Real.log n - Real.log ((n - 1 : ℕ) : ℝ) <
+          δ / (2 * (c2 + 1)) := by
+        calc Real.log n - Real.log ((n - 1 : ℕ) : ℝ)
+            = Real.log n - Real.log ((n : ℝ) - 1) := by rw [hn1_cast]
+          _ < 1 / ((n : ℝ) - 1) := log_nat_sub_one_lt_inv hn_gt_one
+          _ < δ / (2 * (c2 + 1)) := h_inv_small
+      have hlogdiff_pos : 0 < Real.log n - Real.log ((n - 1 : ℕ) : ℝ) := by
+        have hn1_nat_real_pos : (0 : ℝ) < ((n - 1 : ℕ) : ℝ) := Nat.cast_pos.mpr hn_minus_one_pos
+        have hlog_lt : Real.log ((n - 1 : ℕ) : ℝ) < Real.log n := by
+          apply Real.log_lt_log hn1_nat_real_pos
+          exact_mod_cast (by omega : n - 1 < n)
+        linarith
+      have hcorrection_small : C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) < δ / 2 := by
+        by_cases hC_nonpos : C ≤ 0
+        · have hprod_nonpos : C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) ≤ 0 := by
+            exact mul_nonpos_of_nonpos_of_nonneg hC_nonpos (le_of_lt hlogdiff_pos)
+          linarith
+        · push_neg at hC_nonpos
+          have hC_le_c2 : C ≤ c2 := le_of_lt hC_lt_c2
+          calc C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ))
+              ≤ c2 * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) := by
+                  apply mul_le_mul_of_nonneg_right hC_le_c2
+                  exact le_of_lt hlogdiff_pos
+            _ < c2 * (δ / (2 * (c2 + 1))) := by
+                apply mul_lt_mul_of_pos_left hlogdiff_bound hc2_pos
+            _ = δ / 2 * (c2 / (c2 + 1)) := by
+                have hc2p1_ne : c2 + 1 ≠ 0 := by linarith
+                field_simp [hc2p1_ne]
+            _ < δ / 2 * 1 := by
+                have hc2p1_pos : 0 < c2 + 1 := by linarith
+                have hratio_lt_one : c2 / (c2 + 1) < 1 := (div_lt_one hc2p1_pos).mpr (by linarith)
+                apply mul_lt_mul_of_pos_left hratio_lt_one
+                positivity
+            _ = δ / 2 := by ring
+      have hLambda_upper : entropyIncrement E n hn_gt_one < -δ / 2 := by
+        have hraw :
+            entropyIncrement E n hn_gt_one ≤
+              C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) - δ := by
+          calc entropyIncrement E n hn_gt_one
+              = F E n (Nat.lt_trans Nat.zero_lt_one hn_gt_one) -
+                  F E (n - 1) (Nat.sub_pos_of_lt hn_gt_one) := rfl
+            _ = F E n hn_pos - F E (n - 1) hn_minus_one_pos := by
+                have hF1 : F E n (Nat.lt_trans Nat.zero_lt_one hn_gt_one) =
+                    F E n hn_pos := F_congr E _ _
+                have hF2 : F E (n - 1) (Nat.sub_pos_of_lt hn_gt_one) =
+                    F E (n - 1) hn_minus_one_pos := F_congr E _ _
+                rw [hF1, hF2]
+            _ ≤ C * Real.log n -
+                  (C * Real.log ((n - 1 : ℕ) : ℝ) + (c2 - C) * Real.log 2) := by
+                linarith [hFn, hFn_minus_lower]
+            _ = C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) - δ := by
+                rw [hδ_def]
+                ring
+        linarith
+      have hN_le : N ≤ n - 2 := by omega
+      have hLambda_small := hN (n - 2) hN_le
+      simp only [Nat.sub_add_cancel hn_ge_two] at hLambda_small
+      rw [Real.dist_eq, sub_zero] at hLambda_small
+      have hLambda_lower_abs : -δ / 2 < entropyIncrement E n hn_gt_one := by
+        have habs := (abs_lt.mp hLambda_small).1
+        linarith
+      linarith
+
+  intro p q hp hq
+  have hp_eq_c2 : c_prime E p hp = c_prime E 2 Nat.prime_two := by
+    apply le_antisymm
+    · exact le_trans (hMax p hp) hMax_le_c2
+    · exact le_trans hMin_ge_c2 (hMin p hp)
+  have hq_eq_c2 : c_prime E q hq = c_prime E 2 Nat.prime_two := by
+    apply le_antisymm
+    · exact le_trans (hMax q hq) hMax_le_c2
+    · exact le_trans hMin_ge_c2 (hMin q hq)
+  rw [hp_eq_c2, hq_eq_c2]
 
 /-
 Recovered non-building proof attempt retained for forensic reference.
@@ -5561,8 +5963,8 @@ theorem faddeev_c_prime_has_min (E : FaddeevEntropy) :
     Proof: By Lemma 9, all c_p = c_2 = 1/log(2).
     By the prime factorization theorem, F(n) = c_2 · log(n) = log(n)/log(2) = log₂(n).
 
-    This breaks the circular dependency: derive F = log₂ without using monotonicity.
-    In the current recovery build this theorem depends on the explicit Lemma 9 proof gap. -/
+    This breaks the circular dependency: derive F = log₂ without using monotonicity,
+    using the explicit Lemma 9 coefficient-squeeze proof above. -/
 theorem faddeev_F_eq_log2 (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n) :
     F E n hn = Real.log n / Real.log 2 := by
   have h_all_equal := faddeev_c_prime_all_equal E
@@ -5865,8 +6267,7 @@ end Sandwich
 
 This section states and proves the full uniqueness theorem downstream of the
 uniform-distribution result: any Faddeev entropy equals Shannon entropy on all
-distributions, not just uniform ones. In the current recovery build, this depends
-on the explicit Lemma 9 proof gap above.
+distributions, not just uniform ones.
 
 The strategy (following GPT-5.2 Pro's guidance):
 1. Define binary entropy functions ηE and ηSh
