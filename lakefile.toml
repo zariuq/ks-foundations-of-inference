@@ -4,11 +4,25 @@ defaultTargets = ["KnuthSkilling"]
 weakLeanArgs = ["-j", "1"]
 
 [[lean_lib]]
-name = "Mettapedia"
-globs = ["Mettapedia.+"]
+name = "KnuthSkilling"
 
 [[lean_lib]]
-name = "KnuthSkilling"
+name = "Algebra"
+
+[[lean_lib]]
+name = "Computability"
+
+[[lean_lib]]
+name = "InformationTheory"
+
+[[lean_lib]]
+name = "Logic"
+
+[[lean_lib]]
+name = "ProbabilityTheory"
+
+[[lean_lib]]
+name = "UniversalAI"
 
 [[require]]
 name = "mathlib"

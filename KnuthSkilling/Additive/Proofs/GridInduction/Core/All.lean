@@ -1,0 +1,18 @@
+import KnuthSkilling.Additive.Proofs.GridInduction.Core.Prelude
+import KnuthSkilling.Additive.Proofs.GridInduction.Core.MultiGrid
+import KnuthSkilling.Additive.Proofs.GridInduction.Core.Induction
+import KnuthSkilling.Additive.Proofs.GridInduction.Core.OneDimensional
+import KnuthSkilling.Additive.Proofs.GridInduction.Core.GrowthRateTheory
+import KnuthSkilling.Additive.Proofs.GridInduction.Core.SeparationImpliesCommutative
+
+/-!
+Dependency-ordered import bundle for the full Appendix A core development.
+
+The implementation is split into:
+- `...Core.Prelude` (API + Phase 1)
+- `...Core.MultiGrid` (Phases 2–3 up to the accuracy lemma)
+- `...Core.Induction` (Phase 3 induction/extension machinery)
+- `...Core.OneDimensional` (Representable → Commutative, COMPLETE)
+- `...Core.GrowthRateTheory` (Growth rate comparisons without logarithms, COMPLETE)
+- `...Core.SeparationImpliesCommutative` (KSSeparation → Commutative, COMPLETE)
+-/

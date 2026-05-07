@@ -1,1 +1,1 @@
-import Mettapedia.ProbabilityTheory.KnuthSkilling
+import KnuthSkilling.Overview

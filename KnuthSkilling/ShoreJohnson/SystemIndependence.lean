@@ -1,0 +1,96 @@
+import KnuthSkilling.ShoreJohnson.Proof
+
+/-!
+# Shore–Johnson core lemma (1980): system independence ⇒ log on probabilities
+
+This file exports a small but central piece of Shore–Johnson’s 1980 argument:
+
+If an “atomic divergence” `d : ℝ → ℝ → ℝ` is
+
+- **regular at 0** (`d 0 x = 0`), and
+- **system independent** in the sense that the sum `∑ d(p_i,q_i)` is additive over product
+  distributions,
+
+then Dirac-delta test distributions force a **multiplicative Cauchy equation** for
+`g(q) := d 1 q` on the probability domain `0 < q ≤ 1`.  With a minimal regularity gate
+(Borel measurability of `g`), we obtain the logarithmic form `g(q) = C * log q`.
+
+This is the clean point of contact with Knuth–Skilling Appendix C: both derivations reduce to
+Cauchy-type functional equations, and both require an explicit “anti-pathology” regularity gate
+to exclude Hamel-basis solutions.
+
+We do **not** attempt a full formalization of Shore–Johnson Theorem 1 (global KL uniqueness) here.
+
+For a stronger (but still explicitly-scoped) KL uniqueness statement--showing that any **ratio-form**
+atom divergence `d(w,u)=w*g(w/u)` satisfying a multiplicative Cauchy equation is a constant multiple
+of the KL atom (with a measurability regularity gate), and that uniqueness fails without such
+regularity--see `KnuthSkilling/ShoreJohnson/KL.lean`.
+-/
+
+namespace KnuthSkilling.ShoreJohnson.SystemIndependence
+
+open Real
+
+open KnuthSkilling.Information.InformationEntropy
+open KnuthSkilling.ShoreJohnson.Proof
+open KnuthSkilling.Variational
+
+/-- Shore–Johnson's "system independence" axiom, phrased at the atomic (summand) level.
+
+**CAUTION**: This structure requires additivity for ALL distributions. The KL atom `klAtom`
+does NOT satisfy this property in general—it only holds when the reference distributions
+have strictly positive entries. For `klAtom`, use `SJSystemIndependenceAtomPos` instead.
+
+See `OperatorAtomBridge.lean` for discussion and `klAtom_productAdditiveAtom_pos`. -/
+structure SJSystemIndependenceAtom (d : ℝ → ℝ → ℝ) : Prop where
+  regularAtom : RegularAtom d
+  add_over_products :
+    ∀ {n m : ℕ} [NeZero n] [NeZero m], ∀ P Q : ProbDist n, ∀ R S : ProbDist m,
+      ∑ ij : Fin n × Fin m, d ((P ⊗ R).p ij) ((Q ⊗ S).p ij) =
+        (∑ i : Fin n, d (P.p i) (Q.p i)) + (∑ j : Fin m, d (R.p j) (S.p j))
+
+/-- Shore–Johnson's "system independence" axiom with positivity hypotheses on reference distributions.
+
+This is the correct formulation for atoms like `klAtom` where product additivity only holds
+when the reference distributions (Q, S) have strictly positive entries. This matches the
+standard "absolute continuity" requirement in KL divergence theory.
+
+The Dirac extraction argument (used to derive the logarithmic form) only needs the identity
+for positive reference values, so this weaker structure suffices for the Shore–Johnson derivation.
+
+See `klAtom_sjSystemIndependenceAtomPos` for the proof that `klAtom` satisfies this. -/
+structure SJSystemIndependenceAtomPos (d : ℝ → ℝ → ℝ) : Prop where
+  regularAtom : RegularAtom d
+  add_over_products_pos :
+    ∀ {n m : ℕ} [NeZero n] [NeZero m], ∀ P Q : ProbDist n, ∀ R S : ProbDist m,
+      (∀ i, 0 < Q.p i) → (∀ j, 0 < S.p j) →
+        ∑ ij : Fin n × Fin m, d ((P ⊗ R).p ij) ((Q ⊗ S).p ij) =
+          (∑ i : Fin n, d (P.p i) (Q.p i)) + (∑ j : Fin m, d (R.p j) (S.p j))
+
+/-- The strong (universal) system independence implies the weaker (positivity-restricted) version. -/
+theorem SJSystemIndependenceAtomPos.of_SJSystemIndependenceAtom
+    (h : SJSystemIndependenceAtom d) : SJSystemIndependenceAtomPos d where
+  regularAtom := h.regularAtom
+  add_over_products_pos := fun P Q R S _hQ _hS => h.add_over_products P Q R S
+
+/-- **Main Shore–Johnson lemma used in this project**.
+
+Under atomic system independence and measurability, `q ↦ d(1,q)` is forced to be logarithmic on
+the probability domain `0 < q ≤ 1`. -/
+theorem d_one_eq_const_mul_log_of_measurable
+    (d : ℝ → ℝ → ℝ) (hSJ : SJSystemIndependenceAtom d)
+    (hMeas : Measurable (d 1)) :
+    ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → d 1 q = C * log q :=
+  dirac_extraction_log_of_measurable d hSJ.regularAtom hSJ.add_over_products hMeas
+
+/-- Repackage the log conclusion as a KS-style `entropyDerivative` (with `B = 0`). -/
+theorem d_one_eq_entropyDerivative_of_measurable
+    (d : ℝ → ℝ → ℝ) (hSJ : SJSystemIndependenceAtom d)
+    (hMeas : Measurable (d 1)) :
+    ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → d 1 q = entropyDerivative 0 C q := by
+  rcases d_one_eq_const_mul_log_of_measurable d hSJ hMeas with ⟨C, hC⟩
+  refine ⟨C, ?_⟩
+  intro q hq_pos hq_le1
+  simpa [entropyDerivative] using hC q hq_pos hq_le1
+
+end KnuthSkilling.ShoreJohnson.SystemIndependence
