@@ -261,7 +261,7 @@ theorem shannonEntropyFinNormalized_grouping
         =
         ∑ a : α, p.1 a * (shannonEntropyFin (β a) (q a) / log 2) := by
       -- Rewrite division as multiplication by a constant and use distributivity.
-      simp [div_eq_mul_inv, Finset.mul_sum, mul_assoc, mul_comm]
+      simp [div_eq_mul_inv, Finset.mul_sum, mul_assoc, mul_comm, mul_left_comm]
   calc
     shannonEntropyFin (Sigma β) (comp p q) / log 2
         = (shannonEntropyFin α p + ∑ a : α, p.1 a * shannonEntropyFin (β a) (q a)) / log 2 := by

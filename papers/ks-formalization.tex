@@ -536,7 +536,7 @@ H'_{xy}(m_x m_y) = \lambda_1 f_1(m_x) + \lambda_2 f_2(m_y).
 In Lean we formalize the \emph{coordinate-derivative calculation} explicitly, without smuggling it in
 as an axiom.  The key lemma is
 \texttt{lagrange\_coordinate\_deriv\_eq\_product}
-(\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Variational/Main.lean}), which models
+(\texttt{KnuthSkilling/Variational/Main.lean}), which models
 ``$\partial/\partial\,m(x\times y)$'' as the 1D derivative along the update map
 $t \mapsto \mathrm{update}\ m\ (x,y)\ t$.
 It assumes only local differentiability of the relevant terms and a stationarity hypothesis stated as a
@@ -562,7 +562,7 @@ classification step that yields the logarithmic solution.
 To avoid assuming stationarity as an axiom, we also provide a variant that derives the
 \texttt{HasDerivAt ... 0 ...} hypothesis from a local extremum via Fermat's theorem:
 \texttt{lagrange\_coordinate\_deriv\_eq\_product\_of\_isLocalExtr}
-\ (\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Variational/Main.lean}).
+\ (\texttt{KnuthSkilling/Variational/Main.lean}).
 We then package the result in the exact ``K\&S \texttt{Hproduct}'' shape as
 \texttt{lagrange\_Hproduct\_eq\_of\_isLocalExtr}.
 
@@ -573,7 +573,7 @@ To treat this as a functional equation valid for all positive pairs $(m_x,m_y)$ 
 by Path A), K\&S rely on an informal ``generality across applications'' premise: the same potential
 is intended to apply uniformly across a sufficiently rich class of inference problems.
 In Lean we make this bridge assumption explicit as the structure
-\texttt{KSVariationalGenerality} (\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Variational/Main.lean}),
+\texttt{KSVariationalGenerality} (\texttt{KnuthSkilling/Variational/Main.lean}),
 so nothing is smuggled: either you assume it, or you do not get a global functional equation.
 
 \subsection{K\&S's Differentiability Claim (and Why It's Wrong)}
@@ -597,7 +597,7 @@ This directly refutes K\&S's claim in their specific modeling domain.
 
 Nonsmooth variational problems are not exotic: absolute value, max functions, and $\ell_1$ penalties are core tools in modern optimization.
 Rockafellar--Wets~\cite{RockafellarWets} explicitly stress that max/min operations often fail to preserve smoothness.
-These counterexamples are formalized in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Counterexamples/VariationalNonsmooth.lean}.
+These counterexamples are formalized in \texttt{KnuthSkilling/Counterexamples/VariationalNonsmooth.lean}.
 
 \subsection{The Correct Approach: Measurability}
 
@@ -623,7 +623,7 @@ The minimal package for the \emph{classification step} is:
 
 This is exactly the statement proved by our main Lean theorem
 \texttt{variationalEquation\_solution\_measurable}
-(\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Variational/Main.lean}).
+(\texttt{KnuthSkilling/Variational/Main.lean}).
 It \emph{does not} assume that $H'$ comes from a differentiable potential.
 
 If one also wants a theorem phrased in terms of an underlying potential $H$, one adds an optional hypothesis:
@@ -640,7 +640,7 @@ The key insight is that the functional equation~\eqref{eq:variational}, after th
 
 Without regularity, Cauchy's equation has pathological non-linear solutions (via Hamel basis constructions, assuming the Axiom of Choice).
 To obtain the unique linear solution $f(t) = Ct$, \emph{some} regularity is required.
-The existence of non-linear additive solutions is shown by a standard Hamel-basis construction; we formalize this as a counterexample generator in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Counterexamples/CauchyPathology.lean}.
+The existence of non-linear additive solutions is shown by a standard Hamel-basis construction; we formalize this as a counterexample generator in \texttt{KnuthSkilling/Counterexamples/CauchyPathology.lean}.
 
 The standard hierarchy of sufficient conditions includes:
 \begin{itemize}
@@ -718,7 +718,7 @@ In a discrete, summand-level setting:
 
 We formalize this ``Dirac extraction $\to$ log'' lemma as
 \texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable}
-in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/SystemIndependence.lean} (re-exported via \texttt{ShoreJohnson/Theorem.lean}).
+in \texttt{KnuthSkilling/ShoreJohnson/SystemIndependence.lean} (re-exported via \texttt{ShoreJohnson/Theorem.lean}).
 This provides a clean comparison point between Shore--Johnson's system-independence intuition and
 K\&S Appendix~C: both rely on the same functional-equation rigidity, and both require an explicit
 anti-pathology hypothesis to exclude Hamel-basis solutions.
@@ -732,12 +732,12 @@ $w\log(w/u)$.
 \item Without the regularity gate, uniqueness fails: we exhibit a multiplicative-additive (Hamel-basis) counterexample
 and the induced ratio-form $d$ is \emph{not} a constant multiple of KL.
 \end{itemize}
-These results are proved in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/KL.lean}.
+These results are proved in \texttt{KnuthSkilling/ShoreJohnson/KL.lean}.
 For convenience, the project re-exports the key Shore--Johnson lemmas we use in
-\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/Theorem.lean}.
+\texttt{KnuthSkilling/ShoreJohnson/Theorem.lean}.
 We then connect the resulting atom-level KL identity to the project's finite KL divergence
 definition on \texttt{ProbDist} (Section~8 layer) in
-\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/Bridge.lean}.
+\texttt{KnuthSkilling/ShoreJohnson/Bridge.lean}.
 
 \subsection{The Entropy/Divergence Form}
 
@@ -747,7 +747,7 @@ From the variational theorem, integrating $H'(m) = B + C \log m$ yields:
 With appropriate choices of constants ($C = 1$, $B = -\log u$, $A = u$), this specializes to the \textbf{Kullback--Leibler divergence}:
 \[D(w \| u) = \sum_i \left( u_i - w_i + w_i \log \frac{w_i}{u_i} \right)\]
 
-This is formalized in \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Information/Divergence.lean} with proofs of non-negativity, zero iff equal, and asymmetry.
+This is formalized in \texttt{KnuthSkilling/Information/Divergence.lean} with proofs of non-negativity, zero iff equal, and asymmetry.
 For probability distributions (equal total mass), the linear terms $\sum_i (u_i - w_i)$ cancel, leaving the usual $\sum_i w_i \log(w_i/u_i)$.
 
 \subsection{Summary: What K\&S Should Have Said}
@@ -764,21 +764,23 @@ No circularity: we assume (functional equation + measurability), and \emph{deriv
 
 K\&S's Axiom 5 (chaining associativity) extends the framework to conditional probability.
 We formalize the chain product rule, Bayes' theorem, and the ratio-of-measures representation in
-\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}.
+\texttt{KnuthSkilling/Probability/ConditionalProbability/Basic.lean}.
 
 \section{Information and Entropy (Section 8)}
 
 K\&S Section 8 specializes the variational potential to (i) information/divergence for probability
 distributions and (ii) Shannon entropy.
 We formalize this in
-\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Information/InformationEntropy.lean}.
+\texttt{KnuthSkilling/Information/InformationEntropy.lean}.
 
 For comparison (and to honor the historical development), we also formalize classical axiomatic
 characterizations of Shannon entropy \emph{independently of K\&S}:
 \begin{itemize}
-\item Shannon's original 1948 axioms + uniqueness (Appendix~2 of Shannon): \texttt{Mettapedia/InformationTheory/ShannonEntropy/Shannon1948.lean} (sorry-free).
-\item Faddeev (1956) and Shannon--Khinchin (1957) axiom systems: \texttt{Mettapedia/InformationTheory/ShannonEntropy/Faddeev.lean} and \texttt{Mettapedia/InformationTheory/ShannonEntropy/ShannonKhinchin.lean} (both WIP).
-\item The equivalence \emph{glue} is kept in a separate file so the Shannon--Khinchin development does not depend on Faddeev: \texttt{Mettapedia/InformationTheory/ShannonEntropy/Equivalence.lean}.
+\item Shannon's original 1948 axioms + uniqueness (Appendix~2 of Shannon): \texttt{InformationTheory/ShannonEntropy/Shannon1948.lean} (sorry-free).
+\item Faddeev's 1956 axiom system + uniqueness theorem: \texttt{InformationTheory/ShannonEntropy/Faddeev.lean} (sorry-free).
+\item Shannon--Khinchin's 1957 axiom interface and the bridge to/from Faddeev:
+\texttt{InformationTheory/ShannonEntropy/ShannonKhinchin.lean} and
+\texttt{InformationTheory/ShannonEntropy/Equivalence.lean} (sorry-free; the direct S--K uniqueness theorem is not duplicated in that file).
 \end{itemize}
 
 Highlights:
@@ -789,13 +791,13 @@ Highlights:
 \item \textbf{Mathlib KL bridge (finite $\to$ general)}: we show our \texttt{klDivergenceTop} on \texttt{Fin n}
   agrees with mathlib's measure-theoretic \texttt{InformationTheory.klDiv} on the associated Dirac-sum measures
   (\texttt{klDiv\_toMeasureTop\_eq\_klDivergenceTop} in
-  \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Information/InformationEntropyMathlib.lean}).
+  \texttt{KnuthSkilling/Information/InformationEntropyMathlib.lean}).
   This provides a clean ``infinite/continuum'' variant by reusing mathlib's general KL divergence.
 \item \textbf{Mathlib KL bridge (countable discrete)}: for sequences on $\mathbb{N}$ we connect the K\&S
   countable divergence sum \texttt{divergenceInf} to \texttt{InformationTheory.klDiv} for Dirac-sum measures
   (\texttt{Seq.klDiv\_toMeasureTop\_eq\_divergenceInfTop} and
   \texttt{Seq.klDiv\_toMeasureTop\_eq\_ofReal\_divergenceInf} in
-  \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Information/DivergenceMathlib.lean}).
+  \texttt{KnuthSkilling/Information/DivergenceMathlib.lean}).
 \item \textbf{Shannon properties}: entropy of the uniform distribution is $\log n$
   (\texttt{shannonEntropy\_uniform}), strict monotonicity in $n$ for uniform distributions
   (\texttt{shannonEntropy\_uniform\_strictMono}), grouping/additivity in a binary refinement
@@ -933,7 +935,7 @@ From \texttt{NoAnomalousPairs} alone, we \emph{derive}:
 \section{Philosophical Context: Cox, Kolmogorov, and K\&S}
 \label{app:philosophy}
 
-We compare three foundational approaches to probability, all formalized in Mettapedia.
+We compare three foundational approaches to probability, all formalized in this repository.
 
 \subsection{Kolmogorov (1933): Measure-Theoretic}
 
@@ -956,7 +958,7 @@ class IsProbabilityMeasure (μ : Measure Ω) : Prop where
 
 \subsection{Cox (1946, 1961): Logical Plausibility}
 
-\textbf{Formalization}: See \texttt{Mettapedia/ProbabilityTheory/Cox/Basic.lean}
+\textbf{Formalization}: See \texttt{ProbabilityTheory/Cox/Basic.lean}
 
 \subsubsection{Philosophical Setting}
 
@@ -1165,7 +1167,7 @@ We formalize a multi-axis classification of probability theories, placing K\&S a
 
 Each axis represents a binary or multi-valued property of probability theories.
 
-\textbf{Formalization}: See \texttt{Mettapedia/ProbabilityTheory/Hypercube/Basic.lean}
+\textbf{Formalization}: See \texttt{ProbabilityTheory/Hypercube/Basic.lean}
 
 \begin{itemize}
 \item \textbf{Commutativity}: $P(A \cap B) = P(B \cap A)$? (Classical: yes; Quantum: no)
@@ -1239,8 +1241,8 @@ The hypercube suggests unexplored combinations:
 \item \textbf{Non-commutative classical}: Classical probability without $P(A \cap B) = P(B \cap A)$
 \end{itemize}
 
-\textbf{Formalization}: See \texttt{Mettapedia/ProbabilityTheory/Hypercube/NovelTheories.lean} and \\
-\hspace*{2em} \texttt{Mettapedia/ProbabilityTheory/Hypercube/NeighborTheories.lean}
+\textbf{Formalization}: See \texttt{ProbabilityTheory/Hypercube/NovelTheories.lean} and \\
+\hspace*{2em} \texttt{ProbabilityTheory/Hypercube/NeighborTheories.lean}
 
 \section{To-Do: Open Gaps in Formalization}
 \label{app:todo}
@@ -1302,14 +1304,14 @@ The \textbf{correct approach} (what \texttt{AczelTheorem.lean} does):
 
 We prove the needed Cauchy lemma as
 \texttt{continuous\_additive\_eq\_mul} in
-\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Multiplicative/FunctionalEquation.lean},
+\texttt{KnuthSkilling/Multiplicative/FunctionalEquation.lean},
 using Mathlib’s continuous additive $\Rightarrow$ $\mathbb{R}$-linear infrastructure.
 
 \subsection{Concrete Examples}
 
 \textbf{Status}: demonstrated.
 
-See \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Examples/} (and the nearby \texttt{Bridges/} and \texttt{Exploration/} folders) for:
+See \texttt{KnuthSkilling/Examples/} (and the nearby \texttt{Bridges/} and \texttt{Exploration/} folders) for:
 \begin{itemize}
 \item \texttt{Examples/CoinDie.lean}: Fair coin flip and fair die roll \texttt{ProbDist} examples.
   Verifies: $P(\emptyset)=0$, $P(\Omega)=1$, additivity $P(H \cup T) = P(H) + P(T)$.

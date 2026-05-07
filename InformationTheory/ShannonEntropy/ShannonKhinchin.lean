@@ -199,12 +199,8 @@ theorem shannonKhinchin_continuous_binary (E : ShannonKhinchinEntropy) :
 
 /-- Shannon-Khinchin entropy is symmetric (invariant under permutation).
 
-This follows from the S-K axioms via the uniqueness theorem:
-After uniqueness, E.H = shannonEntropyNormalized which is symmetric.
-
-Alternatively, it can be derived directly from the axioms using:
-1. Maximality: uniform distribution maximizes
-2. Expansibility + Strong Additivity: entropy depends only on multiset of probabilities
+This is one of the axioms in the present Shannon-Khinchin interface, so the
+project exposes it directly as a projection theorem.
 -/
 theorem shannonKhinchin_symmetry (E : ShannonKhinchinEntropy) (p : ProbVec n) (σ : Equiv.Perm (Fin n)) :
     E.H (permute σ p) = E.H p := by

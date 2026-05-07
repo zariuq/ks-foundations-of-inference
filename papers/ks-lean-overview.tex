@@ -133,7 +133,7 @@ Alternative derivation paths (Cox, Shore--Johnson, Shannon/Faddeev) are discusse
 \endhead
 Sections 3--4 & Combination Axioms (Sym 0--2) & \texttt{Core/Basic.lean}, \texttt{Core/Algebra.lean} \\
 Sections 3,7 & Probability (two K\&S paths) & \path{Probability/ProbabilityDerivation.lean},\newline \path{Probability/ConditionalProbability/Basic.lean} \\
-Section 4 & Quantum theory & \path{Core/SymmetricalFoundation.lean},\newline \path{Mettapedia/Algebra/TwoDimClassification.lean} \\
+Section 4 & Quantum theory & \path{Core/SymmetricalFoundation.lean},\newline \path{Algebra/TwoDimClassification.lean} \\
 Section 6 & Divergence & \texttt{Information/Divergence.lean} \\
 Section 8 & Info/Entropy & \texttt{Information/InformationEntropy.lean} \\
 Appendix A & Representation & \texttt{Additive/Main.lean}, \texttt{Additive/Representation.lean} \\
@@ -146,7 +146,7 @@ Extension & $\sigma$-additivity bridge & \texttt{Core/ScaleCompleteness.lean} \\
 
 \subsection{Key Files}
 
-All paths below are relative to \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/}.
+All paths below are relative to \texttt{KnuthSkilling/}.
 
 \begin{description}
 \item[\texttt{../KnuthSkilling.lean}] Main entrypoint (FOI core + extra K\&S modules)
@@ -187,7 +187,7 @@ All paths below are relative to \texttt{Mettapedia/ProbabilityTheory/KnuthSkilli
 \section{Combination and Valuation Axioms (K\&S Sections 3--4)}
 %==============================================================================
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Core/Basic.lean}
+\textbf{File}: \texttt{KnuthSkilling/Core/Basic.lean}
 
 \subsection{K\&S Symmetries 0--2}
 
@@ -316,7 +316,7 @@ provide lemmas like \texttt{KSSemigroupBase.opAssoc} that extract the unbundled 
 
 \subsection{Iteration}
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Core/Algebra.lean}
+\textbf{File}: \texttt{KnuthSkilling/Core/Algebra.lean}
 
 \begin{definition}[\texttt{iterate\_op}]
 \textbf{Lines 23--25, Algebra.lean}
@@ -336,7 +336,7 @@ This builds the sequence: $\text{ident}, x, x \oplus x, x \oplus (x \oplus x), \
 
 \subsection{Identity-Free Iteration}
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Core/Basic.lean}
+\textbf{File}: \texttt{KnuthSkilling/Core/Basic.lean}
 
 \begin{definition}[\texttt{iterate\_op\_pnat}]
 \textbf{Lines 374--375, Core/Basic.lean}
@@ -413,7 +413,7 @@ proof via Eric Paul's \texttt{OrderedSemigroups} library.\footnote{\url{https://
 \label{subsec:nap}
 %------------------------------------------------------------------------------
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/Additive/Axioms/AnomalousPairs.lean}
+\textbf{File}: \path{KnuthSkilling/Additive/Axioms/AnomalousPairs.lean}
 
 \begin{definition}[Anomalous Pair]
 Two elements $a, b$ of an ordered semigroup form an \emph{anomalous pair} if their iterates remain
@@ -461,7 +461,7 @@ into the K\&S development.
 \label{subsec:separation}
 %------------------------------------------------------------------------------
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Core/Algebra.lean}
+\textbf{File}: \texttt{KnuthSkilling/Core/Algebra.lean}
 
 Knuth \& Skilling's Appendix A proof works constructively: they build a grid of values by introducing
 atoms one at a time, placing each new value at a ``convenient'' point within an interval. This
@@ -498,7 +498,7 @@ K\&S's constructive proof requires to place new grid points.
 \label{subsec:equivalence}
 %------------------------------------------------------------------------------
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Additive/Axioms/AnomalousPairs.lean}
+\textbf{File}: \texttt{KnuthSkilling/Additive/Axioms/AnomalousPairs.lean}
 
 Under our standing hypotheses, the two formulations are equivalent:
 
@@ -1341,7 +1341,7 @@ See Appendix~\ref{app:shore-johnson} for the full Shore--Johnson formalization.
 \section{Divergence (K\&S Section 6.1)}
 %==============================================================================
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Information/Divergence.lean}
+\textbf{File}: \texttt{KnuthSkilling/Information/Divergence.lean}
 
 \textbf{What this is}: The divergence $\phi(w, u)$ measures the ``distance'' between two measure assignments $w$ and $u$. It quantifies the information-theoretic cost of using measure $u$ when the ``true'' measure is $w$.
 
@@ -1420,7 +1420,7 @@ theorem atomDivergence_eq_zero_iff (w u : Real) (hw : 0 < w) (hu : 0 < u) :
 \section{Conditional Probability Calculus (K\&S Section 7)}
 %==============================================================================
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}
+\textbf{File}: \path{KnuthSkilling/Probability/ConditionalProbability/Basic.lean}
 
 \textbf{What this section does}: K\&S Section 7 derives \textbf{probability calculus} from first principles. This is the crucial step that takes us from general measures (Sections 1--6) to \textbf{probability distributions} (normalized measures).
 
@@ -1646,7 +1646,7 @@ The formalization also proves:
 \section{$\sigma$-Completeness and $\sigma$-Additivity (Extension)}
 %==============================================================================
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Core/ScaleCompleteness.lean}
+\textbf{File}: \texttt{KnuthSkilling/Core/ScaleCompleteness.lean}
 
 \textbf{Purpose}: K\&S develop a \emph{finite} additivity theory on event algebras.  To connect this to
 Kolmogorov-style probability measures on $\sigma$-algebras, we need a \textbf{countable} closure story:
@@ -1752,20 +1752,20 @@ theorem ks_sigma_additive
 
 \begin{remark}[Mathlib Bridge]
 For a bridge to mathlib's \texttt{Measure} / \texttt{ProbabilityMeasure} APIs, see:
-\texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Bridges/MathlibProbability.lean}.
+\texttt{KnuthSkilling/Bridges/MathlibProbability.lean}.
 \end{remark}
 
 %==============================================================================
 \section{Information and Entropy (K\&S Section 8)}
 %==============================================================================
 
-\textbf{File}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Information/InformationEntropy.lean}
+\textbf{File}: \texttt{KnuthSkilling/Information/InformationEntropy.lean}
 
 \textbf{What this section does}: K\&S Section 8 takes \textbf{special cases} of the variational potential $H$ from Appendix C, specialized to probability distributions (normalized measures from Section 7).
 
 \textbf{Key point}: Shannon entropy is \textbf{derived}, not just defined. It emerges as an ``inevitable consequence of seeking a variational quantity'' (K\&S, Section 8.2).
 
-\textbf{Unified view (project-wide, optional)}: The repo also formalizes the Faddeev and Shannon--Khinchin uniqueness theorems (axiomatic characterizations of entropy), plus bridges to mathlib's measure-theoretic KL divergence. The entrypoint \path{Mettapedia/InformationTheory/EntropyKL.lean} records the equivalences between these approaches (see Appendix: Supplementary Derivation Paths).
+\textbf{Unified view (project-wide, optional)}: The repo also formalizes Shannon's 1948 uniqueness theorem, Faddeev's 1956 uniqueness theorem, the Shannon--Khinchin axiom interface and Faddeev bridge, plus bridges to mathlib's measure-theoretic KL divergence. The entrypoint \path{InformationTheory/EntropyKL.lean} records the equivalences between these approaches (see Appendix: Supplementary Derivation Paths).
 
 \subsection{From Atom Divergence to KL Divergence}
 
@@ -1838,7 +1838,7 @@ These are Shannon's original axioms~\cite{Shannon1948}. K\&S shows they follow f
 \subsection{Formalization}
 
 \begin{definition}[\texttt{ProbDist}]
-\textbf{Lines 19--22, Mettapedia/ProbabilityTheory/Foundations/Distributions/ProbDist.lean}
+\textbf{Lines 19--22, ProbabilityTheory/Foundations/Distributions/ProbDist.lean}
 
 A probability distribution: probabilities for $n$ outcomes that are non-negative and sum to 1.
 \end{definition}
@@ -1854,7 +1854,7 @@ structure ProbDist (n : Nat) where
 \textbf{Lines 66--72, Information/InformationEntropy.lean}
 
 \texttt{ProbDist} is defined in\\
-{\footnotesize\path{Mettapedia/ProbabilityTheory/Foundations/Distributions/ProbDist.lean}} and re-exported as a KS-facing alias
+{\footnotesize\path{ProbabilityTheory/Foundations/Distributions/ProbDist.lean}} and re-exported as a KS-facing alias
 so that Section 8 can refer to \texttt{ProbDist} without importing Foundations directly.
 \end{remark}
 
@@ -1901,7 +1901,7 @@ This convention is mathematically justified by $\lim_{x \to 0^+} x \log x = 0$ (
 \section{Counterexamples and Clarifications}
 %==============================================================================
 
-\textbf{Directory}: \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/Counterexamples/}
+\textbf{Directory}: \texttt{KnuthSkilling/Counterexamples/}
 
 \subsection{The ``Discontinuous Re-grading'' Claim}
 
@@ -2032,7 +2032,7 @@ See Appendix~\ref{app:separation-history} for the discovery timeline.
 \subsection{Major Formalized Theorems at a Glance}
 
 This section consolidates all the main results proven in the formalization.
-All paths are relative to \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/}.
+All paths are relative to \texttt{KnuthSkilling/}.
 
 \subsubsection*{Sum Rule (Appendix A)}
 \begin{itemize}
@@ -2111,9 +2111,9 @@ All paths are relative to \texttt{Mettapedia/ProbabilityTheory/KnuthSkilling/}.
 
 \subsubsection*{Quantum Theory Classification (Section 4)}
 \begin{itemize}
-\item \texttt{selection\_theorem} (\texttt{Mettapedia/Algebra/TwoDimClassification.lean:427}) --- $\mu < 0$ gives QM Born rule
+\item \texttt{selection\_theorem} (\texttt{Algebra/TwoDimClassification.lean:427}) --- $\mu < 0$ gives QM Born rule
 \item \texttt{mean\_bornRule\_sum\_unit\_phases} (\texttt{Core/SymmetricalFoundation.lean:303}) --- Born rule from averaging
-\item \texttt{classification\_trichotomy} (\texttt{Mettapedia/Algebra/TwoDimClassification.lean:293}) --- Exactly 3 algebra classes
+\item \texttt{classification\_trichotomy} (\texttt{Algebra/TwoDimClassification.lean:293}) --- Exactly 3 algebra classes
 \end{itemize}
 
 \subsubsection*{Counterexamples \& Clarifications}
@@ -2200,13 +2200,13 @@ The repository also contains additional formalizations that complement the main 
 \subsection*{A. Unified finite entropy/KL import surface}
 \addcontentsline{toc}{subsection}{Supplementary: Unified finite entropy/KL}
 
-\textbf{Curated import surface}: \path{Mettapedia/InformationTheory/EntropyKL.lean}
+\textbf{Curated import surface}: \path{InformationTheory/EntropyKL.lean}
 (Lines 1--44).  This file is intentionally a stable \emph{import path}---it does not introduce new
 definitions, but imports the main finite-discrete entropy/KL stack plus bridges.
 
 \begin{lstlisting}[caption={Curated entrypoint: entropy + KL from all routes (imports only)}]
-import Mettapedia.InformationTheory.ShannonEntropy.Main
-import Mettapedia.ProbabilityTheory.KnuthSkilling.Information.Main
+import InformationTheory.ShannonEntropy.Main
+import KnuthSkilling.Information.Main
 \end{lstlisting}
 
 \begin{definition}[\texttt{ProbVec}]
@@ -2259,7 +2259,7 @@ noncomputable def uniformDist (n : Nat) (hn : 0 < n) : ProbVec n :=
 \subsection*{B. ProbVec $\leftrightarrow$ ProbDist glue + key equivalences}
 \addcontentsline{toc}{subsection}{Supplementary: ProbVec \texorpdfstring{$\leftrightarrow$}{<->} ProbDist + equivalences}
 
-\textbf{File}: \path{Mettapedia/InformationTheory/ShannonEntropy/Interface.lean}
+\textbf{File}: \path{InformationTheory/ShannonEntropy/Interface.lean}
 
 \begin{definition}[\texttt{probVecEquivProbDist}]
 \textbf{Lines 185--223, ShannonEntropy/Interface.lean}
@@ -2270,7 +2270,7 @@ type (\texttt{KSProbDist}).
 
 \begin{lstlisting}[caption={ProbVec n $\simeq$ KSProbDist n (conversion equivalence)}]
 abbrev KSProbDist (n : Nat) :=
-  Mettapedia.ProbabilityTheory.KnuthSkilling.Information.InformationEntropy.ProbDist n
+  KnuthSkilling.Information.InformationEntropy.ProbDist n
 
 def probVecEquivProbDist (n : Nat) : ProbVec n ≃ KSProbDist n where
   toFun := ProbVec.toProbDist
@@ -2289,7 +2289,7 @@ via the bridge.
 \begin{lstlisting}[caption={Shannon entropy: ProbVec version equals KS ProbDist version}]
 theorem shannonEntropy_eq_ks_shannonEntropy {n : Nat} (p : ProbVec n) :
     shannonEntropy p =
-      Mettapedia.ProbabilityTheory.KnuthSkilling.Information.InformationEntropy.shannonEntropy
+      KnuthSkilling.Information.InformationEntropy.shannonEntropy
         p.toProbDist := by
   -- proof in file
   ...
@@ -2337,7 +2337,7 @@ theorem shannonEntropy_via_klDivergence {n : Nat} (P : ProbVec n) (hn : 0 < n) :
   ...
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean}
+\textbf{File}: \path{InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean}
 
 \begin{theorem}[\texttt{klDivergence\_eq\_mathlib\_klDiv}]
 \textbf{Lines 229--343, ShannonEntropy/MeasureTheoreticBridge.lean}
@@ -2371,7 +2371,7 @@ theorem axiomatic_equals_measureTheoretic {n : Nat} (E : FaddeevEntropy) (p : Pr
 \subsection*{C. Axiomatic entropy: Faddeev / Shannon (1948) / Shannon--Khinchin}
 \addcontentsline{toc}{subsection}{Supplementary: Axiomatic entropy (Faddeev/Shannon/Khinchin)}
 
-\textbf{Entry point}: \path{Mettapedia/InformationTheory/ShannonEntropy/Main.lean}
+\textbf{Entry point}: \path{InformationTheory/ShannonEntropy/Main.lean}
 
 \medskip
 \textbf{Faddeev (1956): minimal axiomatization}
@@ -2396,7 +2396,7 @@ structure FaddeevEntropy where
 \end{lstlisting}
 
 \begin{theorem}[\texttt{faddeev\_H\_eq\_shannon}]
-\textbf{Lines 6067--6072, ShannonEntropy/Faddeev.lean}
+\textbf{Lines 6481--6486, ShannonEntropy/Faddeev.lean}
 
 Faddeev uniqueness: every \texttt{FaddeevEntropy} is (the normalized) Shannon entropy.
 \end{theorem}
@@ -2491,7 +2491,7 @@ At the level of inference procedures, weaker ``independence'' axioms can admit f
 (e.g.\ R\'enyi-like families).  In this project we isolate the core \emph{product additivity} hypothesis at the
 atom level, and then separate the analytic \emph{regularity gate} (measurability) that rules out Hamel solutions.
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/SystemIndependence.lean}
+\textbf{File}: \path{KnuthSkilling/ShoreJohnson/SystemIndependence.lean}
 
 \begin{definition}[\texttt{SJSystemIndependenceAtom}]
 \textbf{Lines 45--51, ShoreJohnson/SystemIndependence.lean}
@@ -2538,7 +2538,7 @@ theorem d_one_eq_const_mul_log_of_measurable
   dirac_extraction_log_of_measurable d hSJ.regularAtom hSJ.add_over_products hMeas
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/KL.lean}
+\textbf{File}: \path{KnuthSkilling/ShoreJohnson/KL.lean}
 
 \begin{definition}[\texttt{klAtom}]
 \textbf{Lines 74--75, ShoreJohnson/KL.lean}
@@ -2569,7 +2569,7 @@ theorem ratioForm_eq_const_mul_klAtom
   ...
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/ShoreJohnson/Bridge.lean}
+\textbf{File}: \path{KnuthSkilling/ShoreJohnson/Bridge.lean}
 
 \begin{theorem}[\texttt{sum\_klAtom\_eq\_klDivergence}]
 \textbf{Lines 34--37, ShoreJohnson/Bridge.lean}
@@ -2584,7 +2584,7 @@ theorem sum_klAtom_eq_klDivergence {n : Nat} (P Q : ProbDist n)
   simp [klAtom, klDivergence]
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}
+\textbf{File}: \path{KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}
 
 \begin{theorem}[\texttt{mulCauchyOnPos\_eq\_const\_mul\_log\_of\_variationalEquation\_solution\_measurable}]
 \textbf{Lines 33--35, Bridges/ShoreJohnsonVariationalBridge.lean}
@@ -2604,10 +2604,10 @@ theorem mulCauchyOnPos_eq_const_mul_log_of_variationalEquation_solution_measurab
 \subsection*{E. Cox (1946/1961): plausibility axioms $\Rightarrow$ product/complement rules (plus event-level integration)}
 \addcontentsline{toc}{subsection}{Supplementary: Cox}
 
-\textbf{Entry point}: \path{Mettapedia/ProbabilityTheory/Cox.lean}
+\textbf{Entry point}: \path{ProbabilityTheory/Cox.lean}
 
 \medskip
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/Cox/Basic.lean}
+\textbf{File}: \path{ProbabilityTheory/Cox/Basic.lean}
 
 \begin{definition}[\texttt{PlausibilityFunction}]
 \textbf{Lines 65--70, Cox/Basic.lean}
@@ -2668,7 +2668,7 @@ def AssociativityEquation (F : Real -> Real -> Real) : Prop :=
   forall x y z : Real, F (F x y) z = F x (F y z)
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/Cox/ProductRuleDerivation.lean}
+\textbf{File}: \path{ProbabilityTheory/Cox/ProductRuleDerivation.lean}
 
 \begin{theorem}[\texttt{cox\_productRule}]
 \textbf{Lines 2348--2350, Cox/ProductRuleDerivation.lean}
@@ -2712,7 +2712,7 @@ theorem cox_negationRule (N : CoxNegationAxioms) :
   ...
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean}
+\textbf{File}: \path{ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean}
 
 \begin{theorem}[\texttt{cox\_productRule\_regrade}]
 \textbf{Lines 18--28, Cox/ProbabilityCalculusBridge.lean}
@@ -2727,7 +2727,7 @@ theorem cox_productRule_regrade (C : CoxFullAxioms) :
   cox_productRule C
 \end{lstlisting}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}
+\textbf{File}: \path{ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}
 
 \begin{definition}[\texttt{CoxProbabilityModel}]
 \textbf{Lines 31--52, Cox/ProbabilityCalculusIntegration.lean}
@@ -2772,7 +2772,7 @@ The event-level Cox model instantiates the shared \texttt{ProbabilityCalculusCla
 
 \begin{lstlisting}[caption={ProbabilityCalculusClass instance for CoxProbabilityModel}]
 instance (M : CoxProbabilityModel alpha) :
-    Mettapedia.ProbabilityTheory.KnuthSkilling.Probability.ProbabilityCalculus.ProbabilityCalculusClass alpha
+    KnuthSkilling.Probability.ProbabilityCalculus.ProbabilityCalculusClass alpha
       M.valuation where
   sum_rule' := fun {a b} h => M.sum_rule_disjoint h
   complement_rule' := by
@@ -2792,7 +2792,7 @@ lightweight sanity checks and modeling notes.
 \subsection*{1. Coin flip and die (\texttt{ProbDist} examples)}
 \addcontentsline{toc}{subsection}{Appendix: Examples: CoinDie}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/Examples/CoinDie.lean}
+\textbf{File}: \path{KnuthSkilling/Examples/CoinDie.lean}
 
 \begin{definition}[\texttt{fairCoin}, \texttt{fairDie}]
 \textbf{Lines 20--51, Examples/CoinDie.lean}
@@ -2819,12 +2819,12 @@ $\mathrm{eventProb}(P, A \cup B)=\mathrm{eventProb}(P, A)+\mathrm{eventProb}(P, 
   firstline=55,
   lastline=82,
   firstnumber=55
-]{../Mettapedia/ProbabilityTheory/KnuthSkilling/Examples/CoinDie.lean}
+]{../KnuthSkilling/Examples/CoinDie.lean}
 
 \subsection*{2. 7-element lattice modeling caution}
 \addcontentsline{toc}{subsection}{Appendix: Examples: 7-element lattice}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/Examples/ImpreciseOn7Element.lean}
+\textbf{File}: \path{KnuthSkilling/Examples/ImpreciseOn7Element.lean}
 
 This file accompanies the 7-element distributive lattice in
 \path{Counterexamples/NonModularDistributive.lean}.  It is a modeling caution: the ideal-lattice
@@ -2848,7 +2848,7 @@ then the modular identity fails whenever the ``cores-only'' state has positive m
 \subsection*{3. Toy decision example (non-FOI)}
 \addcontentsline{toc}{subsection}{Appendix: Examples: decision toy}
 
-\textbf{File}: \path{Mettapedia/ProbabilityTheory/KnuthSkilling/Examples/PreciseVsImprecise.lean}
+\textbf{File}: \path{KnuthSkilling/Examples/PreciseVsImprecise.lean}
 
 \begin{theorem}[\texttt{decisions\_differ}]
 \textbf{Lines 212--216, Examples/PreciseVsImprecise.lean}
@@ -2978,24 +2978,24 @@ took the project from ``we can't prove it'' to ``we know it's unprovable.''
 \section{Build Instructions}
 %==============================================================================
 
-From the Mettapedia project root:
+From the standalone project root:
 
 \begin{lstlisting}[language=bash]
 export LAKE_JOBS=3
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling
+nice -n 19 lake build +KnuthSkilling
 \end{lstlisting}
 
 For the FOI reviewer entrypoint only:
 \begin{lstlisting}[language=bash]
 export LAKE_JOBS=3
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling.FoundationsOfInference
+nice -n 19 lake build +KnuthSkilling.FoundationsOfInference
 \end{lstlisting}
 
 For memory-intensive grid/induction files (e.g. ThetaPrime.lean):
 \begin{lstlisting}[language=bash]
 ulimit -v 6291456
 export LAKE_JOBS=1
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling.Additive.Proofs.GridInduction.Main
+nice -n 19 lake build +KnuthSkilling.Additive.Proofs.GridInduction.Main
 \end{lstlisting}
 
 %------------------------------------------------------------------------------

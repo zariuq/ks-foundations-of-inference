@@ -41,8 +41,8 @@ open Finset Real
 /-- Faddeev axioms imply Shannon-Khinchin axioms.
 
 This direction uses Faddeev-side corollaries (`faddeev_full_continuity`,
-`faddeev_maximality`, `faddeev_expansibility`) which are currently proved via
-the (work-in-progress) Faddeev uniqueness theorem. -/
+`faddeev_maximality`, `faddeev_expansibility`) which are proved downstream of
+the Faddeev uniqueness theorem. -/
 theorem faddeev_implies_shannonKhinchin (E : FaddeevEntropy) :
     ∃ (E' : ShannonKhinchinEntropy), ∀ (n : ℕ) (p : ProbVec n), E'.H p = E.H p := by
   use
