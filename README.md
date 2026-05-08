@@ -1,8 +1,8 @@
 # Knuth-Skilling Foundations of Inference
 
 Lean 4 formalization of Knuth & Skilling's "Foundations of Inference" (2012).
-
-Forked from https://github.com/zariuq/ai-agents/tree/main/lean-projects/mettapedia/Mettapedia/ProbabilityTheory/KnuthSkilling for reproducibility.
+This standalone repository was filtered from the larger project history so the
+K&S development can be built and reviewed directly.
 
 ## Overview
 
@@ -100,42 +100,29 @@ class KSSeparation (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
 ## Directory Structure
 
 ```
-KnuthSkilling/
-├── README.md                    # This file
-├── FoundationsOfInference.lean  # Reviewer entrypoint (imports Core + Appendices A/B/C)
-├── Core/                        # Core axiom hierarchy
-│   ├── Basic.lean               # PlausibilitySpace, Valuation, KSSemigroupBase
-│   ├── Algebra.lean             # iterate_op, KSSeparation, NoAnomalousPairs
-│   └── ScaleCompleteness.lean   # σ-additivity bridge
-├── Additive/                    # Appendix A: additive representation
-│   ├── Main.lean                # Public API: HasRepresentationTheorem
-│   ├── Axioms/                  # Axiom definitions
-│   │   ├── AnomalousPairs.lean  # NoAnomalousPairs (NAP)
-│   │   └── SandwichSeparation.lean  # KSSeparation ⇒ Commutativity + Archimedean
-│   └── Proofs/                  # Three proof paths
-│       ├── OrderedSemigroupEmbedding/  # Hölder path (NAP)
-│       ├── DirectCuts/          # Dedekind cuts (KSSeparation)
-│       └── GridInduction/       # K&S paper's induction (KSSeparation)
-├── Multiplicative/              # Appendix B: product operation
-│   ├── Main.lean                # Public entry point
-│   └── Proofs/                  # Proof alternatives
-├── Variational/                 # Appendix C: Cauchy/log equation
-│   └── Main.lean                # Variational theorem
-├── Probability/                 # Derived probability calculus
-│   ├── ProbabilityCalculus.lean # Canonical interface for end-results
-│   └── ProbabilityDerivation.lean
-├── Information/                 # K&S Section 6/8: entropy/KL
-│   └── Main.lean
-├── ShoreJohnson/                # Shore-Johnson (1980) formalization
-│   └── Main.lean                # SJ entrypoint (first-class, import explicitly)
-├── Examples/                    # Concrete examples
-│   ├── CoinDie.lean             # Full pipeline: coin/die → ℝ
-│   └── PreciseVsImpreciseGrounded.lean  # K&S → credal sets, decision theory
-├── Counterexamples/             # Why axioms matter
-└── Literature/                  # Reference: Aczél, Hölder, Cox
+.
+├── KnuthSkilling.lean             # Default library entrypoint
+├── KnuthSkilling/
+│   ├── FoundationsOfInference.lean # Reviewer entrypoint: Core + Appendices A/B/C + probability/information
+│   ├── Core/                       # Core axiom hierarchy and sigma-additivity bridge
+│   ├── Additive/                   # Appendix A: additive representation
+│   ├── Multiplicative/             # Appendix B: product operation
+│   ├── Variational/                # Appendix C: Cauchy/log variational theorem
+│   ├── Probability/                # Derived probability calculus
+│   ├── Information/                # K&S Section 6/8: entropy/KL
+│   ├── ShoreJohnson/               # Shore-Johnson comparison material
+│   ├── Examples/                   # Concrete examples
+│   ├── Counterexamples/            # Why hypotheses matter
+│   └── Literature/                 # Reference/formal literature interfaces
+├── InformationTheory/              # Shannon/Faddeev/Khinchin entropy and KL bridges
+├── ProbabilityTheory/              # Shared probability support modules
+├── Algebra/                        # Small algebraic support modules
+└── papers/                         # Companion papers and generated PDFs
 ```
 
 ## Key Files
+
+Paths in this table are relative to `KnuthSkilling/`.
 
 | File | Description |
 |------|-------------|
@@ -165,49 +152,60 @@ The hypercube organizes probability theories by axes:
 
 K&S sits at: (commutative, distributive, precise, linear, derived-additive).
 
-See `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Connection.lean` for the full development.
+The standalone repository keeps the hypercube support modules used by the K&S
+papers:
 
-Note: the hypercube-related K&S analysis files now live under:
-- `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Connection.lean`
-- `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Neighbors.lean`
-- `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Proofs.lean`
-- `Mettapedia/ProbabilityTheory/Hypercube/KnuthSkilling/Theory.lean`
+- `ProbabilityTheory/Hypercube/Basic.lean`
+- `ProbabilityTheory/Hypercube/NovelTheories.lean`
+- `ProbabilityTheory/Hypercube/NeighborTheories.lean`
 
-For the hypercube's "weakness preorder" + quantale-semantics layer (inspired by Goertzel and Bennett), see:
-- `Mettapedia/ProbabilityTheory/Hypercube/WeaknessOrder.lean`
-- `Mettapedia/ProbabilityTheory/Hypercube/QuantaleSemantics.lean`
-- `Mettapedia/ProbabilityTheory/Hypercube/ThetaSemantics.lean`
-- `Mettapedia/ProbabilityTheory/Hypercube/DensityAxisStory.lean`
+More speculative hypercube neighbor-analysis files remain outside the curated
+standalone K&S artifact.
 
 ## Build
 
 ```bash
-cd lean-projects/mettapedia
-export LAKE_JOBS=3
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling
+lake exe cache get
+export LAKE_JOBS=4
+lake build +KnuthSkilling.FoundationsOfInference
+lake build +KnuthSkilling
+lake build +InformationTheory.EntropyKL
 ```
 
 ## Status
 
-Complete. Roughly human-checked. Zero `sorry`, zero `axiom`.
+The main standalone entrypoints build on Lean 4.28.0:
+
+- `KnuthSkilling.FoundationsOfInference`: reviewer-facing K&S core.
+- `KnuthSkilling`: default K&S library entrypoint.
+- `InformationTheory.EntropyKL`: Shannon/Faddeev/Khinchin entropy and KL bridges.
+
+The repository also preserves exploratory and scratch files that contain explicit
+`sorry`s, notably:
+
+- `KnuthSkilling/Exploration/OpenIntervalLattice.lean`
+- `KnuthSkilling/Multiplicative/Scratch/FibonacciProofScratch.lean`
+
+Those files are intentionally visible rather than disguised as completed proofs.
+The reviewer-facing entrypoint does not depend on them.
 
 ## Examples
 
-- `Examples/CoinDie.lean`: Full pipeline coin/die → ℝ
-- `Examples/PreciseVsImpreciseGrounded.lean`: K&S → credal sets → decision theory
-- `Examples/ImpreciseOn7Element.lean`: Imprecise probability on 7-element lattice
-- `Bridges/Model.lean`: Event lattice → plausibility scale connection
+- `KnuthSkilling/Examples/CoinDie.lean`: Full pipeline coin/die → ℝ
+- `KnuthSkilling/Examples/PreciseVsImpreciseGrounded.lean`: K&S → credal sets → decision theory
+- `KnuthSkilling/Examples/ImpreciseOn7Element.lean`: Imprecise probability on 7-element lattice
+- `KnuthSkilling/Bridges/Model.lean`: Event lattice → plausibility scale connection
 
 ## Countermodels (why the extra axioms matter)
 
-- `Additive/Counterexamples/SemidirectNoSeparation.lean`: an Archimedean ordered associative monoid
+- `KnuthSkilling/Additive/Counterexamples/SemidirectNoSeparation.lean`: an Archimedean ordered associative monoid
   which is noncommutative and fails `KSSeparation` (so "Archimedean semigroup ⇒ commutative" is
   false).
-- `Additive/Counterexamples/ProductFailsSeparation.lean`: a commutative ordered monoid with
+- `KnuthSkilling/Additive/Counterexamples/ProductFailsSeparation.lean`: a commutative ordered monoid with
   infinitesimals (lexicographic product), failing the sandwich separation axiom `KSSeparation`
   even though addition is commutative (and in particular it is not Archimedean, so it is not a
   `KnuthSkillingAlgebra`).
-- `Additive/Counterexamples/KSSeparationNotDerivable.lean`: proves NAP must be postulated, not derived.
+- `KnuthSkilling/Additive/Counterexamples/KSSeparationNotDerivable.lean`: proves NAP must be postulated, not derived.
 
 ## References
 

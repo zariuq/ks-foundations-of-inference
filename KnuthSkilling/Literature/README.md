@@ -19,16 +19,16 @@ Source PDFs: `literature/KS_codex/`
 
 - Knuth & Skilling (2012) “Foundations of Inference”
   - PDF: `literature/KS_codex/Knuth_Skilling_2012_Foundations_of_Inference.pdf`
-  - Lean: `KnuthSkillingPapers.lean` (map), plus the main development under `Mettapedia/ProbabilityTheory/KnuthSkilling/`
+  - Lean: `KnuthSkillingPapers.lean` (map), plus the main development under `KnuthSkilling/`
 - Skilling & Knuth (2019) “Symmetrical foundation for measure, probability and quantum theory”
   - PDF: `literature/KS_codex/Skilling_Knuth_2019_Symmetrical_Foundation.pdf`
   - Lean: `KnuthSkillingPapers.lean` (map; the quantum-side formalization is tracked elsewhere)
 - Dupré–Tipler (2006) Cox theorem (plausible values)
   - PDF: `literature/KS_codex/Dupre_Tipler_2006_Cox_Theorem.pdf`
-  - Lean: `CoxTheorem.lean` (connectors) and `Mettapedia/ProbabilityTheory/Cox/`
+  - Lean: `CoxTheorem.lean` (connectors) and `ProbabilityTheory/Cox/`
 - Terenin–Draper (2017) Cox theorem (Jaynesian)
   - PDF: `literature/KS_codex/Terenin_Draper_2017_Cox_Theorem_Jaynesian.pdf`
-  - Lean: `CoxTheorem.lean` (connectors) and `Mettapedia/ProbabilityTheory/Cox/`
+  - Lean: `CoxTheorem.lean` (connectors) and `ProbabilityTheory/Cox/`
 - Aczél excerpt (associativity functional equation)
   - PDF: `literature/KS_codex/Aczel_excerpt_pp319-324.pdf`
   - Lean: `FunctionalEquations.lean`

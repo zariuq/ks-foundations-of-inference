@@ -160,7 +160,7 @@ See `HypercubeGap.lean` for detailed analysis.
 ## Usage
 
 ```lean
-import Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.Core
+import KnuthSkilling.Additive.Proofs.GridInduction.Core
 
 -- Use the extension theorem
 example [KSSeparationStrict α] {F : AtomFamily α 2} (R : MultiGridRep F)
@@ -171,6 +171,7 @@ example [KSSeparationStrict α] {F : AtomFamily α 2} (R : MultiGridRep F)
 
 ## Status
 
-Complete (2026-01-11). Zero sorries, zero warnings.
+Core entrypoint for the grid-induction proof path. See the parent README and
+the repository root README for build and repo-wide status notes.
 
 See parent: `../README.md` for the full GridInduction overview.

@@ -168,29 +168,26 @@ See `HypercubeGap.lean` for the formalized connection.
 ## Build & Test
 
 ```bash
-cd lean-projects/mettapedia
-ulimit -Sv 6291456
-export LAKE_JOBS=1  # `ThetaPrime.lean` can exceed 6GB when compiled in parallel
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem
+export LAKE_JOBS=1
+lake build +KnuthSkilling.Additive.Proofs.GridInduction.Main
 ```
 
 To build the cuts-based alternative:
 
 ```bash
-cd lean-projects/mettapedia
-ulimit -Sv 6291456
 export LAKE_JOBS=1
-nice -n 19 lake build Mettapedia.ProbabilityTheory.KnuthSkilling.RepresentationTheorem.Alternative.Main
+lake build +KnuthSkilling.Additive.Proofs.DirectCuts.Main
 ```
 
 ## Status
 
-**Complete** (2026-01-11):
-- ✅ Induction machinery fully operational
-- ✅ `extend_grid_rep_with_atom_of_KSSeparationStrict` proven
-- ✅ Globalization instance `representationGlobalization_of_KSSeparationStrict`
-- ✅ Main theorem `associativity_representation`
-- ✅ Zero sorries, zero errors, zero warnings
+**Core build target** (2026-05 standalone repo):
+- `lake build +KnuthSkilling.Additive.Proofs.GridInduction.Main`
+- `lake build +KnuthSkilling.Additive.Proofs.DirectCuts.Main`
+
+See the repository root README for repo-wide status notes, including the
+explicit exploratory/scratch files that are not part of the reviewer-facing
+entrypoint.
 
 ## Historical Notes
 
