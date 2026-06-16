@@ -1,5 +1,7 @@
 name = "ks-foundations-of-inference-lean"
 version = "0.1.0"
+releaseRepo = "https://github.com/zariuq/ks-foundations-of-inference"
+preferReleaseBuild = true
 defaultTargets = ["KnuthSkilling"]
 weakLeanArgs = ["-j", "1"]
 
