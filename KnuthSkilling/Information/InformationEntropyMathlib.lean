@@ -95,7 +95,7 @@ theorem toMeasureTop_absolutelyContinuous_of_support_pos (P Q : ProbDist n)
         simpa [hx'] using his
       have hle : Q.toMeasureTop {i} ≤ Q.toMeasureTop s := measure_mono hsubset
       have hle0 : Q.toMeasureTop {i} ≤ 0 := by simpa [hs0] using hle
-      exact le_antisymm hle0 (zero_le _)
+      exact le_antisymm hle0 zero_le'
     -- Convert to `Q.p i = 0`, then `P.p i = 0`.
     have hQi_real : Q.p i = 0 := by
       have : ENNReal.ofReal (Q.p i) = 0 := by simpa [toMeasureTop_apply_singleton] using hQi0

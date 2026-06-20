@@ -192,7 +192,7 @@ noncomputable instance instKSAlgebraNNReal : KnuthSkillingAlgebraBase NNReal whe
   op_ident_left := zero_add
   op_strictMono_left := fun y => fun _ _ h => add_lt_add_left h y
   op_strictMono_right := fun x => fun _ _ h => add_lt_add_right h x
-  ident_le := zero_le
+  ident_le := fun _ => zero_le'
 
 /-- In instKSAlgebraNNReal, op is addition -/
 theorem nnreal_op_is_add :
@@ -279,7 +279,7 @@ noncomputable def threeKSModel (p : NNReal) (hp0 : 0 < p) (hp1 : p < 1) :
     cases a <;> cases b
     · exact le_rfl
     · exact hp0.le
-    · exact zero_le _
+    · exact zero_le'
     · exfalso; exact (by decide : ¬mid ≤ bot) hab
     · exact le_rfl
     · exact hp1.le

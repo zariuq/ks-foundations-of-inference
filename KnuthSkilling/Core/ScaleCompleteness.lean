@@ -334,7 +334,7 @@ theorem tsum_eq_iSup_partialSums_nonneg {f : ℕ → ℝ} (hf : ∀ n, 0 ≤ f n
   have hsum : HasSum f (⨆ n, ∑ i ∈ Finset.range n, f i) := by
     rw [hasSum_iff_tendsto_nat_of_summable_norm]
     · simpa only [Real.norm_of_nonneg (hf _)] using htends
-    · exact hsummable.norm
+    · simpa only [Real.norm_of_nonneg (hf _)] using hsummable
   exact hsum.tsum_eq
 
 /-! ## Section 8: The Main Theorem -/

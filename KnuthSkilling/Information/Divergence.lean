@@ -821,7 +821,7 @@ theorem atomDivergenceENNReal_eq_atomDivergence {w u : ℝ}
 
 For the positive finite case, this follows from the log inequality. -/
 theorem atomDivergenceENNReal_nonneg (w u : ℝ≥0∞) : 0 ≤ atomDivergenceENNReal w u := by
-  exact zero_le _
+  exact zero_le'
 
 /-! ### Total Extended Divergence -/
 
@@ -895,7 +895,7 @@ theorem divergenceENNReal_eq_zero_iff {n : ℕ} (w u : Fin n → ℝ≥0∞)
       intro i
       -- Sum of nonneg ENNReal terms = 0 implies each term = 0
       have hall : ∀ j ∈ Finset.univ, atomDivergenceENNReal (w j) (u j) = 0 := by
-        rw [Finset.sum_eq_zero_iff_of_nonneg (fun _ _ => zero_le _)] at h
+        rw [Finset.sum_eq_zero_iff_of_nonneg (fun _ _ => zero_le')] at h
         exact h
       exact hall i (Finset.mem_univ i)
     ext i
