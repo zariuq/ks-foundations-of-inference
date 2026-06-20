@@ -500,8 +500,7 @@ theorem entropyForm_deriv (A B C : ℝ) {m : ℝ} (hm : 0 < m) :
   have h2 : HasDerivAt (fun x => B * x) B m := by
     have hid := hasDerivAt_id m
     have h := hid.const_mul B
-    convert h using 1
-    ring
+    simpa using h
   -- Use the mathlib lemma for d/dm (m log m) = log m + 1
   have h3 : HasDerivAt (fun x => x * Real.log x) (Real.log m + 1) m :=
     Real.hasDerivAt_mul_log (ne_of_gt hm)
@@ -521,7 +520,7 @@ theorem entropyForm_has_derivative (A B C : ℝ) :
     ∀ m : ℝ, 0 < m → HasDerivAt (entropyForm A B C) (B + C * Real.log m) m := by
   intro m hm
   have := entropyForm_deriv A B C hm
-  convert this using 1
+  simpa only [entropyDerivative] using this
 
 /-! ## Characterizing the Minimum of entropyForm
 
@@ -824,7 +823,9 @@ theorem lagrange_coordinate_deriv_eq
       have hcomp :
           HasDerivAt (fun t => g x0 (rowSum (Function.update m (x0, y0) t) x0))
             (deriv (g x0) (rowSum (Function.update m (x0, y0) (m (x0, y0))) x0)) (m (x0, y0)) := by
-        simpa using hg'.comp (m (x0, y0)) hRowSlope
+        have hc := hg'.comp (m (x0, y0)) hRowSlope
+        rw [Function.comp_def] at hc
+        simpa using hc
       -- Multiply by the constant `α x0`.
       simpa [mul_assoc] using hcomp.const_mul (α x0)
     have hconst :
@@ -916,7 +917,9 @@ theorem lagrange_coordinate_deriv_eq
       have hcomp :
           HasDerivAt (fun t => h y0 (colSum (Function.update m (x0, y0) t) y0))
             (deriv (h y0) (colSum (Function.update m (x0, y0) (m (x0, y0))) y0)) (m (x0, y0)) := by
-        simpa using hh'.comp (m (x0, y0)) hColSlope
+        have hc := hh'.comp (m (x0, y0)) hColSlope
+        rw [Function.comp_def] at hc
+        simpa using hc
       simpa [mul_assoc] using hcomp.const_mul (β y0)
     have hconst :
         HasDerivAt (fun _ : ℝ => (Finset.univ.erase y0).sum (fun y : Y => β y * h y (colSum m y)))
@@ -941,7 +944,11 @@ theorem lagrange_coordinate_deriv_eq
         (m (x0, y0)) := by
     unfold productLagrangian
     -- `t ↦ objective - rowConstraints - colConstraints`
-    simpa [sub_eq_add_neg, add_assoc] using ((hObj.sub hRow).sub hCol)
+    -- v4.31: the `+`/`-` on functions (Pi instances) and the `ℝ`-module instance
+    -- diamond no longer defeq-bridge via `simpa`; reconcile the elaborated term's
+    -- type with the goal's via `convert`, discharging the residual instance and
+    -- function-grouping goals (each definitional) by `rfl`.
+    convert (hObj.sub hRow).sub hCol using 1 <;> rfl
   have : deriv (fun t => productLagrangian H g h α β (Function.update m (x0, y0) t))
       (m (x0, y0))
       = deriv H (m (x0, y0)) - α x0 * deriv (g x0) (rowSum m x0) - β y0 * deriv (h y0) (colSum m y0) :=
@@ -1128,7 +1135,10 @@ theorem lagrange_coordinate_deriv_eq_of_isLocalExtr
           t0 := by
       unfold productLagrangian
       -- `t ↦ objective - rowConstraints - colConstraints`
-      simpa [sub_eq_add_neg, add_assoc] using ((hObjDiff.sub hRowDiff).sub hColDiff)
+      -- v4.31: same Pi-function / `ℝ`-module instance diamond as in `hL`; bridge the
+      -- elaborated term's type to the goal via `convert`, closing the residual
+      -- instance and function-grouping goals (each definitional) by `rfl`.
+      convert (hObjDiff.sub hRowDiff).sub hColDiff using 1 <;> rfl
     simpa [f, t0] using hf
 
   have hf : HasDerivAt f (deriv f t0) t0 := hDiff.hasDerivAt

@@ -29,9 +29,9 @@ name = "UniversalAI"
 [[require]]
 name = "ordered_semigroups"
 git = "https://github.com/zariuq/OrderedSemigroups.git"
-rev = "b7bf6f54c64bd5651190ef0dd52b29fc2f76eadf"
+rev = "dd82826dfce02bedabbad75734e4f055939369f6"
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.30.0"
+rev = "v4.31.0"

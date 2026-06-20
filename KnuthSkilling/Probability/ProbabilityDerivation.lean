@@ -465,7 +465,7 @@ theorem regrade_on_rat (W : WeakRegraduation combine_fn)
                      Nat.cast_add, Nat.cast_one]
       -- Bridge casts: ih' and h_unit are in ↑↑ form, we need ↑ form
       have eq1 : W.regrade ((k : ℝ) / (n : ℝ)) = (k : ℝ) / (n : ℝ) := by
-        convert ih' using 2
+        convert ih' using 2 <;> norm_cast
       have eq2 : W.regrade ((1 : ℝ) / (n : ℝ)) = (1 : ℝ) / (n : ℝ) := by
         convert h_unit using 2
         -- Goal: 1 / ↑n = ↑1 / ↑n

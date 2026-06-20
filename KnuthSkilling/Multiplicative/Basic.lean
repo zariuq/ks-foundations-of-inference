@@ -153,7 +153,8 @@ theorem Psi_strictMono (hRep : AdditiveOrderIsoRep PosReal tensor) : StrictMono 
 /-- `Psi` is continuous (order isomorphisms are continuous for order topology). -/
 theorem Psi_continuous (hRep : AdditiveOrderIsoRep PosReal tensor) : Continuous (Psi hRep) := by
   -- `Θ.symm` is continuous as an order isomorphism; `Subtype.val` is continuous.
-  simpa [Psi] using (continuous_subtype_val.comp hRep.Θ.symm.continuous)
+  unfold Psi
+  exact continuous_subtype_val.comp hRep.Θ.symm.continuous
 
 /-- The K&S product equation derived from:
 

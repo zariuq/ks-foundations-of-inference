@@ -109,8 +109,12 @@ theorem complement_rule_class {a b : α} (h_disj : Disjoint a b) (h_top : a ⊔ 
 
 end ProbabilityCalculusClass
 
-/-- The canonical instance: `CoxConsistency` provides `ProbabilityCalculusClass`. -/
-instance instProbabilityCalculusOfCoxConsistency
+/-- `CoxConsistency` provides `ProbabilityCalculusClass`.
+
+This takes the `CoxConsistency` witness as an explicit (non-inferable) argument, so it
+is a `def` rather than an `instance`: it builds the class from a supplied witness rather
+than being synthesized. -/
+def instProbabilityCalculusOfCoxConsistency
     {α : Type*} [PlausibilitySpace α] [ComplementedLattice α]
     {v : Valuation α} (hC : KnuthSkilling.Probability.CoxConsistency α v) :
     ProbabilityCalculusClass α v where

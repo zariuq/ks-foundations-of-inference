@@ -132,9 +132,9 @@ theorem anomalousPair_iff_eric (a b : α) :
     AnomalousPair a b ↔ anomalous_pair a b := by
   constructor
   · intro hAnom n
-    simpa [AnomalousPair, Pow.pow] using hAnom n
+    exact hAnom n
   · intro hEric n
-    simpa [AnomalousPair, Pow.pow] using hEric n
+    exact hEric n
 
 /-- No anomalous pairs in our sense ↔ no anomalous pairs in Eric's sense. -/
 theorem noAnomalousPairs_iff_eric [NoAnomalousPairs α] :
@@ -227,6 +227,7 @@ theorem theta_ident [NoAnomalousPairs α]
   have h2 : (↑(iso ident) : Multiplicative ℝ) * ↑(iso ident) = ↑(iso ident) := by
     have h1' := congrArg (·.val) h1
     convert h1' using 1
+    rfl
 
   -- Convert to additive form: (x * y).toAdd = x.toAdd + y.toAdd
   have h3 : (↑(iso ident) : Multiplicative ℝ).toAdd +
@@ -234,6 +235,7 @@ theorem theta_ident [NoAnomalousPairs α]
             (↑(iso ident) : Multiplicative ℝ).toAdd := by
     have := congrArg Multiplicative.toAdd h2
     convert this using 1
+    rfl
 
   -- From x + x = x, we get x = 0
   linarith
@@ -456,9 +458,9 @@ theorem representation_uniqueness_structure_of_ref
       have hn_pos' : (0 : ℝ) < n := Nat.cast_pos.mpr hn_pos
       -- Cast q to ℝ: q = (q.num : ℝ) / q.den
       have hq_lo' : Θ₁ y / Θ₁ a < (q.num : ℝ) / q.den := by
-        convert hq_lo using 1; simp [Rat.cast_def]
+        rw [Rat.cast_def] at hq_lo; exact hq_lo
       have hq_hi' : (q.num : ℝ) / q.den < Θ₂ y / Θ₂ a := by
-        convert hq_hi using 1; simp [Rat.cast_def]
+        rw [Rat.cast_def] at hq_hi; exact hq_hi
       -- Key: (m : ℝ) = (q.num : ℝ) since m = q.num.toNat and q.num > 0
       have hm_eq : (m : ℝ) = (q.num : ℝ) := by
         have : (m : ℤ) = q.num := Int.toNat_of_nonneg (le_of_lt hm_pos)
@@ -495,9 +497,9 @@ theorem representation_uniqueness_structure_of_ref
       let n := q.den
       have hn_pos' : (0 : ℝ) < n := Nat.cast_pos.mpr hn_pos
       have hq_lo' : Θ₂ y / Θ₂ a < (q.num : ℝ) / q.den := by
-        convert hq_lo using 1; simp [Rat.cast_def]
+        rw [Rat.cast_def] at hq_lo; exact hq_lo
       have hq_hi' : (q.num : ℝ) / q.den < Θ₁ y / Θ₁ a := by
-        convert hq_hi using 1; simp [Rat.cast_def]
+        rw [Rat.cast_def] at hq_hi; exact hq_hi
       -- Key: (m : ℝ) = (q.num : ℝ) since m = q.num.toNat and q.num > 0
       have hm_eq : (m : ℝ) = (q.num : ℝ) := by
         have : (m : ℤ) = q.num := Int.toNat_of_nonneg (le_of_lt hm_pos)

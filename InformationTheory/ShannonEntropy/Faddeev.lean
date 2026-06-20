@@ -414,11 +414,11 @@ theorem faddeev_splitFirst_two {n : ℕ} (E : FaddeevEntropy) (p : ProbVec (n + 
   have hqsum : q.1 0 + q.1 1 = 1 := by
     simpa [Fin.sum_univ_two, add_assoc] using (q.sum_eq_one : (∑ i : Fin 2, q.1 i) = 1)
   have h0 : (splitFirst p q).1 0 = p.1 0 * q.1 0 := by
-    -- `0` is in the split block.
-    simpa using (splitFirst_castAdd (p := p) (q := q) (n := n) (i := (0 : Fin 2)))
+    -- `0` is in the split block; the cast index is defeq to `0`.
+    exact splitFirst_castAdd (p := p) (q := q) (n := n) (i := (0 : Fin 2))
   have h1 : (splitFirst p q).1 1 = p.1 0 * q.1 1 := by
-    -- `1` is in the split block.
-    simpa using (splitFirst_castAdd (p := p) (q := q) (n := n) (i := (1 : Fin 2)))
+    -- `1` is in the split block; the cast index is defeq to `1`.
+    exact splitFirst_castAdd (p := p) (q := q) (n := n) (i := (1 : Fin 2))
   have hsum_eq : (splitFirst p q).1 0 + (splitFirst p q).1 1 = p.1 0 := by
     -- Use `q0+q1=1`.
     calc
@@ -449,7 +449,12 @@ theorem faddeev_splitFirst_two {n : ℕ} (E : FaddeevEntropy) (p : ProbVec (n + 
         have htail :
             (splitFirst p q).1 ⟨i.1 + 2, by
               exact Nat.succ_lt_succ (Nat.succ_lt_succ i.isLt)⟩ = p.1 i.succ := by
-          simpa using (splitFirst_natAdd (p := p) (q := q) (m := 2) (i := i))
+          have hidx :
+              (⟨i.1 + 2, by exact Nat.succ_lt_succ (Nat.succ_lt_succ i.isLt)⟩ : Fin (n + 2)) =
+                (Fin.natAdd 2 i).cast (Nat.add_comm 2 n) := by
+            apply Fin.ext; simp [Nat.add_comm]
+          rw [hidx]
+          exact splitFirst_natAdd (p := p) (q := q) (m := 2) (i := i)
         -- unfold `groupFirstTwo` at `Fin.succ i`
         simp [groupFirstTwo, htail]
   have hnorm :
@@ -531,12 +536,12 @@ theorem faddeev_splitFirst_headPos {n m : ℕ} (E : FaddeevEntropy)
       exact ih (q := qGroup) hqGroup_head
     -- Now apply recursivity to the split distribution, grouping the first two split pieces.
     have h0 : sp.1 0 = p.1 0 * q.1 0 := by
-      -- `0 = castAdd _ 0` in the split block
-      simpa [hsp] using
-        (splitFirst_castAdd (p := p) (q := q) (n := n) (i := (0 : Fin (m + 1 + 2))))
+      -- `0 = castAdd _ 0` in the split block; the cast index is defeq to `0`.
+      rw [hsp]
+      exact splitFirst_castAdd (p := p) (q := q) (n := n) (i := (0 : Fin (m + 1 + 2)))
     have h1 : sp.1 1 = p.1 0 * q.1 1 := by
-      simpa [hsp] using
-        (splitFirst_castAdd (p := p) (q := q) (n := n) (i := (1 : Fin (m + 1 + 2))))
+      rw [hsp]
+      exact splitFirst_castAdd (p := p) (q := q) (n := n) (i := (1 : Fin (m + 1 + 2)))
     have hsum_eq : sp.1 0 + sp.1 1 = p.1 0 * (q.1 0 + q.1 1) := by
       simp [h0, h1, mul_add]
     have hsum : 0 < sp.1 0 + sp.1 1 := by
@@ -574,10 +579,10 @@ theorem faddeev_splitFirst_headPos {n m : ℕ} (E : FaddeevEntropy)
         -- Head is the sum of the first two split entries.
         have : (splitFirst (n := n) (m := m + 2) p qGroup).1 0 = p.1 0 * (q.1 0 + q.1 1) := by
           -- first entry of `qGroup` is `q0+q1`
-          have : qGroup.1 0 = q.1 0 + q.1 1 := by
+          have hqg0 : qGroup.1 0 = q.1 0 + q.1 1 := by
             simp [qGroup, groupFirstTwo]
-          simpa [this] using
-            (splitFirst_castAdd (p := p) (q := qGroup) (n := n) (i := (0 : Fin (m + 2))))
+          rw [← hqg0]
+          exact splitFirst_castAdd (p := p) (q := qGroup) (n := n) (i := (0 : Fin (m + 2)))
         simp [groupFirstTwo, hsum_eq, this]
       ·
         -- Tail indices shift by `+1` on both sides.
@@ -642,9 +647,9 @@ theorem faddeev_splitFirst_headPos {n m : ℕ} (E : FaddeevEntropy)
               simpa [this] using hqGroup_val
             have hrhs :
                 (splitFirst p qGroup).1 (Fin.succ i) = p.1 0 * qGroup.1 (Fin.succ iSplit) := by
-              -- use the castAdd lemma at the identified index
-              simpa [hidxR] using
-                (splitFirst_castAdd (p := p) (q := qGroup) (n := n) (i := (Fin.succ iSplit)))
+              -- use the castAdd lemma at the identified index (`idxR = Fin.succ i`)
+              rw [← hidxR]
+              exact splitFirst_castAdd (p := p) (q := qGroup) (n := n) (i := (Fin.succ iSplit))
             -- Put everything together.
             calc
               (groupFirstTwo sp hsum).1 (Fin.succ i)
@@ -1233,8 +1238,8 @@ private theorem faddeev_splitBoth_headPos (E : FaddeevEntropy) {m k : ℕ}
       dsimp [rot]
       exact finRotate_last (n := k + 2)
     have hrot_inv0 : rot⁻¹ (0 : Fin (k + 3)) = Fin.last (k + 2) := by
-      -- Apply `rot⁻¹` to `rot (last) = 0`.
-      simpa using congrArg (fun x => rot⁻¹ x) hrot_last
+      -- Apply `rot⁻¹` to `rot (last) = 0`; orient the resulting equation.
+      simpa using (congrArg (fun x => rot⁻¹ x) hrot_last).symm
     have hr2_last : r2.1 ((Fin.last (k + 2)).cast hlen.symm) = p.1 0 := by
       have ht :
           r2.1 ((Fin.natAdd (k + 2) (0 : Fin 1)).cast (Nat.add_comm (k + 2) 1)) = pSwap.1 1 := by
@@ -2477,8 +2482,9 @@ theorem faddeev_F_mul (E : FaddeevEntropy) {m n : ℕ} (hm : 0 < m) (hn : 0 < n)
                     (p := p2) (q := qmnCast) (hp0 := hp2pos) (hq := qmnCast_pos)
                 -- Transport the statement back to `r2 = splitFirst p2 qmn` and `qmn`.
                 have hqCast : E.H qmnCast = E.H qmn := by
-                  -- `qmnCast` is a cast of `qmn`.
-                  simpa [qmnCast] using (H_cast (E := E) (h := hK.symm) (p := qmn))
+                  -- `qmnCast` unfolds to exactly `cast (congrArg ProbVec hK.symm) qmn`.
+                  dsimp only [qmnCast]
+                  exact H_cast (E := E) (h := hK.symm) (p := qmn)
                 have hr2Cast : E.H (splitFirst p2 qmnCast) = E.H r2 := by
                   -- `splitFirst` respects casts in the refinement arity.
                   have hsplit :
@@ -4516,10 +4522,9 @@ theorem faddeev_c_prime_has_min_aux (E : FaddeevEntropy) :
         -- Taking reciprocals: 1 / (p₂ - 1) < (δ * log 2) / 8
         have hrhs_pos : 0 < 8 / (δ * Real.log 2) := by positivity
         have hrhs := one_div_lt_one_div_of_lt hrhs_pos hp₂m1_bound
-        -- hrhs : 1 / (p₂ - 1) < 1 / (8 / (δ * Real.log 2))
-        -- And 1 / (8 / (δ * Real.log 2)) = (δ * Real.log 2) / 8
-        convert hrhs using 1
-        field_simp
+        -- hrhs : 1 / (p₂ - 1) < 1 / (8 / (δ * Real.log 2));
+        -- `one_div_div` turns the RHS into `(δ * Real.log 2) / 8`, matching the goal.
+        rwa [one_div_div] at hrhs
 
       -- log(p/(p-1)) = log(1 + 1/(p-1))
       have hlog_eq : Real.log ((p₂ : ℝ) / ((p₂ : ℝ) - 1)) =
@@ -4579,10 +4584,9 @@ theorem faddeev_c_prime_has_min_aux (E : FaddeevEntropy) :
   -- From |λ| < δ/4, we get -(δ/4) < λ (using abs_lt)
   have habs_bound : -δ / 4 < entropyIncrement E p₂ hp₂.one_lt := by
     rw [abs_lt] at hspec
-    -- hspec.1 : -(δ / 4) < λ, but we need -δ / 4 < λ
-    -- These are equal: -(δ/4) = -δ/4
-    convert hspec.1 using 1
-    ring
+    -- hspec.1 : -(δ / 4) < λ, but we need -δ / 4 < λ; `neg_div` aligns `-δ / 4 = -(δ / 4)`.
+    rw [neg_div]
+    exact hspec.1
 
   -- hlambda_neg: λ < -δ/4
   -- habs_bound: -δ/4 < λ
@@ -6032,7 +6036,6 @@ theorem Err_pow2_eq_zero (E : FaddeevEntropy) (k : ℕ) :
     Err E (2 ^ k) (by positivity : 0 < 2 ^ k) = 0 := by
   unfold Err F
   have hF2k := faddeev_F_pow2 E k
-  simp only at hF2k
   have hlog : Real.log (2 ^ k : ℕ) / Real.log 2 = k := by
     have h2_pos : (0 : ℝ) < 2 := by norm_num
     have hlog2_pos : 0 < Real.log 2 := Real.log_pos (by norm_num : (1 : ℝ) < 2)
