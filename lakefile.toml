@@ -27,11 +27,11 @@ name = "ProbabilityTheory"
 name = "UniversalAI"
 
 [[require]]
-name = "mathlib"
-scope = "leanprover-community"
-rev = "v4.28.0"
-
-[[require]]
 name = "ordered_semigroups"
 git = "https://github.com/zariuq/OrderedSemigroups.git"
-rev = "63e9c6c3457420c16749837102966a5c32f27825"
+rev = "c34a03a4484cff8f5ca10a51258a28f0934ff8dc"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.29.0"
