@@ -227,8 +227,8 @@ lemma fold_strictMono_left (F : AtomFamily α k) (vals : Multi k)
   classical
   induction l with
   | nil =>
-    -- identity function is strictly monotone
-    simpa [List.foldl] using (strictMono_id : StrictMono (fun x : α => x))
+    -- identity function is strictly monotone (`List.foldl _ acc [] = acc`)
+    exact fun a b h => h
   | cons j t ih =>
     have hstep : StrictMono (fun acc : α => op acc (iterate_op (F.atoms j) (vals j))) :=
       op_strictMono_left _
@@ -704,7 +704,8 @@ noncomputable def OneTypeGridRep.toMulti (a : α) (ha : ident < a) (R : OneTypeG
       have hdefault : (fun i : Fin 1 => r i + s i) ⟨0, by decide⟩ = m + n := by
         simp [m, n]
       have h_eval := mu_singleton_eval (a:=a) (ha:=ha) (r:=fun i : Fin 1 => r i + s i)
-      simpa [hdefault] using h_eval
+      -- `m + n` is defeq to `(fun i => r i + s i) ⟨0, _⟩ = r 0 + s 0` (lets on `Fin 1`).
+      exact h_eval
     have hmem_r : mu F r ∈ kGrid F := mu_mem_kGrid (F:=F) r
     have hmem_s : mu F s ∈ kGrid F := mu_mem_kGrid (F:=F) s
     have hmem_sum : mu F (fun i : Fin 1 => r i + s i) ∈ kGrid F :=
@@ -971,13 +972,19 @@ structure GridBridge {k : ℕ} (F : AtomFamily α k) : Prop where
   bridge : ∀ (r : Multi k) (n : ℕ),
     mu F (scaleMult n r) = iterate_op (mu F r) n
 
-/-- GridBridge for k=0 is trivial (both sides are ident since Fin 0 is empty). -/
-instance gridBridge_k0 (F : AtomFamily α 0) : GridBridge F :=
+/-- GridBridge for k=0 is trivial (both sides are ident since Fin 0 is empty).
+
+`GridBridge` is a `Prop`-valued structure, not a class, so this is a plain `def`
+(referenced only by name, never via instance synthesis). -/
+def gridBridge_k0 (F : AtomFamily α 0) : GridBridge F :=
   ⟨fun r n => mu_scaleMult_iterate_k0 F r n⟩
 
 /-- GridBridge for singleton atom family (k=1).
-    This doesn't require commutativity - it's the base case for induction. -/
-instance gridBridge_singleton (a : α) (ha : ident < a) :
+    This doesn't require commutativity - it's the base case for induction.
+
+`GridBridge` is a `Prop`-valued structure, not a class, so this is a plain `def`
+(referenced only by name, never via instance synthesis). -/
+def gridBridge_singleton (a : α) (ha : ident < a) :
     GridBridge (singletonAtomFamily (α := α) a ha) :=
   ⟨fun r n => mu_scaleMult_eq_iterate_singleton a ha r n⟩
 
@@ -2049,13 +2056,14 @@ lemma separationStatistic_base_eq_remMulti {k : ℕ} {F : AtomFamily α k} (R : 
       R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ =
         R.Θ_grid ⟨mu F c, mu_mem_kGrid F c⟩ +
           R.Θ_grid ⟨mu F r', mu_mem_kGrid F r'⟩ := by
-    -- `R.add` is stated for `mu F (c + r')`; rewrite using `hr`.
-    simpa [hr, Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add c r')
+    -- `R.add` is stated for `mu F (c + r')`; rewrite `r = c + r'` and close.
+    -- (`c + r'` is defeq to `fun i => c i + r' i`, so `R.add` applies directly.)
+    rw [hr]; exact R.add c r'
   have hθ_r0 :
       R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ =
         R.Θ_grid ⟨mu F c, mu_mem_kGrid F c⟩ +
           R.Θ_grid ⟨mu F r0', mu_mem_kGrid F r0'⟩ := by
-    simpa [hr0, Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add c r0')
+    rw [hr0]; exact R.add c r0'
   -- Now cancel the common Θ(c) term.
   simp [separationStatistic_base, hθ_r, hθ_r0, c, r0', r', remMultiLeft, remMultiRight, sub_eq_add_neg,
     add_assoc, add_left_comm, add_comm]
@@ -2535,9 +2543,10 @@ theorem accuracy_lemma {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
       have hθ_lt' : θatom < ε * (U : ℝ) := by simpa [mul_comm] using hθ_lt
       have hpos_inv : 0 < (1 / (U : ℝ)) := one_div_pos.mpr hUpos_real
       have h := mul_lt_mul_of_pos_right hθ_lt' hpos_inv
-      have hleft : θatom * (1 / (U : ℝ)) = θatom / (U : ℝ) := by field_simp [hU_ne]
-      have hright : ε * (U : ℝ) * (1 / (U : ℝ)) = ε := by field_simp [hU_ne]
-      simpa [hleft, hright, mul_left_comm, mul_assoc] using h
+      -- `h : θatom * (1/U) < ε*U * (1/U)`; normalize `1/U` to `U⁻¹` and simplify both sides.
+      have hleft : θatom * (U : ℝ)⁻¹ = θatom / (U : ℝ) := by field_simp [hU_ne]
+      have hright : ε * (U : ℝ) * (U : ℝ)⁻¹ = ε := by field_simp [hU_ne]
+      simpa [one_div, hleft, hright, mul_left_comm, mul_assoc] using h
 
     -- Find the crossing index n with a^n ≤ d^U < a^{n+1}.
     obtain ⟨K, hK⟩ := bounded_by_iterate a ha (iterate_op d U)

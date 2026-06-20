@@ -427,7 +427,8 @@ private lemma delta_shift_equiv_of_B_witness {k : ℕ} {F : AtomFamily α k} (R 
               R.Θ_grid ⟨mu F (s_old + rΔ), mu_mem_kGrid F (s_old + rΔ)⟩ =
                 R.Θ_grid ⟨mu F s_old, mu_mem_kGrid F s_old⟩ +
                   R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ := by
-            simpa [Pi.add_apply] using hΘ_add
+            -- `s_old + rΔ` is defeq to `fun i => s_old i + rΔ i`, so `R.add` applies directly.
+            exact hΘ_add
           calc
             R.Θ_grid ⟨mu F (s_old + rΔ), mu_mem_kGrid F (s_old + rΔ)⟩ -
                 R.Θ_grid ⟨mu F s_old, mu_mem_kGrid F s_old⟩

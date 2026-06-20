@@ -1549,7 +1549,8 @@ lemma theta_gap_lt_of_mu_lt_op
         R.Θ_grid ⟨mu F (r_old_y + rΔ), mu_mem_kGrid F (r_old_y + rΔ)⟩ =
           R.Θ_grid ⟨mu F r_old_y, mu_mem_kGrid F r_old_y⟩ +
             R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ := by
-      simpa [Pi.add_apply] using (R.add r_old_y rΔ)
+      -- `r_old_y + rΔ` is defeq to `fun i => r_old_y i + rΔ i`, so `R.add` applies directly.
+      exact R.add r_old_y rΔ
 
     have hδBΔ : separationStatistic R rΔ Δ hΔ = δ := by
       simpa [δ] using (hδB rΔ Δ hΔ hrΔB)
@@ -1854,7 +1855,8 @@ lemma theta_gap_gt_of_op_lt_mu
         R.Θ_grid ⟨mu F (r_old_x + rΔ), mu_mem_kGrid F (r_old_x + rΔ)⟩ =
           R.Θ_grid ⟨mu F r_old_x, mu_mem_kGrid F r_old_x⟩ +
             R.Θ_grid ⟨mu F rΔ, mu_mem_kGrid F rΔ⟩ := by
-      simpa [Pi.add_apply] using (R.add r_old_x rΔ)
+      -- `r_old_x + rΔ` is defeq to `fun i => r_old_x i + rΔ i`, so `R.add` applies directly.
+      exact R.add r_old_x rΔ
 
     have hδBΔ : separationStatistic R rΔ Δ hΔ = δ := by
       simpa [δ] using (hδB rΔ Δ hΔ hrΔB)
@@ -3571,8 +3573,9 @@ lemma ZQuantized_extend
   set r_old : Multi k := (splitMulti r).1 with hr_old
   set t : ℕ := (splitMulti r).2 with ht
   have hr_join : r = joinMulti r_old t := by
-    -- `joinMulti_splitMulti` is written with a `let`; unfold it with our names.
-    simpa [r_old, t] using (joinMulti_splitMulti r).symm
+    -- `joinMulti_splitMulti` is written with a `let`; `(splitMulti r).1/.2` are defeq
+    -- to its unfolded `fun i => r ⟨↑i,_⟩` / `r ⟨k,_⟩`, so this closes by defeq.
+    exact (joinMulti_splitMulti r).symm
 
   -- Quantization on the old grid.
   rcases hZQδ r_old with ⟨m, hm⟩

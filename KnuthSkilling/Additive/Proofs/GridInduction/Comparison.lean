@@ -240,7 +240,8 @@ theorem noAnomalousPairs_of_representation
       let n' : ℕ+ := ⟨N, hN_pos⟩
       have hcontra := hbound n'
       have h1 : (n' : ℝ) > Θ a / (Θ b - Θ a) := by
-        simpa using hN
+        -- `(↑↑n' : ℝ) = (↑N : ℝ)` (since `n' = ⟨N, _⟩`); closes by defeq.
+        exact hN
       have h2 : (n' : ℝ) * (Θ b - Θ a) > Θ a := by
         calc (n' : ℝ) * (Θ b - Θ a) > (Θ a / (Θ b - Θ a)) * (Θ b - Θ a) := by
               exact mul_lt_mul_of_pos_right h1 hdiff_pos
@@ -322,7 +323,8 @@ theorem noAnomalousPairs_of_representation
     let n' : ℕ+ := ⟨N, hN_pos⟩
     have hcontra := hbound n'
     have h1 : (n' : ℝ) > (-Θ a) / (Θ a - Θ b) := by
-      simpa using hN
+      -- `(↑↑n' : ℝ) = (↑N : ℝ)` (since `n' = ⟨N, _⟩`); closes by defeq.
+      exact hN
     have h2 : (n' : ℝ) * (Θ a - Θ b) > -Θ a := by
       calc (n' : ℝ) * (Θ a - Θ b) > ((-Θ a) / (Θ a - Θ b)) * (Θ a - Θ b) := by
             exact mul_lt_mul_of_pos_right h1 hdiff_pos

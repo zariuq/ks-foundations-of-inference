@@ -325,7 +325,9 @@ theorem admissibleInterval_base_exists
   have hμ_rA_lt : mu F rA < boundary := by
     simpa [extensionSetA_base, boundary, Set.mem_setOf_eq] using hrA_mem
   have hμ_rC_gt : boundary < mu F rC := by
-    simpa [extensionSetC_base, boundary, Set.mem_setOf_eq] using hrC_Cset
+    -- `rC ∈ Cset` is defeq to `boundary < mu F rC` (`Cset`/`boundary` are `let`s,
+    -- and membership in `{r | _}` is defeq to the predicate).
+    exact hrC_Cset
   have hμ_rA_lt_rC : mu F rA < mu F rC := lt_trans hμ_rA_lt hμ_rC_gt
   have hθ_rA_lt_rC :
       R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ <
@@ -696,7 +698,7 @@ theorem accuracy_lemma_base
         R.Θ_grid ⟨mu F (r0 + rA'), mu_mem_kGrid F (r0 + rA')⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F rA', mu_mem_kGrid F rA'⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 rA')
+      exact R.add r0 rA'
     simp [separationStatistic_base, separationStatistic, hθ_add]
 
   have hstatC :
@@ -705,7 +707,7 @@ theorem accuracy_lemma_base
         R.Θ_grid ⟨mu F (r0 + rC'), mu_mem_kGrid F (r0 + rC')⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F rC', mu_mem_kGrid F rC'⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 rC')
+      exact R.add r0 rC'
     simp [separationStatistic_base, separationStatistic, hθ_add]
 
   refine ⟨r0 + rA', u, hu, hrA_base, r0 + rC', hrC_base, ?_⟩
@@ -757,7 +759,7 @@ theorem delta_cut_tight_common_den_base
         R.Θ_grid ⟨mu F (r0 + rA'), mu_mem_kGrid F (r0 + rA')⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F rA', mu_mem_kGrid F rA'⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 rA')
+      exact R.add r0 rA'
     simp [separationStatistic_base, separationStatistic, hθ_add]
 
   have hstatC :
@@ -766,7 +768,7 @@ theorem delta_cut_tight_common_den_base
         R.Θ_grid ⟨mu F (r0 + rC'), mu_mem_kGrid F (r0 + rC')⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F rC', mu_mem_kGrid F rC'⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 rC')
+      exact R.add r0 rC'
     simp [separationStatistic_base, separationStatistic, hθ_add]
 
   refine ⟨u, hu, r0 + rA', r0 + rC', hrA_base, hrC_base, ?_, ?_⟩
@@ -882,7 +884,7 @@ theorem delta_cut_tight_common_den_base_mul
         R.Θ_grid ⟨mu F (r0 + rA1), mu_mem_kGrid F (r0 + rA1)⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F rA1, mu_mem_kGrid F rA1⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 rA1)
+      exact R.add r0 rA1
     simp [separationStatistic_base, separationStatistic, hθ_add]
 
   have hstatC_base :
@@ -891,7 +893,7 @@ theorem delta_cut_tight_common_den_base_mul
         R.Θ_grid ⟨mu F (r0 + rC1), mu_mem_kGrid F (r0 + rC1)⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F rC1, mu_mem_kGrid F rC1⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 rC1)
+      exact R.add r0 rC1
     simp [separationStatistic_base, separationStatistic, hθ_add]
 
   have hC_close :
@@ -1157,7 +1159,7 @@ lemma admissibleDelta_base_all_implies_admissibleDelta
         R.Θ_grid ⟨mu F (r0 + r), mu_mem_kGrid F (r0 + r)⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 r)
+      exact R.add r0 r
     have hstat_eq :
         separationStatistic_base R r0 (r0 + r) u hu = separationStatistic R r u hu := by
       -- (Θ(r0+r) - Θ(r0))/u = Θ(r)/u by additivity
@@ -1178,7 +1180,7 @@ lemma admissibleDelta_base_all_implies_admissibleDelta
         R.Θ_grid ⟨mu F (r0 + r), mu_mem_kGrid F (r0 + r)⟩ =
           R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ +
             R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ := by
-      simpa [Pi.add_apply, add_comm, add_left_comm, add_assoc] using (R.add r0 r)
+      exact R.add r0 r
     have hstat_eq :
         separationStatistic_base R r0 (r0 + r) u hu = separationStatistic R r u hu := by
       simp [separationStatistic_base, separationStatistic, hθ_add]
