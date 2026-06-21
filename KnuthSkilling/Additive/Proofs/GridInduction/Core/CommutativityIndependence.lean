@@ -2,7 +2,7 @@ import KnuthSkilling.Core.Algebra
 
 namespace KnuthSkilling.Additive.Proofs.GridInduction.Core
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
 /-!
 # Historical Note: Early Commutativity-Proof Dead Ends

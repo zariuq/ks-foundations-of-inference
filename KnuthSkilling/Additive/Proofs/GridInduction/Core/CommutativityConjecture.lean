@@ -4,7 +4,7 @@ import KnuthSkilling.Additive.Proofs.GridInduction.Core.SeparationImpliesCommuta
 
 namespace KnuthSkilling.Additive.Proofs.GridInduction.Core
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
 /-!
 # KSSeparation Implies Commutativity (Historical Notes)

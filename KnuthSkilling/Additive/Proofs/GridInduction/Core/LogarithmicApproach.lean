@@ -3,7 +3,7 @@ import KnuthSkilling.Additive.Proofs.GridInduction.Core.GrowthRateTheory
 
 namespace KnuthSkilling.Additive.Proofs.GridInduction.Core
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
 /-!
 # Logarithmic Approach to Commutativity
@@ -78,7 +78,7 @@ theorem holderLog_asymmetry_constraint (a : α) (ha : ident < a)
   exact hmono hlt
 
 /-- The logarithms give us a real number gap -/
-def holderGap (a : α) (ha : ident < a) (x y : α) : ℝ :=
+noncomputable def holderGap (a : α) (ha : ident < a) (x y : α) : ℝ :=
   holderLog a ha (op y x) - holderLog a ha (op x y)
 
 theorem holderGap_positive (a : α) (ha : ident < a)

@@ -3,7 +3,7 @@ import KnuthSkilling.Core.Algebra
 
 namespace KnuthSkilling.Additive.Counterexamples
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
 /-!
 # No nontrivial finite `KnuthSkillingAlgebra`
