@@ -393,7 +393,8 @@ lemma toValuation_sumOutAll (f : Factor fg) (order : List V)
   | nil =>
       simp [sumOutAll, ProbabilityTheory.BayesianNetworks.sumOutAll]
   | cons v vs ih =>
-      simpa [sumOutAll, toValuation_sumOut] using ih (f := Factor.sumOut (φ := f) v)
+      simpa [sumOutAll, ProbabilityTheory.BayesianNetworks.sumOutAll, toValuation_sumOut] using
+        ih (f := Factor.sumOut (φ := f) v)
 
 end Factor
 

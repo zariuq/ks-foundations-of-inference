@@ -109,7 +109,8 @@ theorem toConstraintSet_permute {n : ℕ} (σ : Equiv.Perm (Fin n)) (cs : EVCons
         satisfiesSet (EVConstraintSet.permute σ⁻¹ cs)
           (ProbDist.permute σ⁻¹ (ProbDist.permute σ q)) :=
       (EVConstraintSet.satisfiesSet_permute (σ := σ⁻¹) cs (ProbDist.permute σ q)).2 hq'
-    simpa [hperm] using hq''
+    rw [hperm] at hq''
+    exact hq''
   · intro hq
     have hperm : ProbDist.permute σ⁻¹ (ProbDist.permute σ q) = q := by
       ext i
@@ -117,7 +118,7 @@ theorem toConstraintSet_permute {n : ℕ} (σ : Equiv.Perm (Fin n)) (cs : EVCons
     have hq' :
         satisfiesSet (EVConstraintSet.permute σ⁻¹ cs)
           (ProbDist.permute σ⁻¹ (ProbDist.permute σ q)) := by
-      simpa [hperm] using hq
+      rw [hperm]; exact hq
     exact (EVConstraintSet.satisfiesSet_permute (σ := σ⁻¹) cs (ProbDist.permute σ q)).1 hq'
 
 /-! ## Block-mass constraints -/
