@@ -738,7 +738,8 @@ theorem stationaryEV_of_isMinimizer_ofAtom_general {n : ℕ}
       have hpos_i : ∀ i : Fin n, ∀ᶠ t in nhds (0 : ℝ), 0 < qLine t i := by
         intro i
         have hcont : Continuous (fun t : ℝ => qLine t i) := by
-          simpa [qLine] using (continuous_const.add (continuous_id.mul continuous_const))
+          show Continuous (fun t : ℝ => q.p i + t * v i)
+          fun_prop
         have h0 : 0 < qLine 0 i := by simpa [qLine] using hqPos i
         have : ∀ᶠ t in nhds (0 : ℝ), qLine t i ∈ Set.Ioi (0 : ℝ) :=
           hcont.continuousAt.eventually (IsOpen.mem_nhds isOpen_Ioi h0)
@@ -799,7 +800,7 @@ theorem stationaryEV_of_isMinimizer_ofAtom_general {n : ℕ}
       -- We need: HasDerivAt (fun t => d (qLine t i) (p.p i)) (v_i * g(q_i,p_i)) 0
       have : g (q.p i) (p.p i) * v i = v i * g (q.p i) (p.p i) := mul_comm _ _
       rw [← this]
-      simpa [Function.comp, qLine] using hcomp
+      exact hcomp
     have hderiv :
         HasDerivAt φLine (∑ i : Fin n, v i * g (q.p i) (p.p i)) 0 := by
       simpa [φLine] using

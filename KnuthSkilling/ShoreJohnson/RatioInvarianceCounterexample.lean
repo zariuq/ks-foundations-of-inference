@@ -25,9 +25,14 @@ noncomputable def quadAtomDeriv (q p : ℝ) : ℝ :=
 lemma hasDerivAt_quadAtom (q p : ℝ) :
     HasDerivAt (fun t => quadAtom t p) (quadAtomDeriv q p) q := by
   have h : HasDerivAt (fun t => t - p) 1 q := (hasDerivAt_id q).sub_const p
-  have hpow := h.pow 2
-  -- `h.pow 2` gives derivative `2 * (q - p) ^ 1 * 1`.
-  simpa [quadAtom, quadAtomDeriv, pow_one, mul_one, mul_assoc, mul_left_comm, mul_comm] using hpow
+  -- `h.fun_pow' 2` gives the lambda form `fun t => (t - p) ^ 2` (matching `quadAtom`)
+  -- with derivative the `Finset.range 2` sum.
+  have hpow := h.fun_pow' 2
+  refine hpow.congr_deriv ?_
+  -- Reconcile the sum-form derivative with `quadAtomDeriv q p = 2 * (q - p)`.
+  simp only [Finset.sum_range_succ, Finset.sum_range_zero, zero_add]
+  norm_num [quadAtomDeriv]
+  ring
 
 lemma hasDerivAt_quadAtom_pos (q p : ℝ) (_hq : 0 < q) (_hp : 0 < p) :
     HasDerivAt (fun t => quadAtom t p) (quadAtomDeriv q p) q := by
