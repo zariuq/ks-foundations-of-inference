@@ -50,8 +50,11 @@ arbitrary suprema.
 class IsCommQuantale (Q : Type*) [CommSemigroup Q] [CompleteLattice Q]
     extends IsQuantale Q where
 
-/-- For a commutative quantale, we only need one direction of the distributivity law. -/
-instance (priority := 100) IsCommQuantale.ofCommSemigroup
+/-- For a commutative quantale, we only need one direction of the distributivity law.
+
+(A `def`, not an `instance`: the explicit hypothesis `h` cannot be synthesized by typeclass
+resolution, so this is a constructor helper rather than an instance.) -/
+def IsCommQuantale.ofCommSemigroup
     {Q : Type*} [CommSemigroup Q] [CompleteLattice Q]
     (h : ∀ (x : Q) (s : Set Q), x * sSup s = ⨆ y ∈ s, x * y) :
     IsCommQuantale Q where
@@ -196,7 +199,7 @@ variable [Monoid Q₃] [CompleteLattice Q₃]
 
 /-- Identity morphism of quantales (in the weak sense used here). -/
 protected def id (Q : Type*) [Monoid Q] [CompleteLattice Q] : QuantaleHom Q Q where
-  toFun := id
+  toFun := fun x => x
   map_sSup' S := by simp
   map_mul' _ _ := rfl
 
@@ -280,8 +283,8 @@ theorem distinction_card :
     · rw [disjoint_filter]
       intro x _ hx
       exact hx
-  have hnd : (univ.filter (fun p : U × U => p.1 = p.2)).card = Fintype.card U := by
-    convert nonDistinction_card (U := U)
+  have hnd : (univ.filter (fun p : U × U => p.1 = p.2)).card = Fintype.card U :=
+    nonDistinction_card (U := U)
   rw [htotal, hnd] at hcompl
   omega
 
@@ -414,7 +417,7 @@ theorem probWeakness_distinction_eq_logicalEntropy (pw : ProbWeight U) :
     have hle : ∑ u : U, pw.μ u * pw.μ u ≤ 1 := by
       have hbound : ∀ u : U, pw.μ u ≤ 1 := fun u => by
         have : pw.μ u ≤ ∑ v : U, pw.μ v :=
-          Finset.single_le_sum (fun _ _ => zero_le _) (mem_univ u)
+          Finset.single_le_sum (fun _ _ => zero_le) (mem_univ u)
         simp only [pw.sum_one] at this
         exact this
       calc ∑ u : U, pw.μ u * pw.μ u
@@ -530,16 +533,18 @@ theorem le_indiscreteSetoid' (r : Setoid U) : r ≤ indiscreteSetoid' U :=
 theorem discreteSetoid'_distinctionSet :
     setoidDistinctionSet (discreteSetoid' U) = distinctionEvent := by
   ext p
-  simp only [setoidDistinctionSet, discreteSetoid', Finset.mem_filter, Finset.mem_univ,
+  simp only [setoidDistinctionSet, Finset.mem_filter, Finset.mem_univ,
     true_and, distinctionEvent, ne_eq]
+  rfl
 
 omit [DecidableEq U] in
 /-- The distinction set of the indiscrete Setoid is empty. -/
 theorem indiscreteSetoid'_distinctionSet :
     setoidDistinctionSet (indiscreteSetoid' U) = ∅ := by
   ext p
-  simp only [setoidDistinctionSet, indiscreteSetoid', Finset.mem_filter,
-    Finset.mem_univ, true_and, not_true_eq_false, Finset.notMem_empty]
+  simp only [setoidDistinctionSet, Finset.mem_filter,
+    Finset.mem_univ, true_and, Finset.notMem_empty, iff_false, not_not]
+  trivial
 
 /-! ### Partition Entropy (Bennett/Uniform Weights)
 
@@ -823,10 +828,11 @@ theorem weakness_empty {Q : Type*} [Monoid Q] [CompleteLattice Q]
     (wf : WeightFunction U Q) :
     weakness wf ∅ = ⊥ := by
   unfold weakness
-  convert sSup_empty
-  ext q
-  simp only [Set.mem_setOf_eq, Finset.notMem_empty, false_and, Set.mem_empty_iff_false]
-  tauto
+  have hset : { wf.μ p.1 * wf.μ p.2 | p ∈ (∅ : Finset (U × U)) } = (∅ : Set Q) := by
+    ext q
+    simp only [Set.mem_setOf_eq, Finset.notMem_empty, false_and, Set.mem_empty_iff_false,
+      exists_false]
+  rw [hset, sSup_empty]
 
 /-- Monotonicity: H₁ ⊆ H₂ implies w(H₁) ≤ w(H₂) -/
 theorem weakness_mono {Q : Type*} [Monoid Q] [CompleteLattice Q]
