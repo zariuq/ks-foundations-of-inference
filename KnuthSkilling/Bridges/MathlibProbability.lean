@@ -140,7 +140,6 @@ noncomputable def toMeasure (m : SigmaAdditiveMeasureData E) : Measure E :=
       intro f hf hd
       have h_nonneg : ∀ n, 0 ≤ m.μ (f n) := fun n => m.μ_nonneg (f n) (hf n)
       obtain ⟨h_sum, h_eq⟩ := m.μ_sigma_additive hf hd
-      simp only
       rw [h_eq, ENNReal.ofReal_tsum_of_nonneg h_nonneg h_sum])
 
 /-- The measure assigns the expected value to measurable sets. -/

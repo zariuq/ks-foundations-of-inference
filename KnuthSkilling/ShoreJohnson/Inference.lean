@@ -170,9 +170,9 @@ noncomputable def marginalRight (P : ProbDistProd n m) : ProbDist m where
                 simp [Fintype.sum_prod_type]
               exact h.symm
       _ = ∑ ij : Fin n × Fin m, P.p ij := by
-            -- Reindex via `Equiv.prodComm`.
-            simpa using (Equiv.sum_comp (Equiv.prodComm (Fin m) (Fin n))
-              (fun ij : Fin n × Fin m => P.p ij))
+            -- Reindex via `Equiv.prodComm`; `(ji.2, ji.1)` is defeq to `ji.swap`.
+            exact Equiv.sum_comp (Equiv.prodComm (Fin m) (Fin n))
+              (fun ij : Fin n × Fin m => P.p ij)
       _ = 1 := P.sum_one
 
 end ProbDistProd

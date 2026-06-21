@@ -97,8 +97,11 @@ instance [Preorder α] : Preorder (WithTopBot α) where
     cases x <;> simp [WithTopBot.instLE]
   le_trans a b c hab hbc := by
     cases a <;> cases b <;> cases c <;>
-      simp [WithTopBot.instLE] at hab hbc ⊢
-    exact le_trans hab hbc
+      first
+        | trivial
+        | exact (hab : False).elim
+        | exact (hbc : False).elim
+        | exact _root_.le_trans hab hbc
 
 instance [PartialOrder α] : PartialOrder (WithTopBot α) :=
   { (inferInstance : Preorder (WithTopBot α)) with

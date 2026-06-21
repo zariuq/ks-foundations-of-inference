@@ -43,27 +43,16 @@ abbrev Trajectory (Action : Type u) (Percept : Type v) : Type (max u v) :=
 abbrev Prefix (Action : Type u) (Percept : Type v) (n : Nat) : Type (max u v) :=
   PrefixOf (StepFamily Action Percept) n
 
-instance prefixMeasurableSpace (Action : Type u) (Percept : Type v)
-    [MeasurableSpace Action] [MeasurableSpace Percept] (n : Nat) :
-    MeasurableSpace (Prefix Action Percept n) := by
-  dsimp [Prefix]
-  infer_instance
+-- `Prefix`/`Trajectory` reduce (via `abbrev`) to `PrefixOf`/`TrajectoryOf`, hence to
+-- `Pi` types carrying Mathlib's canonical `MeasurableSpace.pi`. As above, declaring
+-- bespoke copies here introduces an instance diamond that blocks downstream
+-- `Kernel.traj` / `IsMarkovKernel` synthesis under Lean v4.31.
 
-instance trajectoryMeasurableSpace (Action : Type u) (Percept : Type v)
-    [MeasurableSpace Action] [MeasurableSpace Percept] :
-    MeasurableSpace (Trajectory Action Percept) := by
-  dsimp [Trajectory]
-  infer_instance
-
-instance prefixOfMeasurableSpace (X : Nat -> Type uX)
-    [∀ n, MeasurableSpace (X n)] (n : Nat) : MeasurableSpace (PrefixOf X n) := by
-  dsimp [PrefixOf]
-  infer_instance
-
-instance trajectoryOfMeasurableSpace (X : Nat -> Type uX)
-    [∀ n, MeasurableSpace (X n)] : MeasurableSpace (TrajectoryOf X) := by
-  dsimp [TrajectoryOf]
-  infer_instance
+-- `PrefixOf X n` / `TrajectoryOf X` are `abbrev`s for `Pi` types, so they already
+-- inherit Mathlib's canonical `MeasurableSpace.pi` instance. Declaring bespoke
+-- instances here creates an instance diamond that (as of Lean v4.31) blocks
+-- `Kernel.traj`'s `[∀ n, IsMarkovKernel (κ n)]` synthesis, since `traj` builds its
+-- requirement against `MeasurableSpace.pi` while `κ` would carry the bespoke copy.
 
 /-- Combine a policy kernel and environment kernel into a step kernel. -/
 noncomputable def stepKernel

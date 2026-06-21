@@ -73,7 +73,8 @@ def identityAlgorithm : Algorithm :=
   fun p => Part.some p
 
 theorem identityAlgorithm_partrec : Partrec identityAlgorithm := by
-  simpa [identityAlgorithm] using (Computable.id : Computable (fun p : BinString => p))
+  unfold identityAlgorithm
+  exact Partrec.some
 
 /-- For the identity algorithm, `C(x) = |x|`. -/
 theorem complexity_identity (x : BinString) : C[identityAlgorithm](x) = x.length := by

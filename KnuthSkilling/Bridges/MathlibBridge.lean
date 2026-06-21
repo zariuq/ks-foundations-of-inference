@@ -102,8 +102,8 @@ theorem archimedean_of_KSSeparation {α : Type*} [KnuthSkillingAlgebraBase α] [
   intro x y hy
   -- Apply the K&S Archimedean (derived from KSSeparation) with `x := y` (positive) and `y := x` (arbitrary).
   obtain ⟨n, hn⟩ := SandwichSeparation.SeparationToArchimedean.op_archimedean_of_separation y.val x.val (by
-    -- `0 < y` in the wrapper is `ident < y.val` in `α`.
-    simpa [KSAdd.val_zero] using hy)
+    -- `0 < y` in the wrapper is `ident < y.val` in `α` (defeq via `val_zero`).
+    exact hy)
   -- Convert K&S's strict bound into the ≤ bound demanded by mathlib's `Archimedean`.
   refine ⟨n + 1, ?_⟩
   have hn' : x.val < iterate_op y.val (n + 1) := by
@@ -123,8 +123,8 @@ theorem archimedean_of_op_archimedean_explicit {α : Type*} [KnuthSkillingAlgebr
   intro x y hy
   -- Apply the Archimedean hypothesis with `a := y` (positive) and `x := x` (arbitrary).
   obtain ⟨n, hn⟩ := harch y.val x.val (by
-    -- `0 < y` in the wrapper is `ident < y.val` in `α`.
-    simpa [KSAdd.val_zero] using hy)
+    -- `0 < y` in the wrapper is `ident < y.val` in `α` (defeq via `val_zero`).
+    exact hy)
   -- Convert K&S's strict bound into the ≤ bound demanded by mathlib's `Archimedean`.
   refine ⟨n + 1, ?_⟩
   have hn' : x.val < iterate_op y.val (n + 1) := by

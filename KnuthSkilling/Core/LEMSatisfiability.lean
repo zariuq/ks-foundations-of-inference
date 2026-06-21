@@ -746,17 +746,19 @@ theorem lem_degree_le_two_thirds
           intro htop
           have : c = (⊤ : β) := (top_le_iff).1 htop
           exact hc_ne_top' this
-        have : Fintype.card {x : β // x ≤ c} < Fintype.card β :=
+        have hlt : Fintype.card {x : β // x ≤ c} < Fintype.card β :=
           Fintype.card_subtype_lt (p := fun x : β => x ≤ c) (x := (⊤ : β)) hx
-        simpa [Set.Iic, hcardβ] using this
+        rw [hcardβ] at hlt
+        exact hlt
       have hcard_IicCompl_lt : Fintype.card (Set.Iic cᶜ) < n := by
         have hx : ¬((⊤ : β) ≤ cᶜ) := by
           intro htop
           have : cᶜ = (⊤ : β) := (top_le_iff).1 htop
           exact hccompl_ne_top this
-        have : Fintype.card {x : β // x ≤ cᶜ} < Fintype.card β :=
+        have hlt : Fintype.card {x : β // x ≤ cᶜ} < Fintype.card β :=
           Fintype.card_subtype_lt (p := fun x : β => x ≤ cᶜ) (x := (⊤ : β)) hx
-        simpa [Set.Iic, hcardβ] using this
+        rw [hcardβ] at hlt
+        exact hlt
       -- Apply IH on the non-Boolean factor, and use `≤ 1` on the other.
       have hdeg1_le1 : lemDegree (Set.Iic c) ≤ 1 := lemDegree_le_one (Set.Iic c)
       have hdeg2_le1 : lemDegree (Set.Iic cᶜ) ≤ 1 := lemDegree_le_one (Set.Iic cᶜ)
