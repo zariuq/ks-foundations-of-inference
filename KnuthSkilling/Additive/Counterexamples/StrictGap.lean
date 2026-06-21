@@ -2,9 +2,9 @@ import KnuthSkilling.Additive.Proofs.GridInduction.Core.Induction.ThetaPrime
 
 namespace KnuthSkilling.Additive.Counterexamples
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
-variable {α : Type*} [KnuthSkillingAlgebra α]
+variable {α : Type*} [KnuthSkillingAlgebra α] [KSSeparation α]
 
 /-!
 # Sanity check: Δ=1 gap vs `ZQuantized`

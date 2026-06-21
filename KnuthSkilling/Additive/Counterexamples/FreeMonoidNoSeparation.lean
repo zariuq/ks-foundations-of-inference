@@ -7,6 +7,7 @@ namespace KnuthSkilling.Additive.Counterexamples
 
 open Classical
 open KnuthSkillingAlgebra
+open KnuthSkillingAlgebraBase
 
 /-!
 # Noncommutative `KnuthSkillingAlgebra` from shortlex words, but `KSSeparation` fails
@@ -193,7 +194,7 @@ theorem op_archimedean (x y : Word) (hx : ident < x) : ∃ n : ℕ, y < Nat.iter
   -- Any `x > ident` must have positive length (since `ident` is the unique length-0 word).
   have hx_len : 0 < len x := by
     have hx' := (Prod.Lex.toLex_lt_toLex (x := (ofLex ident.1 : Nat × List (Fin 3)))
-      (y := (ofLex x.1 : Nat × List (Fin 3)))).1 (by simpa [ident, len, letters] using hx)
+      (y := (ofLex x.1 : Nat × List (Fin 3)))).1 (by simpa [len, letters] using hx)
     rcases hx' with hlen_lt | ⟨hlen_eq, _⟩
     · simpa [ident, len] using hlen_lt
     · -- `ident` has length 0, so equal length forces `x = ident`, contradicting strictness.
@@ -316,7 +317,7 @@ theorem not_KSSeparation : ¬ KSSeparation Word := by
         -- Same idea as in `op_archimedean`: either the length increases, or equal length
         -- would force `x = ident` (impossible under strict inequality).
         have hx' := (Prod.Lex.toLex_lt_toLex (x := (ofLex ident.1 : Nat × List (Fin 3)))
-          (y := (ofLex x.1 : Nat × List (Fin 3)))).1 (by simpa [ident, len, letters] using hx)
+          (y := (ofLex x.1 : Nat × List (Fin 3)))).1 (by exact hx)
         rcases hx' with hlen_lt | ⟨hlen_eq, _⟩
         · simpa [ident, len] using hlen_lt
         · have hx0 : len x = 0 := by simpa [ident, len] using hlen_eq.symm
@@ -355,13 +356,13 @@ theorem not_KSSeparation : ¬ KSSeparation Word := by
     refine Or.inr ?_
     refine ⟨by simp [a, x], ?_⟩
     -- `[0] < [1]` in list lex
-    simpa [List.lt_iff_lex_lt] using (List.Lex.rel (by decide : (0 : Fin 3) < 1))
+    simpa [a, x, List.lt_iff_lex_lt] using (List.Lex.rel (by decide : (0 : Fin 3) < 1))
   have hxy : x < y := by
     refine (Prod.Lex.toLex_lt_toLex (x := (ofLex x.1 : Nat × List (Fin 3)))
       (y := (ofLex y.1 : Nat × List (Fin 3)))).2 ?_
     refine Or.inr ?_
     refine ⟨by simp [x, y], ?_⟩
-    simpa [List.lt_iff_lex_lt] using (List.Lex.rel (by decide : (1 : Fin 3) < 2))
+    simpa [x, y, List.lt_iff_lex_lt] using (List.Lex.rel (by decide : (1 : Fin 3) < 2))
   have h_rk_eq : R.rk a = R.rk x ∧ R.rk x = R.rk y := by
     simp [R, a, x, y, len]
   have hChain :

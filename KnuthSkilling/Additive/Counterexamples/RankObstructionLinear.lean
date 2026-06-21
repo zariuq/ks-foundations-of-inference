@@ -2,7 +2,7 @@ import KnuthSkilling.Core.Algebra
 
 namespace KnuthSkilling.Additive.Counterexamples
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
 /-!
 # A reusable obstruction to `KSSeparation` (rank into an ordered additive monoid)

@@ -10,6 +10,7 @@ open scoped NNReal
 
 open KnuthSkilling
 open KnuthSkillingAlgebra
+open KnuthSkillingAlgebraBase
 open Real
 
 /-!
@@ -64,8 +65,10 @@ noncomputable local instance : KnuthSkillingAlgebra ℝ≥0 where
   op_assoc := by intro x y z; simp [add_assoc]
   op_ident_right := by intro x; simp
   op_ident_left := by intro x; simp
-  op_strictMono_left := by intro y x₁ x₂ hx; exact add_lt_add_right hx y
-  op_strictMono_right := by intro x y₁ y₂ hy; exact add_lt_add_left hy x
+  op_strictMono_left := by
+    intro y x₁ x₂ hx; show x₁ + y < x₂ + y; gcongr
+  op_strictMono_right := by
+    intro x y₁ y₂ hy; show x + y₁ < x + y₂; gcongr
   ident_le := by intro x; exact bot_le
 
 private noncomputable def i0 : Fin 2 := 0
@@ -120,7 +123,8 @@ private lemma mu_F2 (r : Multi 2) :
   have h1 :
       ((iterate_op (α := ℝ≥0) (F2.atoms i1) (r i1) : ℝ≥0) : ℝ) = (r i1 : ℝ) * Real.sqrt 2 := by
     -- atom1 = √2
-    simp [F2_atom1, iterate_op_add_eq_mul]
+    rw [F2_atom1, iterate_op_add_eq_mul, NNReal.coe_mul, NNReal.coe_natCast]
+    congr 1
   -- Collect terms.
   have h0' :
       ((iterate_op (α := ℝ≥0) (F2.atoms 0) (r 0) : ℝ≥0) : ℝ) = (r 0 : ℝ) := by
@@ -150,7 +154,8 @@ lemma d_pos : (KnuthSkillingAlgebraBase.ident : ℝ≥0) < d := by
 
 private lemma iterate_op_d (u : ℕ) :
     ((iterate_op (α := ℝ≥0) d u : ℝ≥0) : ℝ) = (u : ℝ) * (2 - Real.sqrt 2) := by
-  simp [d, iterate_op_add_eq_mul]
+  rw [iterate_op_add_eq_mul, NNReal.coe_mul, NNReal.coe_natCast]
+  congr 1
 
 lemma B_empty_for_F2_d : ∀ r u, 0 < u → r ∉ extensionSetB F2 d u := by
   intro r u hu hrB
@@ -229,7 +234,9 @@ theorem exists_old_new_eq_old_while_B_empty :
   -- Rewrite the old-grid values and `iterate_op d 1`.
   rw [mu_rX, mu_rY]
   -- `iterate_op d 1 = d` and `d = 2 - √2`.
-  simp [iterate_op_one, d]
+  rw [iterate_op_one]
+  show Real.sqrt 2 + (2 - Real.sqrt 2) = 2
+  ring
 
 end
 

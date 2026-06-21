@@ -46,7 +46,7 @@ private theorem linearIndepOn_one_sqrt2 :
   refine hpair.2 ?_
   intro c d hcd
   have hcd' : (c : ℝ) + (d : ℝ) * (Real.sqrt 2 : ℝ) = 0 := by
-    simpa using hcd
+    simpa [Rat.smul_def] using hcd
   -- If `d = 0`, the equation forces `c = 0`.
   by_cases hd : d = 0
   · subst hd

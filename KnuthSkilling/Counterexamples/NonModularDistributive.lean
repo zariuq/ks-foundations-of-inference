@@ -364,7 +364,7 @@ theorem counterexample_to_modular_law :
     cases this with
     | inl h =>
         rcases h with ⟨rfl, rfl⟩
-        simpa using m_disjoint_additive
+        exact m_disjoint_additive
     | inr h =>
         rcases h with ⟨rfl, rfl⟩
         change m (IdealLattice.sup b a) = m b + m a

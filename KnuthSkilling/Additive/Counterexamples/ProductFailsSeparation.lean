@@ -89,13 +89,13 @@ instance : KnuthSkillingAlgebraBase NatProdLex where
     · -- Same first coordinate: (0,0) ≤ (0,a₂)
       have : (toLex (0, 0) : NatProdLex) ≤ toLex (a₁, a₂) := by
         simp [Prod.Lex.toLex_le_toLex, h]
-      simpa [natProdIdent] using this
+      exact this
     · -- Strictly larger first coordinate: (0,0) ≤ (a₁,a₂) via the left disjunct.
       have hpos : 0 < a₁ := Nat.pos_of_ne_zero h
       have : (toLex (0, 0) : NatProdLex) ≤ toLex (a₁, a₂) := by
         have : 0 < a₁ ∨ (0 : ℕ) = a₁ ∧ (0 : ℕ) ≤ a₂ := Or.inl hpos
         simpa [Prod.Lex.toLex_le_toLex] using this
-      simpa [natProdIdent] using this
+      exact this
 
 /-- In the product model, `ident` is definitionally `natProdIdent`. -/
 @[simp] theorem ident_eq_natProdIdent : (ident (α := NatProdLex)) = natProdIdent := rfl

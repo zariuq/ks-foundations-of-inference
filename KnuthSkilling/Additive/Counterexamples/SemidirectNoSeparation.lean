@@ -3,7 +3,7 @@ import KnuthSkilling.Core.Algebra
 
 namespace KnuthSkilling.Additive.Counterexamples
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 
 
 /-!
@@ -87,7 +87,7 @@ theorem strictMono_baseOp_left (q : SDBase) : StrictMono (fun p => baseOp p q) :
     -- Unfold the lexicographic order on `PNat ×ₗ ℕ`.
     have := (Prod.Lex.toLex_lt_toLex (x := (ofLex p₁ : PNat × ℕ)) (y := (ofLex p₂ : PNat × ℕ))).1
         (by simpa using hp)
-    simpa using this
+    exact this
   cases hp' with
   | inl hfst =>
     -- First coordinate strictly increases, so the result strictly increases (in lex order).
@@ -110,7 +110,7 @@ theorem strictMono_baseOp_left (q : SDBase) : StrictMono (fun p => baseOp p q) :
       refine ⟨by
         change p₁.1 + q.1 = p₂.1 + q.1
         simp [hfst_eq], ?_⟩
-      simpa [baseOp] using this
+      exact this
 
 theorem strictMono_baseOp_right (p : SDBase) : StrictMono (fun q => baseOp p q) := by
   intro q₁ q₂ hq
@@ -118,7 +118,7 @@ theorem strictMono_baseOp_right (p : SDBase) : StrictMono (fun q => baseOp p q) 
       q₁.1 < q₂.1 ∨ (q₁.1 = q₂.1 ∧ q₁.2 < q₂.2) := by
     have := (Prod.Lex.toLex_lt_toLex (x := (ofLex q₁ : PNat × ℕ)) (y := (ofLex q₂ : PNat × ℕ))).1
         (by simpa using hq)
-    simpa using this
+    exact this
   cases hq' with
   | inl hfst =>
     have : p.1 + q₁.1 < p.1 + q₂.1 := by exact add_lt_add_right hfst p.1
@@ -151,7 +151,7 @@ theorem op_strictMono_left : ∀ y : SD, StrictMono (fun x => op x y) := by
     -- y = ⊥, op x ⊥ = x
     have hop : (fun x : SD => op x (none : SD)) = fun x => x := by
       funext x; cases x <;> rfl
-    simpa [hop] using (strictMono_id : StrictMono (fun x : SD => x))
+    rw [hop]; exact strictMono_id
   | some q =>
     intro x₁ x₂ hx
     cases x₁ with
@@ -172,7 +172,7 @@ theorem op_strictMono_left : ∀ y : SD, StrictMono (fun x => op x y) := by
         -- Lift the SDBase strict inequality to SD.
         have hLift : (some q : SD) < some (baseOp p q) :=
           (WithBot.coe_lt_coe (a := q) (b := baseOp p q)).2 hBase
-        simpa [op] using hLift
+        exact hLift
     | some p₁ =>
       cases x₂ with
       | none =>
@@ -184,14 +184,16 @@ theorem op_strictMono_left : ∀ y : SD, StrictMono (fun x => op x y) := by
         have hBase : baseOp p₁ q < baseOp p₂ q := strictMono_baseOp_left q hx'
         have hLift : (some (baseOp p₁ q) : SD) < some (baseOp p₂ q) :=
           (WithBot.coe_lt_coe (a := baseOp p₁ q) (b := baseOp p₂ q)).2 hBase
-        simpa [op] using hLift
+        exact hLift
 
 theorem op_strictMono_right : ∀ x : SD, StrictMono (fun y => op x y) := by
   intro x
   cases x with
   | none =>
     -- x = ⊥, op ⊥ y = y
-    simpa [op, ident] using (strictMono_id : StrictMono (fun y : SD => y))
+    have hop : (fun y : SD => op (none : SD) y) = fun y => y := by
+      funext y; rfl
+    rw [hop]; exact strictMono_id
   | some p =>
     intro y₁ y₂ hy
     cases y₁ with
@@ -210,7 +212,7 @@ theorem op_strictMono_right : ∀ x : SD, StrictMono (fun y => op x y) := by
           exact Or.inl hPNat
         have hLift : (some p : SD) < some (baseOp p q) :=
           (WithBot.coe_lt_coe (a := p) (b := baseOp p q)).2 hBase
-        simpa [op] using hLift
+        exact hLift
     | some q₁ =>
       cases y₂ with
       | none =>
@@ -222,7 +224,7 @@ theorem op_strictMono_right : ∀ x : SD, StrictMono (fun y => op x y) := by
         have hBase : baseOp p q₁ < baseOp p q₂ := strictMono_baseOp_right p hy'
         have hLift : (some (baseOp p q₁) : SD) < some (baseOp p q₂) :=
           (WithBot.coe_lt_coe (a := baseOp p q₁) (b := baseOp p q₂)).2 hBase
-        simpa [op] using hLift
+        exact hLift
 
 def fst : SD → ℕ
   | ⊥ => 0
@@ -279,7 +281,7 @@ theorem op_archimedean (x y : SD) (hx : ident < x) :
     cases y with
     | none =>
       refine ⟨0, ?_⟩
-      simpa [ident, op] using hx
+      exact hx
     | some py =>
       refine ⟨(py.1 : ℕ), ?_⟩
       have hpx_ge : 1 ≤ (px.1 : ℕ) := Nat.succ_le_iff.mp px.1.pos
@@ -361,7 +363,7 @@ theorem fst_iterate_op_coe (p : SDBase) :
     have : SD.fst (KnuthSkillingAlgebraBase.op (p : SD) (iterate_op (p : SD) n)) =
         (p.1 : ℕ) + SD.fst (iterate_op (p : SD) n) := by
       -- reduce to the concrete `SD.fst_op_left_some`
-      simpa [KnuthSkillingAlgebraBase.op, SD.op, SD.fst] using (SD.fst_op_left_some p (iterate_op (p : SD) n))
+      exact SD.fst_op_left_some p (iterate_op (p : SD) n)
     -- finish the arithmetic
     -- `p1 + n*p1 = (n+1)*p1`
     have harith : (p.1 : ℕ) + n * (p.1 : ℕ) = (n + 1) * (p.1 : ℕ) := by
