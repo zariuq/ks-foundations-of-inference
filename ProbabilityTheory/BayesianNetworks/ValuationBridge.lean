@@ -109,7 +109,8 @@ lemma toValuation_sumOut (φ : Factor fg) (v : V)
         intro val _
         have := congrArg (fun f => φ.potential f)
           (extend_eq_update (φ := φ) (v := v) (hv := hv) (x := x) (val := val))
-        simpa [fullAssign] using this
+        -- `fullAssign (update x v val) φ.scope` reduces definitionally to `fun u _ => update x v val u`.
+        exact this
       have hsumOut_right :
           (sumOut (φ := toValuation (fg := fg) φ) v).val x =
             ∑ val : fg.stateSpace v,

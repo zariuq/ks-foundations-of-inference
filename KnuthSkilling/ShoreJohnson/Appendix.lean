@@ -312,9 +312,8 @@ theorem hasDerivAt_sumObjective_shift2 {n : ℕ}
   classical
   -- Derivative of the linear map `u ↦ q i + q j - u`.
   have hlin : HasDerivAt (fun u : ℝ => q i + q j - u) (-1) t := by
-    have hconst : HasDerivAt (fun _ : ℝ => q i + q j) 0 t := hasDerivAt_const t (q i + q j)
     have hid : HasDerivAt (fun u : ℝ => u) 1 t := hasDerivAt_id t
-    simpa using hconst.sub hid
+    simpa using hid.const_sub (q i + q j)
   -- Build pointwise derivatives for each coordinate.
   have hcoord :
       ∀ k ∈ (Finset.univ : Finset (Fin n)),
@@ -400,9 +399,8 @@ theorem hasDerivAt_sumObjectiveCoord_shift2 {n : ℕ}
   classical
   -- Derivative of the linear map `u ↦ q i + q j - u`.
   have hlin : HasDerivAt (fun u : ℝ => q i + q j - u) (-1) t := by
-    have hconst : HasDerivAt (fun _ : ℝ => q i + q j) 0 t := hasDerivAt_const t (q i + q j)
     have hid : HasDerivAt (fun u : ℝ => u) 1 t := hasDerivAt_id t
-    simpa using hconst.sub hid
+    simpa using hid.const_sub (q i + q j)
   -- Build pointwise derivatives for each coordinate.
   have hcoord :
       ∀ k ∈ (Finset.univ : Finset (Fin n)),

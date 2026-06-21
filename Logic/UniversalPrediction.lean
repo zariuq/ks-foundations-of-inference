@@ -319,8 +319,8 @@ noncomputable def xiGeomSemimeasure (ν : ℕ → Semimeasure) : Semimeasure :=
   xiSemimeasure ν geometricWeight tsum_geometricWeight_le_one
 
 theorem xiGeom_dominates_index (ν : ℕ → Semimeasure) (i : ℕ) (x : BinString) :
-    geometricWeight i * ν i x ≤ (xiGeomSemimeasure ν) x := by
-  simpa [xiGeomSemimeasure] using xi_dominates_index ν geometricWeight i x
+    geometricWeight i * ν i x ≤ (xiGeomSemimeasure ν) x :=
+  xi_dominates_index ν geometricWeight i x
 
 /-! ## The `encodeWeight` mixture -/
 
@@ -331,8 +331,8 @@ noncomputable def xiEncodeSemimeasure {ι : Type*} [Encodable ι] (ν : ι → S
 
 theorem xiEncode_dominates_index {ι : Type*} [Encodable ι] (ν : ι → Semimeasure) (i : ι)
     (x : BinString) :
-    encodeWeight i * ν i x ≤ (xiEncodeSemimeasure (ι := ι) ν) x := by
-  simpa [xiEncodeSemimeasure] using xi_dominates_index ν (encodeWeight (ι := ι)) i x
+    encodeWeight i * ν i x ≤ (xiEncodeSemimeasure (ι := ι) ν) x :=
+  xi_dominates_index ν (encodeWeight (ι := ι)) i x
 
 /-! ## The `Kpf` mixture -/
 
@@ -343,8 +343,8 @@ noncomputable def xiKpfSemimeasure (U : PrefixFreeMachine) [UniversalPFM U]
 
 theorem xiKpf_dominates_index (U : PrefixFreeMachine) [UniversalPFM U]
     (ν : BinString → Semimeasure) (i : BinString) (x : BinString) :
-    kpfWeight (U := U) i * ν i x ≤ (xiKpfSemimeasure (U := U) ν) x := by
-  simpa [xiKpfSemimeasure] using xi_dominates_index ν (kpfWeight (U := U)) i x
+    kpfWeight (U := U) i * ν i x ≤ (xiKpfSemimeasure (U := U) ν) x :=
+  xi_dominates_index ν (kpfWeight (U := U)) i x
 
 /-! ### Invariance (machine-independence) of `2^{-Kpf}` weights -/
 
