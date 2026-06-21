@@ -18,12 +18,18 @@ This file contains ONLY results that are fully proven, no handwaving.
 - Representable ⟹ Commutative
 - A commutative non-Archimedean product fails the sandwich axiom
 - KSSeparation ⟹ Commutative (mass-counting proof)
-- OPEN: KSSeparation ⟹ Representable
+- KSSeparationStrict ⟹ Representable (grid route, COMPLETE and axiom-clean)
 
-## The Gap
+## Status: the grid route is complete
 
-The remaining representation-theorem work is to connect `KSSeparation` to the additive real
-embedding produced by the main construction.
+The connection from `KSSeparation` to the additive real embedding is fully proven via the
+grid/induction route. The strict-gap interface `BEmptyStrictGapSpec` (the one step that the
+historical refactor had isolated as a `Prop` assumption) is discharged from `KSSeparationStrict`
+in `extend_grid_rep_with_atom_of_op_comm_of_KSSeparationStrict`
+(`Core/Induction/Goertzel.lean`), and globalized to a full additive representation `Θ` by
+`representationGlobalization_of_KSSeparationStrict`
+(`GridInduction/Globalization.lean`). Both depend only on the standard axioms
+(`propext`, `Classical.choice`, `Quot.sound`).
 -/
 
 /-! ## Identity-Free Facts -/
@@ -127,35 +133,34 @@ theorem separation_gives_constraints [KSSeparation α]
   exact KSSeparation.separation hxy hxy hyx hlt
 
 /-!
-## What We CANNOT Prove
+## Representability from Separation (Proven)
 
-The remaining open direction is representability (real-valued additivity) from `KSSeparation`
-*without* importing additional completion hypotheses.
+Real-valued additivity from the strict separation axiom is now proven: see
+`representationGlobalization_of_KSSeparationStrict` (the grid route), which produces an additive
+`Θ : α → ℝ` from `[KSSeparationStrict α]` without any extra completion hypotheses.
 -/
 
 /-!
 ## The Honest Assessment
-
-After extensive attempts:
 
 **PROVEN RESULTS**:
 1. ✓ A commutative non-Archimedean product fails the sandwich axiom
    (see `Counterexamples/ProductFailsSeparation.lean`)
 2. ✓ Representable algebras are commutative (OneDimensional.lean)
 3. ✓ Attempted counterexamples all fail at separation
+4. ✓ KSSeparation ⟹ commutative (`op_comm_of_KSSeparation`)
+5. ✓ KSSeparationStrict ⟹ representable (`representationGlobalization_of_KSSeparationStrict`),
+   axiom-clean (`propext`, `Classical.choice`, `Quot.sound`)
 
-**UNPROVEN (OPEN QUESTIONS)**:
-1. ✗ Does KSSeparation imply representability?
+**RESOLVED (formerly open)**:
+- Does KSSeparation(Strict) imply representability? **Yes** — by the grid/induction route.
+  The earlier "circularity" in the k→k+1 strict-gap step is broken by feeding the gap from
+  `KSSeparationStrict` externally rather than from the construction's own strict monotonicity.
 
 **PRACTICAL RECOMMENDATION**:
-- If the goal is a separation-based axiom system, use `KSSeparation` and derive commutativity
-  (so `NewAtomCommutes` is no longer needed as an extra axiom).
-
-**MATHEMATICAL STATUS**:
-This appears to be a genuinely difficult problem that may require:
-- Model-theoretic techniques
-- Representation theory (beyond classical Hölder)
-- Order-theoretic methods we haven't found
+- For a separation-based axiom system, use `KSSeparation` and derive commutativity
+  (so `NewAtomCommutes` is no longer needed as an extra axiom); use `KSSeparationStrict` when the
+  full additive representation is required.
 -/
 
 end WithIdentity

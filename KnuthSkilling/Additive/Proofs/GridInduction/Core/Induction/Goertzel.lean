@@ -1968,11 +1968,16 @@ The hypercube/Ben-v2 “boundary collision” argument shows:
 `(strictly monotone Θ' realizing ThetaRaw at δ)` ⇒ `BEmptyStrictGapSpec` at δ.
 
 In the main Appendix-A development, the *forward* direction is what one uses to rule out
-boundary equalities, but the *reverse* direction is exactly where the k→k+1 step gets stuck:
-to build such a strictly monotone Θ' in the mixed-`t` cases, the strict gap spec is assumed.
+boundary equalities, while the *reverse* direction is where a naive k→k+1 step would get stuck:
+building a strictly monotone Θ' in the mixed-`t` cases needs the strict gap spec, so deriving the
+spec *from* that strict monotonicity would be circular.
 
-This lemma does **not** resolve the circularity; it records the implication cleanly so that any
-attempted proof can be checked against it.
+The lemma below records this implication cleanly. The apparent circularity is **resolved** in the
+canonical route by supplying `BEmptyStrictGapSpec` *externally* from `KSSeparationStrict`
+(`chooseδBaseAdmissible_of_BEmptyStrictGapSpec` →
+`extend_grid_rep_with_atom_of_op_comm_of_KSSeparationStrict`), rather than from the construction's
+own monotonicity. With that external input the k→k+1 step closes, and the whole route is
+axiom-clean.
 -/
 
 section Circularity

@@ -41,6 +41,10 @@ path-specific versions in `Probability/ProbabilityDerivation` or `Probability/Co
 
 ## Module Structure
 
+- **Api.lean**: **PUBLIC CORE API** - single top-level entry point re-stating the headline
+  theorems (`faddeev_iff_shannonKhinchin`, `ks_representation_theorem`, `Psi_is_exp`,
+  `op_comm_of_hasRepresentationTheorem`), the key axioms/defs, and all three additive-representation
+  routes (Hölder, cuts, grid) in one place. Start here.
 - **Core/Basic.lean**: Core definitions (PlausibilitySpace, Valuation, KSSemigroupBase / Monoid / Algebra bases)
 - **Core/Algebra.lean**: Basic operations (iterate_op, separation axioms, identity-free ℕ+ iteration)
 - **Additive/Axioms/**: Separation machinery (sandwich separation, anomalous pairs)
@@ -71,6 +75,11 @@ The canonical proof path uses **NoAnomalousPairs (NAP)** from the 1950s ordered-
   - Location: `Additive/Proofs/DirectCuts/`
   - Uses Dedekind cuts; requires identity
 
+- **Alternative path (Grid/induction)**: `[KSSeparationStrict α]` → additive representation
+  - Location: `Additive/Proofs/GridInduction/` (`representationGlobalization_of_KSSeparationStrict`)
+  - COMPLETE and axiom-clean; the strict-gap interface `BEmptyStrictGapSpec` is discharged from
+    `KSSeparationStrict` (no `sorry`, no extra axioms)
+
 The relationship between axioms:
 - `KSSeparation` + `IdentIsMinimum` ⇒ `NoAnomalousPairs` (proven in `AnomalousPairs.lean`)
 - NAP is identity-free and historically prior (1950s vs K&S 2012)
@@ -80,6 +89,10 @@ The relationship between axioms:
   `KnuthSkilling/Additive/Counterexamples/`.
   They are intentionally not imported by the main proof chain; import them explicitly when needed.
 -/
+
+-- Public core API: single entry point re-stating the headline theorems, key axioms/defs,
+-- and all three additive-representation routes (Hölder, cuts, grid). See `KnuthSkilling/Api.lean`.
+import KnuthSkilling.Api
 
 -- Stable core facade (Appendices A/B/C + minimal axiom hierarchy).
 import KnuthSkilling.FoundationsOfInference

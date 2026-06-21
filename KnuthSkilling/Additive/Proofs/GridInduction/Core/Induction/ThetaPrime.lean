@@ -655,8 +655,12 @@ lemma theta_eq_min_iterate_bound_of_B_empty
 ### K&S Appendix A.3.4 (B-empty) strict gap lemmas
 
 In the “globally B-empty” regime, the mixed-`t` cases for `Θ'` require strict relative Θ-gap
-bounds. In this refactor, we keep the missing step explicit by packaging it as a `Prop`-valued
-assumption (`BEmptyStrictGapSpec`) rather than using `sorry`.
+bounds. We package this step as a `Prop`-valued interface (`BEmptyStrictGapSpec`) so it can be
+stated and consumed cleanly. In the canonical route this interface is **discharged** from
+`KSSeparationStrict` (see `chooseδBaseAdmissible_of_BEmptyStrictGapSpec` and
+`extend_grid_rep_with_atom_of_op_comm_of_KSSeparationStrict` in
+`Core/Induction/Goertzel.lean`); the grid representation theorem is therefore complete and
+axiom-clean, with no `sorry`.
 
 Important nuance (Ben/Goertzel v2): K&S’s A/B/C sets in Appendix A.3.4 are **base-indexed**:
 they compare old-grid values to a target of the form `X0 ⊕ d^u` for a fixed old-grid base `X0`.
