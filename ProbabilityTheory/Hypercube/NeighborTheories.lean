@@ -168,7 +168,7 @@ theorem oml_carrier_has_representation
     KnuthSkilling.Additive.associativity_representation (α := α)
   refine ⟨Θ, ?_, ?_⟩
   · intro x y
-    simpa using hΘ_add x y
+    exact hΘ_add x y
   · -- `hΘ_order` is an order-embedding characterization, hence Θ is strictly monotone.
     intro a b hab
     have hle : Θ a ≤ Θ b := (hΘ_order a b).1 (le_of_lt hab)

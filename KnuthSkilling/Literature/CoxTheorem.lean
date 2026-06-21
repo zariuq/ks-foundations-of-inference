@@ -35,7 +35,7 @@ associativity equation holds (and commutativity follows automatically).
 -/
 
 theorem cox_associativity_of_additiveOrderIsoRep {F : ℝ → ℝ → ℝ}
-    (h : AdditiveOrderIsoRep ℝ F) : Cox.AssociativityEquation F := by
+    (h : AdditiveOrderIsoRep ℝ F) : AssociativityEquation F := by
   intro x y z
   simpa using (AdditiveOrderIsoRep.op_assoc (α := ℝ) (op := F) h x y z)
 
