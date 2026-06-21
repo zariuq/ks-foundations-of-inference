@@ -1,3 +1,16 @@
+/-
+QUARANTINED (Exploratory/, excluded from the build) — pre-existing, version-independent breakage.
+
+This file applies the grid construction `chooseδ` (and `chooseδ_B_bound`) at `α := ℝ≥0`. But
+`chooseδ` genuinely requires `[KSSeparation α]` (via `extensionSetC_nonempty_of_B_empty` →
+`bounded_by_iterate`, an explicit `[KSSeparation α]` lemma — the same coupling on Lean v4.28), and
+**no `KSSeparation ℝ≥0` instance exists anywhere in the repo**. So `chooseδ (α := ℝ≥0)` cannot
+typecheck in any Lean version; this is not 4.31 drift. It is imported by nothing and was never on any
+build path. Making it build would require first *proving* a (non-`sorry`) `KSSeparation ℝ≥0` instance
+(the Archimedean sandwich for the nonneg reals — genuinely new background theory), not a mechanical
+upgrade. Some lines carry partial 4.31 drift edits from the upgrade pass; kept here as a record.
+-/
+
 import Mathlib.Algebra.Order.Archimedean.Basic
 import Mathlib.Data.NNReal.Basic
 import Mathlib.NumberTheory.Real.Irrational
@@ -340,11 +353,9 @@ noncomputable local instance : KnuthSkillingAlgebra ℝ≥0 where
   op_ident_right := by intro x; simp
   op_ident_left := by intro x; simp
   op_strictMono_left := by
-    intro y x₁ x₂ hx
-    exact add_lt_add_right hx y
+    intro y x₁ x₂ hx; show x₁ + y < x₂ + y; gcongr
   op_strictMono_right := by
-    intro x y₁ y₂ hy
-    exact add_lt_add_left hy x
+    intro x y₁ y₂ hy; show x + y₁ < x + y₂; gcongr
   ident_le := by intro x; exact bot_le
 
 -- Singleton atom family with atom `1`.

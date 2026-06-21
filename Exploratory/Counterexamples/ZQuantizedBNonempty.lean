@@ -1,3 +1,13 @@
+/-
+QUARANTINED (Exploratory/, excluded from the build) — pre-existing, version-independent breakage.
+
+Like `ZQuantizedBEmpty`, this file applies `chooseδ`/`chooseδ_spec` at `α := ℝ≥0`, which genuinely
+requires `[KSSeparation α]` (via `bounded_by_iterate`; same coupling on Lean v4.28). No
+`KSSeparation ℝ≥0` instance exists in the repo, so it cannot typecheck in any Lean version — not 4.31
+drift. Imported by nothing, never on any build path. Needs a proved `KSSeparation ℝ≥0` instance (new
+background theory), not a mechanical upgrade. Kept here as a record.
+-/
+
 import Mathlib.Data.NNReal.Basic
 import KnuthSkilling.Additive.Proofs.GridInduction.Core.Induction.ThetaPrime
 

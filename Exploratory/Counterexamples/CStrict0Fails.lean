@@ -1,3 +1,17 @@
+/-
+QUARANTINED (Exploratory/, excluded from the build) — pre-existing, version-independent breakage.
+
+This file applies the grid construction `chooseδ` (and `chooseδ_spec`, `DeltaSpec_unique`) at
+`α := SD`. But `chooseδ` genuinely requires `[KSSeparation α]` (its definition goes through
+`extensionSetC_nonempty_of_B_empty`, which uses `bounded_by_iterate` from
+`KnuthSkilling/Additive/Axioms/SandwichSeparation.lean`, an explicit `[KSSeparation α]` lemma — the
+same coupling on Lean v4.28). `SD` *provably lacks* separation
+(`SemidirectNoSeparation.not_KSSeparation : ¬ KSSeparation SD`), so `chooseδ (α := SD)` is ill-typed
+in every Lean version; this is not 4.31 drift. It is imported by nothing and was never on any build
+path. Fixing it would require a genuinely separation-free `chooseδ` variant (a construction redesign),
+not a mechanical upgrade. Kept here as a record/exploration.
+-/
+
 import KnuthSkilling.Additive.Proofs.GridInduction.Core.Induction.Construction
 import KnuthSkilling.Additive.Counterexamples.SemidirectNoSeparation
 

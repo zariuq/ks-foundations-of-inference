@@ -1,9 +1,22 @@
+/-
+QUARANTINED (Exploratory/, excluded from the build).
+
+The mathematical content here (NewAtomCommutes is not derivable in `SD`) is sound and most of the
+proof is plain 4.31 drift. But making it build requires `omit [KSSeparation α]` on pure-monoid grid
+helpers (`mu_unitMulti`, …) in the crown-jewel core; doing so was verified to CASCADE and break the
+green grid route (e.g. `iterate_le_mu`/`Theta'_raw` synthesis), because the route calls neighbouring
+helpers whose auto-included binder count then shifts. Rather than risk the peer-review-bound route for
+one opt-in countermodel, it is quarantined pending a cleaner refactor (e.g. relocating the needed
+pure-monoid helpers into a separation-free section). Imported by nothing; never on any build path. The
+file carries partial 4.31 drift edits from the upgrade pass.
+-/
+
 import KnuthSkilling.Additive.Proofs.GridInduction.Core.Induction.Goertzel
 import KnuthSkilling.Additive.Counterexamples.SemidirectNoSeparation
 
 namespace KnuthSkilling.Additive.Counterexamples
 
-open Classical KnuthSkillingAlgebra
+open Classical KnuthSkillingAlgebra KnuthSkillingAlgebraBase
 open KnuthSkilling.Additive
 
 /-!
@@ -77,7 +90,8 @@ theorem exists_not_newAtomDecompose :
     have hiter :
         iterate_op (op SD.exX SD.exY) 2 =
           op (iterate_op SD.exX 2) (iterate_op SD.exY 2) := by
-      simpa [NewAtomDecompose, hμ, KnuthSkillingAlgebra.iterate_op_one] using hdec'
+      rw [hμ] at hdec'
+      simpa [NewAtomDecompose, KnuthSkillingAlgebra.iterate_op_one] using hdec'
     simpa using (op_comm_of_iter2_decompose (a := SD.exX) (d := SD.exY) hiter)
   exact SD.op_not_comm hop
 
