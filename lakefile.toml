@@ -2,29 +2,41 @@ name = "ks-foundations-of-inference-lean"
 version = "0.1.0"
 releaseRepo = "https://github.com/zariuq/ks-foundations-of-inference"
 preferReleaseBuild = true
-defaultTargets = ["KnuthSkilling"]
+defaultTargets = ["KnuthSkilling", "Algebra", "Computability", "InformationTheory", "Logic", "ProbabilityTheory", "UniversalAI"]
 weakLeanArgs = ["-j", "1"]
+
+# Each `lean_lib` uses a recursive glob (`Name.+`) so that `lake build <Name>` builds every module
+# under that directory by name (most libs have no single root module). The `Exploratory/` directory
+# is intentionally NOT a `lean_lib` and is matched by no glob, so its quarantined files are excluded
+# from the build.
 
 [[lean_lib]]
 name = "KnuthSkilling"
+globs = ["KnuthSkilling.+"]
 
 [[lean_lib]]
 name = "Algebra"
+globs = ["Algebra.+"]
 
 [[lean_lib]]
 name = "Computability"
+globs = ["Computability.+"]
 
 [[lean_lib]]
 name = "InformationTheory"
+globs = ["InformationTheory.+"]
 
 [[lean_lib]]
 name = "Logic"
+globs = ["Logic.+"]
 
 [[lean_lib]]
 name = "ProbabilityTheory"
+globs = ["ProbabilityTheory.+"]
 
 [[lean_lib]]
 name = "UniversalAI"
+globs = ["UniversalAI.+"]
 
 [[require]]
 name = "ordered_semigroups"
