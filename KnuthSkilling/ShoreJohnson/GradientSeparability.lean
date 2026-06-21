@@ -263,10 +263,8 @@ theorem deriv_symmetric_under_swap
   -- So φ = ψ ∘ (fun t => q_i + q_j - t)
   -- Derivative of (fun t => q_i + q_j - t) is -1
   have hReflect : HasDerivAt (fun t => q.p i + q.p j - t) (-1) (q.p i) := by
-    have h1 : HasDerivAt (fun t => q.p i + q.p j) 0 (q.p i) := hasDerivAt_const _ _
     have h2 : HasDerivAt (fun t => t) 1 (q.p i) := hasDerivAt_id _
-    convert h1.sub h2 using 1
-    ring
+    exact h2.const_sub (q.p i + q.p j)
   -- At t = q_i, the reflected parameter is q_j
   have hReflect_val : q.p i + q.p j - q.p i = q.p j := by ring
   -- Use chain rule: if ψ has derivative L_ji at q_j, and the reflection has derivative -1,

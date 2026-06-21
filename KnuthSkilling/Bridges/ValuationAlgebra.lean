@@ -134,7 +134,7 @@ theorem ve_correct_regrade
   classical
   let fg' := regradeFactorGraph (rep := rep) fg
   -- Reuse the valuation-bridge VE correctness lemma on the regraded factor graph.
-  simpa using
+  exact
     (sumOutAll_combineAll_via_valuation
       (fg := fg')
       (fs := VariableElimination.factorsOfGraph (fg := fg')) (order := order))

@@ -53,7 +53,7 @@ theorem hasFDerivAt_shift2 {n : ℕ} (q : Fin n → ℝ) (i j : Fin n) (t₀ : �
   -- The map `t ↦ t • v` is linear, hence its derivative is itself.
   let v : Fin n → ℝ := Pi.single i (1 : ℝ) - Pi.single j (1 : ℝ)
   have hsmul : HasFDerivAt ((1 : ℝ →L[ℝ] ℝ).smulRight v) ((1 : ℝ →L[ℝ] ℝ).smulRight v) (t₀ - q i) := by
-    simpa using (ContinuousLinearMap.hasFDerivAt (e := (1 : ℝ →L[ℝ] ℝ).smulRight v) (x := t₀ - q i))
+    simpa using (ContinuousLinearMap.hasFDerivAt (f := (1 : ℝ →L[ℝ] ℝ).smulRight v) (x := t₀ - q i))
   have hcomp :
       HasFDerivAt (fun t : ℝ => (t - q i) • v)
         (((1 : ℝ →L[ℝ] ℝ).smulRight v).comp (.id ℝ ℝ)) t₀ := by

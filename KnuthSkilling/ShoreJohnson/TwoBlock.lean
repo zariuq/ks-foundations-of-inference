@@ -194,7 +194,9 @@ theorem hasDerivAt_comp_mul_left {f : ℝ → ℝ} {w x L : ℝ}
   have hmul' : HasDerivAt (fun u : ℝ => w * u) w x := by
     simpa [mul_comm] using hmul
   -- Composition gives derivative `L * w`, which equals `w * L` over `ℝ`.
-  simpa [mul_comm, mul_left_comm, mul_assoc] using (hf.comp x hmul')
+  have hcomp := hf.comp x hmul'
+  rw [mul_comm L w] at hcomp
+  exact hcomp
 
 theorem hasDerivAt_shift2ProbClamp_scaled
     {F : ObjectiveFunctional} {n : ℕ} (p q : ProbDist n)

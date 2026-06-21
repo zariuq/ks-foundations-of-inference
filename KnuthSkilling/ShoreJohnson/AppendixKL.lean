@@ -352,14 +352,14 @@ lemma hasDerivAt_klAtom (w u : ℝ) (hw : 0 < w) (hu : 0 < u) :
     Real.hasDerivAt_log (ne_of_gt (div_pos hw hu))
   have hlogcomp : HasDerivAt (fun x => Real.log (x / u)) ((w / u)⁻¹ * (1 / u)) w := by
     have := hlog'.comp w hdiv
-    simpa [Function.comp] using this
+    exact this
   -- Now product rule for `x * log(x/u)`.
   have hmul :
       HasDerivAt (fun x => x * Real.log (x / u))
         (Real.log (w / u) + w * ((w / u)⁻¹ * (1 / u))) w := by
     have hid : HasDerivAt (fun x => x) 1 w := hasDerivAt_id w
-    have := hid.mul hlogcomp
-    simpa [mul_assoc, add_comm, add_left_comm, add_assoc] using this
+    have hmuld := hid.mul hlogcomp
+    simpa only [Pi.mul_def, one_mul] using hmuld
   have hwcoef : w * (u / w * u⁻¹) = (1 : ℝ) := by
     calc
       w * (u / w * u⁻¹) = w * ((u * w⁻¹) * u⁻¹) := by
@@ -492,7 +492,7 @@ theorem stationaryEV_of_isMinimizer_ofAtom_klAtom {n : ℕ}
         intro i
         have hcont : Continuous (fun t : ℝ => qLine t i) := by
           -- `t ↦ q_i + t*v_i`.
-          simpa [qLine] using (continuous_const.add (continuous_id.mul continuous_const))
+          exact (continuous_const.add (continuous_id.mul continuous_const))
         have h0 : 0 < qLine 0 i := by simpa [qLine] using hqPos i
         -- Preimage of `Ioi 0` is a neighborhood.
         have : ∀ᶠ t in 𝓝 (0 : ℝ), qLine t i ∈ Set.Ioi (0 : ℝ) :=
@@ -570,8 +570,9 @@ theorem stationaryEV_of_isMinimizer_ofAtom_klAtom {n : ℕ}
       have hkl' :
           HasDerivAt (fun x => klAtom x (p.p i)) (gKL (q.p i) (p.p i) + 1) (qLine 0 i) := by
         simpa [qLine] using hkl
-      simpa [Function.comp, qLine, gKL, mul_assoc, mul_left_comm, mul_comm] using
-        (hkl'.comp (0 : ℝ) hAff)
+      have hcomp := hkl'.comp (0 : ℝ) hAff
+      rw [mul_comm (gKL (q.p i) (p.p i) + 1) (v i)] at hcomp
+      exact hcomp
     have hderiv :
         HasDerivAt φLine (∑ i : Fin n, v i * (gKL (q.p i) (p.p i) + 1)) 0 := by
       -- Derivative of a finite sum.
