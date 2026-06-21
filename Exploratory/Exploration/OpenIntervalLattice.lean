@@ -1,4 +1,11 @@
 /-
+QUARANTINED (Exploratory/, excluded from the build).
+
+This exploration file has PRE-EXISTING `sorry`s (4: an open-interval lattice instantiation never
+finished). They predate the 4.31 upgrade (present at the grid-fix baseline) and are left exactly
+as-is — not increased. It is imported by nothing and was never reached before; it is kept out of
+the default build so the library stays `sorry`-free.
+
 # Open Interval Lattice Exploration
 
 **Research Question**: If we instantiate K&S on the lattice of open sets (or intervals),

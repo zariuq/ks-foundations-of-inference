@@ -1,6 +1,13 @@
 import KnuthSkilling.Multiplicative.Proofs.Direct.FibonacciProof
 
 /-!
+QUARANTINED (Exploratory/, excluded from the build).
+
+This scratch file has PRE-EXISTING `sorry`s (an incomplete Fibonacci-style derivation, already
+labelled ARCHIVED/INCOMPLETE below). They predate the 4.31 upgrade (present at the grid-fix
+baseline) and are left exactly as-is — not increased. Imported by nothing; kept out of the default
+build so the library stays `sorry`-free.
+
 # ARCHIVED: Incomplete Theorems from FibonacciProof.lean
 
 These theorems represent alternative approaches that were NOT needed for the final
