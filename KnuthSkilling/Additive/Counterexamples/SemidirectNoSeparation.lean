@@ -72,7 +72,9 @@ theorem baseOp_assoc (p q r : SDBase) : baseOp (baseOp p q) r = baseOp p (baseOp
 
 theorem op_assoc : ∀ x y z : SD, op (op x y) z = op x (op y z) := by
   intro x y z
-  cases x <;> cases y <;> cases z <;> simp [op, baseOp_assoc]
+  cases x <;> cases y <;> cases z <;> first
+  | rfl
+  | exact congrArg some (baseOp_assoc _ _ _)
 
 theorem op_ident_right : ∀ x : SD, op x ident = x := by
   intro x; simp [ident]
@@ -232,17 +234,23 @@ def fst : SD → ℕ
 
 lemma fst_op_left_some (p : SDBase) (z : SD) :
     fst (op (some p) z) = (p.1 : ℕ) + fst z := by
-  cases z <;> simp [fst, op, baseOp]
+  cases z with
+  | none => exact (Nat.add_zero _).symm
+  | some q => rfl
 
 lemma fst_iterate_op_left_some (p : SDBase) (n : ℕ) :
     fst (Nat.iterate (op (some p)) n (some p)) = (n + 1) * (p.1 : ℕ) := by
   induction n with
   | zero =>
-    simp [fst]
+    exact (Nat.one_mul _).symm
   | succ n ih =>
     -- Use the application form: `f^[n+1] a = f (f^[n] a)`.
-    simp [Function.iterate_succ_apply', fst_op_left_some, ih, Nat.succ_mul, Nat.add_comm,
-      Nat.add_left_comm]
+    calc
+      _ = fst (op (some p) ((op (some p))^[n] (some p))) :=
+        congrArg fst (Function.iterate_succ_apply' (op (some p)) n (some p))
+      _ = (p.1 : ℕ) + fst ((op (some p))^[n] (some p)) := fst_op_left_some _ _
+      _ = (p.1 : ℕ) + (n + 1) * (p.1 : ℕ) := congrArg ((p.1 : ℕ) + ·) ih
+      _ = _ := by ring
 
 lemma fst_le_of_le : ∀ {x y : SD}, x ≤ y → fst x ≤ fst y := by
   intro x y hxy
@@ -332,8 +340,10 @@ def exY : SD := ((toLex ((⟨2, Nat.succ_pos 1⟩ : PNat), 1) : SDBase) : SD)
 theorem op_not_comm : KnuthSkillingAlgebraBase.op exX exY ≠ KnuthSkillingAlgebraBase.op exY exX := by
   -- exX ⊕ exY = (3, 1 + 2^1*1) = (3, 3)
   -- exY ⊕ exX = (3, 1 + 2^2*1) = (3, 5)
-  simp [SD.exX, SD.exY, SD.op, SD.baseOp, KnuthSkillingAlgebraBase.op]
-  decide
+  intro h
+  have hcoord := congrArg (fun x : SD => x.map (fun p => p.2)) h
+  change (some 3 : Option ℕ) = some 5 at hcoord
+  cases hcoord
 
 /-!
 ## `KSSeparation` fails in this model

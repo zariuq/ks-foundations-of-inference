@@ -186,11 +186,11 @@ theorem cauchyEquation_measurable_linear (f : ℝ → ℝ)
       map_zero' := CauchyEquation.map_zero hCauchy
       map_add' := hCauchy }
   have hMeasF : Measurable (F : ℝ → ℝ) := by
-    simpa [F] using hMeas
+    exact hMeas
   have hContF : Continuous (F : ℝ → ℝ) :=
     MeasureTheory.Measure.AddMonoidHom.continuous_of_measurable F hMeasF
   have hCont : Continuous f := by
-    simpa [F] using hContF
+    exact hContF
   exact cauchyEquation_continuous_linear f hCauchy hCont
 
 /-! ## The Variational Equation -/
@@ -363,7 +363,8 @@ theorem variationalEquation_solution_measurable
     have hEq : transformToAdditive phi = fun u : ℝ => H' (Real.exp u) - c1 - mu 1 := by
       funext u
       simp [transformToAdditive, hphi_eq (Real.exp u) (Real.exp_pos u)]
-    simpa [hEq] using (hH'exp.sub measurable_const).sub measurable_const
+    rw [hEq]
+    exact (hH'exp.sub measurable_const).sub measurable_const
 
   -- Step 6: Apply Cauchy solution
   obtain ⟨C, hC⟩ := cauchyEquation_measurable_linear _ hpsi_cauchy hpsi_measurable

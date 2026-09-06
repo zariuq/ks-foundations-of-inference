@@ -57,7 +57,10 @@ def fst : Aff → ℕ
 @[simp] theorem fst_some (p : AffBase) : fst (some p : Aff) = (p.1 : ℕ) := rfl
 
 theorem fst_op (x y : Aff) : fst (op x y) = fst x * fst y := by
-  cases x <;> cases y <;> simp [fst, op, baseOp]
+  cases x <;> cases y <;> first
+  | rfl
+  | exact (Nat.one_mul _).symm
+  | exact (Nat.mul_one _).symm
 
 theorem baseOp_assoc (p q r : AffBase) : baseOp (baseOp p q) r = baseOp p (baseOp q r) := by
   apply Prod.ext
@@ -66,7 +69,9 @@ theorem baseOp_assoc (p q r : AffBase) : baseOp (baseOp p q) r = baseOp p (baseO
 
 theorem op_assoc : ∀ x y z : Aff, op (op x y) z = op x (op y z) := by
   intro x y z
-  cases x <;> cases y <;> cases z <;> simp [op, baseOp_assoc]
+  cases x <;> cases y <;> cases z <;> first
+  | rfl
+  | exact congrArg some (baseOp_assoc _ _ _)
 
 theorem op_noncomm :
     ∃ x y : Aff, op x y ≠ op y x := by
@@ -74,8 +79,10 @@ theorem op_noncomm :
   let x : Aff := (some ((⟨2, by decide⟩ : PNat), 1))
   let y : Aff := (some ((⟨3, by decide⟩ : PNat), 1))
   refine ⟨x, y, ?_⟩
-  simp [x, y, op, baseOp]
-  decide
+  intro equality
+  have values := congrArg (fun value : Aff => value.map (fun pair => pair.2)) equality
+  change some 3 = some 4 at values
+  cases values
 
 /-!
 ## Why `op_archimedean` fails for this candidate
@@ -91,13 +98,13 @@ theorem fst_x1 : fst x1 = 1 := by rfl
 theorem fst_y2 : fst y2 = 2 := by rfl
 
 theorem op_x1_self : op x1 x1 = x1 := by
-  simp [x1, op, baseOp]
+  rfl
 
 theorem not_op_archimedean_candidate :
     ¬ (∀ x y : Aff, ident < x → ∃ n : ℕ, y < Nat.iterate (op x) n x) := by
   intro h
   have hx : ident < x1 := by
-    have hx_ne : (x1 : Aff) ≠ ⊥ := by simp [x1]
+    have hx_ne : (x1 : Aff) ≠ ⊥ := WithBot.coe_ne_bot
     exact (WithBot.bot_lt_iff_ne_bot (x := (x1 : Aff))).2 hx_ne
   rcases h x1 y2 hx with ⟨n, hn⟩
   -- Since `op x1 x1 = x1`, all iterates of `(op x1)` at `x1` are constant.
@@ -117,7 +124,7 @@ theorem not_op_archimedean_candidate :
         (y := ((⟨2, by decide⟩ : PNat), (0 : ℕ)))).2 ?_
     exact Or.inl (by
       -- `1 < 2` in `PNat`
-      exact (PNat.coe_lt_coe _ _).2 (by decide))
+      exact (PNat.coe_lt_coe _ _).2 (by change (1 : ℕ) < 2; omega))
   have : ¬ y2 < x1 := not_lt_of_ge (le_of_lt hx1_lt_y2)
   exact this hn'
 

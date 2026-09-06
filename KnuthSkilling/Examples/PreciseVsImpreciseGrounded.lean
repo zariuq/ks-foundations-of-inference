@@ -41,7 +41,11 @@ inductive State
   | safe
   | risky
   | catastrophic
-  deriving DecidableEq, Fintype
+  deriving DecidableEq
+
+instance : Fintype State where
+  elems := {.safe, .risky, .catastrophic}
+  complete value := by cases value <;> simp
 
 /-- Events are subsets of states, forming a Boolean algebra.
 

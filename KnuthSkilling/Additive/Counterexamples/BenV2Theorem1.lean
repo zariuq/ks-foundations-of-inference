@@ -37,7 +37,7 @@ theorem exists_assoc_strictMono_noncomm :
   refine ⟨SD.exX, SD.exY, ?_⟩
   -- `SD.op_not_comm` is stated for the `KnuthSkillingAlgebra.op` instance, but this
   -- instance is definitionally `SD.op`.
-  simpa [KnuthSkillingAlgebraBase.op, SD.op] using SD.op_not_comm
+  exact SD.op_not_comm
 
 /-- A tiny meta-lemma: an order-reflecting additive regrading forces commutativity. -/
 theorem commutative_of_representation

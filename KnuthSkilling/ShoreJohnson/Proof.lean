@@ -238,7 +238,7 @@ theorem mul_cauchy_Ioc_eq_const_mul_log
   have hψ_meas : Measurable ψ := by
     have hset : MeasurableSet {t : ℝ | 0 ≤ t} := measurableSet_Ici
     have hnegφ : Measurable fun t : ℝ => -φ (-t) := by
-      simpa using (hφ_meas.comp (measurable_neg : Measurable fun t : ℝ => -t)).neg
+      exact (hφ_meas.comp (measurable_neg : Measurable fun t : ℝ => -t)).neg
     exact Measurable.ite hset hφ_meas hnegφ
 
   have hψ_add : CauchyEquation ψ := by

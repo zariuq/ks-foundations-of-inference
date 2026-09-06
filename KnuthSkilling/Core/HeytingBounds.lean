@@ -186,24 +186,72 @@ theorem heytingWidth_nonneg (ν : ModularValuation α) (a : α) : 0 ≤ heytingW
   have h := lower_le_upper ν a
   linarith
 
+/-! ## Scalar Valuation Does Not Imply Boolean Collapse -/
+
+/-- The normalized rank valuation on the three-element Heyting chain. -/
+noncomputable def threeChainValuation : ModularValuation (Fin 3) where
+  val := fun a => (a.val : ℝ) / 2
+  monotone := by
+    intro a b hab
+    apply div_le_div_of_nonneg_right
+    · exact_mod_cast hab
+    · norm_num
+  val_bot := by norm_num
+  val_top := by norm_num
+  modular := by
+    intro a b
+    rcases le_total a b with hab | hba
+    · rw [sup_eq_right.mpr hab, inf_eq_left.mpr hab]
+      ring
+    · rw [sup_eq_left.mpr hba, inf_eq_right.mpr hba]
+
+/-- The three-chain valuation satisfies the strict, one-way fidelity condition
+used by K&S: a strict lattice comparison gives a strict scalar comparison. -/
+theorem threeChainValuation_strictMono : StrictMono threeChainValuation.val := by
+  intro a b hab
+  simp only [threeChainValuation]
+  apply div_lt_div_of_pos_right
+  · exact_mod_cast hab
+  · norm_num
+
+/-- A scalar modular valuation can exist on a non-Boolean Heyting algebra while
+its induced lower and upper truth bounds remain genuinely distinct.  Thus a
+scalar measure and a point-valued Boolean truth assignment are different
+notions. -/
+theorem threeChain_scalar_measure_with_strict_heyting_gap :
+    (1 : Fin 3) ⊔ (1 : Fin 3)ᶜ ≠ ⊤ ∧
+    threeChainValuation.val (1 : Fin 3) = (1 : ℝ) / 2 ∧
+    lowerBound threeChainValuation (1 : Fin 3) <
+      upperBound threeChainValuation (1 : Fin 3) := by
+  constructor
+  · decide
+  constructor
+  · norm_num [threeChainValuation]
+  · norm_num [lowerBound, upperBound, threeChainValuation]
+
 /-! ## Summary: The Correct Story
 
-The Heyting bounds construction captures exactly what distinguishes
-Boolean from Heyting probability:
+The Heyting bounds construction exposes one canonical numerical distinction
+between Boolean and Heyting complement behavior:
 
 1. **Lower bound** = ν(a) = "direct evidence for a"
 2. **Upper bound** = 1 - ν(¬a) = "absence of evidence against a"
 
 In Boolean algebras: lower = upper (points)
-In Heyting algebras: lower ≤ upper (intervals with slack)
+In Heyting algebras: lower ≤ upper (the interval may have slack)
 
 The **width** of the interval is the **excluded middle gap**:
 - Zero for elements satisfying a ⊔ ¬a = ⊤
-- Positive for elements where excluded middle fails
+- Positive where the valuation strictly detects failure of excluded middle
 
-This is the CORRECT gate between Boolean and Heyting K&S.
+This is the complement gate for modular valuations on Heyting algebras.
 It's NOT about "incomparable elements forcing interval overlap"
 (that claim was false and has been corrected).
+
+It does not prove that two real coordinates are a universally minimal
+codomain.  The pair records the direct-support and not-refuted readouts while
+preserving their possible gap; other observation disciplines can require
+different algebraic carriers.
 
 The connection to intuitionistic logic:
 - In classical logic: knowing ¬a tells you everything about a

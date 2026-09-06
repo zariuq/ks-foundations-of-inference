@@ -68,12 +68,12 @@ def instAddCommMonoid {α : Type*} [KnuthSkillingAlgebraBase α]
   nsmul n x := ⟨iterate_op x.val n⟩
   nsmul_zero x := by
     ext
-    simp [iterate_op_zero, val_zero]
+    exact iterate_op_zero x.val
   nsmul_succ n x := by
     ext
     have hswap : op x.val (iterate_op x.val n) = op (iterate_op x.val n) x.val := by
       simpa using (hcomm x.val (iterate_op x.val n))
-    simpa [iterate_op_succ, val_add] using hswap
+    exact (iterate_op_succ x.val n).trans hswap
   add_assoc x y z := by
     ext
     simpa [val_add] using (op_assoc x.val y.val z.val)

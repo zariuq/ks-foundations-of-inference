@@ -1,5 +1,5 @@
 /-
-# Heyting Valuations: Proper K&S on Distributive Lattices
+# Heyting Valuations: Modular Valuations on Distributive Lattices
 
 ## The Key Insight
 
@@ -8,7 +8,7 @@ Standard K&S probability on Boolean algebras uses:
 
 But on Heyting algebras, complements don't satisfy ¬¬a = a, so this doesn't work.
 
-The proper generalization uses the **modularity axiom**:
+A complement-free generalization uses the **modularity axiom**:
 - ν(x) + ν(y) = ν(x ∨ y) + ν(x ∧ y)
 
 This avoids complements entirely, working directly with lattice operations (∨, ∧).
@@ -16,8 +16,10 @@ This avoids complements entirely, working directly with lattice operations (∨,
 ## Key Properties
 
 On Boolean algebras, modularity + normalization recovers standard probability.
-On non-Boolean Heyting algebras, we get a proper probability-like measure
-that respects the partial order structure without forcing total ordering.
+On non-Boolean Heyting algebras, modular valuations give probability-like
+scalar measures without requiring Boolean complements.  This does not imply
+that every such valuation detects every non-Boolean element, nor that a
+two-dimensional codomain is forced.
 
 ## References
 

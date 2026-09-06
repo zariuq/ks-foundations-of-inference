@@ -153,7 +153,11 @@ inductive Chain3 : Type
   | bot : Chain3
   | mid : Chain3
   | top : Chain3
-  deriving DecidableEq, Fintype
+  deriving DecidableEq
+
+instance : Fintype Chain3 where
+  elems := {.bot, .mid, .top}
+  complete value := by cases value <;> simp
 
 namespace Chain3
 

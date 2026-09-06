@@ -3,7 +3,6 @@ version = "0.1.0"
 releaseRepo = "https://github.com/zariuq/ks-foundations-of-inference"
 preferReleaseBuild = true
 defaultTargets = ["KnuthSkilling", "Algebra", "Computability", "InformationTheory", "Logic", "ProbabilityTheory", "UniversalAI"]
-weakLeanArgs = ["-j", "1"]
 
 # Each `lean_lib` uses a recursive glob (`Name.+`) so that `lake build <Name>` builds every module
 # under that directory by name (most libs have no single root module). The `Exploratory/` directory
@@ -12,7 +11,7 @@ weakLeanArgs = ["-j", "1"]
 
 [[lean_lib]]
 name = "KnuthSkilling"
-globs = ["KnuthSkilling.+"]
+globs = ["KnuthSkilling", "KnuthSkilling.+"]
 
 [[lean_lib]]
 name = "Algebra"
@@ -46,4 +45,4 @@ rev = "dd82826dfce02bedabbad75734e4f055939369f6"
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.31.0"
+rev = "0df444a360eaa60ab8c11dca51a86af692955474"

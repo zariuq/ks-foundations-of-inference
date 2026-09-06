@@ -80,21 +80,22 @@ noncomputable def F2 : AtomFamily ℝ≥0 2 :=
       else ⟨Real.sqrt 2, by positivity⟩
     pos := by
       intro i
-      by_cases h : i = i0
-      · subst h
-        simp [KnuthSkillingAlgebraBase.ident]
-      · have : (0 : ℝ) < Real.sqrt 2 := by
-          have : (0 : ℝ) < (2 : ℝ) := by norm_num
-          exact Real.sqrt_pos.2 this
-        -- Reduce the goal to `0 < √2` in `ℝ≥0`, then cast.
-        have : (0 : ℝ≥0) < ⟨Real.sqrt 2, by positivity⟩ := by
-          exact_mod_cast this
-        simpa [if_neg h, KnuthSkillingAlgebraBase.ident] using this }
+      change (0 : ℝ≥0) < (if i = i0 then 1 else ⟨Real.sqrt 2, by positivity⟩)
+      have positive : ∀ (p : Prop) [Decidable p],
+          (0 : ℝ≥0) < (if p then 1 else ⟨Real.sqrt 2, by positivity⟩) := by
+        intro p decision
+        by_cases h : p
+        · exact (congrArg (fun x : ℝ≥0 => 0 < x) (if_pos h)).mpr zero_lt_one
+        · exact (congrArg (fun x : ℝ≥0 => 0 < x) (if_neg h)).mpr
+            (show (0 : ℝ≥0) < ⟨Real.sqrt 2, by positivity⟩ from
+              by exact_mod_cast (Real.sqrt_pos.mpr (by norm_num : (0 : ℝ) < 2)))
+      exact positive (i = i0) }
 
 private lemma F2_atom0 : F2.atoms i0 = (1 : ℝ≥0) := by
   simp [F2, i0]
 
 private lemma F2_atom1 : F2.atoms i1 = ⟨Real.sqrt 2, by positivity⟩ := by
+  apply Subtype.ext
   simp [F2, i0, i1]
 
 private lemma iterate_op_add_eq_mul (x : ℝ≥0) : ∀ n : ℕ, iterate_op x n = (n : ℝ≥0) * x
@@ -123,8 +124,9 @@ private lemma mu_F2 (r : Multi 2) :
   have h1 :
       ((iterate_op (α := ℝ≥0) (F2.atoms i1) (r i1) : ℝ≥0) : ℝ) = (r i1 : ℝ) * Real.sqrt 2 := by
     -- atom1 = √2
-    rw [F2_atom1, iterate_op_add_eq_mul, NNReal.coe_mul, NNReal.coe_natCast]
-    congr 1
+    have iteration := congrArg (fun value : ℝ≥0 => (value : ℝ))
+      (iterate_op_add_eq_mul (F2.atoms i1) (r i1))
+    exact iteration.trans (by rw [NNReal.coe_mul, NNReal.coe_natCast]; rfl)
   -- Collect terms.
   have h0' :
       ((iterate_op (α := ℝ≥0) (F2.atoms 0) (r 0) : ℝ≥0) : ℝ) = (r 0 : ℝ) := by

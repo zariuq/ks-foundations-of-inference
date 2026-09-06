@@ -57,7 +57,11 @@ inductive ConfigState
   | analytics  -- a ∧ b ∧ c ∧ ¬d
   | alerts     -- a ∧ b ∧ ¬c ∧ d
   | full       -- a ∧ b ∧ c ∧ d
-  deriving DecidableEq, Fintype
+  deriving DecidableEq
+
+instance : Fintype ConfigState where
+  elems := {.nothing, .justA, .justB, .coresOnly, .analytics, .alerts, .full}
+  complete value := by cases value <;> simp
 
 namespace ConfigState
 

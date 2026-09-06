@@ -309,8 +309,7 @@ theorem coinMeasure_cylinderSet (n : ℕ) (bits : Fin n → Bool) :
     unfold bernoulliHalfMeasure bernoulliHalf half
     rw [(PMF.bernoulli 2⁻¹ half_le_one).toMeasure_apply_singleton
         (bits ⟨i, hi⟩) (measurableSet_singleton _)]
-    rw [PMF.bernoulli_apply]
-    cases bits ⟨i, hi⟩ <;> simp
+    exact (PMF.bernoulli_apply (p := 2⁻¹) (h := half_le_one) (b := bits ⟨i, hi⟩)).trans (by cases bits ⟨i, hi⟩ <;> simp)
   rw [Finset.prod_congr rfl h_half]
   rw [Finset.prod_const, Finset.card_range]
 

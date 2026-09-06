@@ -1409,8 +1409,7 @@ theorem cutSet_pnat_add_closed (a x y : α) (_hcomm : ∀ u v : α, op u v = op 
     have h_add_lhs : iterate_op_pnat a (⟨m₁.val * n₂.val + m₂.val * n₁.val, h_num_pos⟩ : ℕ+) =
                      op (iterate_op_pnat a (⟨m₁.val * n₂.val, Nat.mul_pos m₁.pos n₂.pos⟩ : ℕ+))
                         (iterate_op_pnat a (⟨m₂.val * n₁.val, Nat.mul_pos m₂.pos n₁.pos⟩ : ℕ+)) := by
-      rw [← iterate_op_pnat_add]
-      congr 1
+      exact iterate_op_pnat_add a (m₁ * n₂) (m₂ * n₁)
     -- Step 3: x^(n₁*n₂) ⊕ y^(n₁*n₂) = (x⊕y)^(n₁*n₂) (distribution with commutativity)
     have h_distrib : iterate_op_pnat (op x y) (n₁ * n₂) =
                      op (iterate_op_pnat x (n₁ * n₂)) (iterate_op_pnat y (n₁ * n₂)) := by

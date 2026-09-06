@@ -333,7 +333,7 @@ theorem mean_bornRule_sum_unit_phases :
     rw [intervalIntegral.integral_const_mul, hcos]
     simp only [mul_zero, add_zero]
     field_simp
-  · exact intervalIntegral.intervalIntegrable_const
+  · exact intervalIntegrable_const
   · apply IntervalIntegrable.const_mul
     exact Continuous.intervalIntegrable (by continuity) _ _
 

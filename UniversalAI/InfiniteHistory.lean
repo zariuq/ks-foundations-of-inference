@@ -224,7 +224,8 @@ theorem measurable_discountedUtilityTrunc
   intro n hn
   have h_at := measurable_reward_at (Action := Action) (Percept := Percept)
     (reward := reward) (k := n) h_reward
-  simpa [discountedUtilityTrunc] using (measurable_const.mul h_at)
+  convert (measurable_const (a := w n)).mul h_at using 1
+  rfl
 
 omit [MeasurableSpace Action] [MeasurableSpace Percept] in
 theorem summable_discountedUtility_of_bound

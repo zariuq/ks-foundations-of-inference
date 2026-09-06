@@ -21,7 +21,7 @@ These are minimal *formal* blockers against any proof attempt that tries to dedu
 theorem exists_knuthskilling_noncomm :
     ∃ (α : Type) (_ : KnuthSkillingAlgebra α), ∃ x y : α, op x y ≠ op y x := by
   refine ⟨SD, inferInstance, SD.exX, SD.exY, ?_⟩
-  simpa [KnuthSkillingAlgebraBase.op, SD.op] using SD.op_not_comm
+  exact SD.op_not_comm
 
 theorem exists_knuthskilling_not_separation :
     ∃ (α : Type) (_ : KnuthSkillingAlgebra α), ¬ KnuthSkilling.KSSeparation α := by

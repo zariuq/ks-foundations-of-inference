@@ -1,32 +1,30 @@
 /-
-# Totality Axiom and Imprecise Probability
+# Totality, Order Reflection, and Interval Models
 
-This file formally derives that imprecise probability arises from weakening
-the totality axiom in Knuth-Skilling foundations.
+This file separates three notions that are easy to conflate: one-way scalar
+fidelity, order-reflecting scalar embeddings, and interval representations.
 
 ## Main Results
 
 * `PartialKnuthSkillingAlgebra`: K&S axioms with PartialOrder instead of LinearOrder
 * `PlausibilityInterval`: Interval-valued plausibilities for partial orders
-* `totality_implies_precision`: Adding totality collapses intervals to points
-* `partial_order_gives_imprecision`: Incomparable elements → non-trivial intervals
+* `totality_of_orderReflectingPointRepresentation`: an order-reflecting scalar
+  representation forces the source order to be total
+* `incomparable_implies_overlapping`: a faithful interval representation sends
+  incomparable elements to non-separated intervals
 
 ## Mathematical Background
 
-**Knuth-Skilling Full Axioms** (precise probability):
-1. **Total order**: ∀ a b, a ≤ b ∨ b ≤ a (trichotomy)
-2. Associativity: (x ⊕ y) ⊕ z = x ⊕ (y ⊕ z)
-3. Identity: x ⊕ 0 = x
-4. Strict monotonicity
-5. Archimedean: no infinitesimals
+`PartialKnuthSkillingAlgebra` is a deliberately lightweight partial-order
+analogue of the ordered associative combination used by K&S.  It is not, by
+itself, a formalization of all the hypotheses of their representation theorem.
 
-**Weakened Axioms** (imprecise probability):
-1. **Partial order**: reflexive, antisymmetric, transitive (NO totality)
-2-5: Same as above
-
-**Key Insight**: The representation theorem maps:
-- Total order → point-valued Θ : α → ℝ
-- Partial order → interval-valued Θ : α → [ℝ, ℝ]
+**Key distinction**: K&S fidelity is one-way: order in the lattice must imply
+order of the scalar values, while the scalar order may extend the lattice order.
+The stronger requirement that a scalar map also *reflect* order forces the
+source order to be total.  Interval-valued semantics is one principled way to
+retain incomparability, but incomparability alone does not forbid ordinary
+one-way K&S scalar valuations.
 
 ## References
 
@@ -53,9 +51,10 @@ in plausibility assignments.
 
 /-- A **Partial Knuth-Skilling Algebra**: the K&S axioms with partial order instead of linear order.
 
-This captures systems where some plausibilities are incomparable — the agent
-cannot decide which is more plausible. This is the algebraic foundation
-for imprecise probability / credal sets / coherent lower previsions.
+This captures systems where some plausibilities are incomparable.  An interval
+model can retain that information, but further coherence assumptions are needed
+before identifying such a model with a particular theory of imprecise
+probability.
 
 **Difference from `KnuthSkillingAlgebra`**:
 - `KnuthSkillingAlgebra` extends `LinearOrder` (total order)
@@ -101,8 +100,9 @@ end PartialKnuthSkillingAlgebra
 /-!
 ## Part 2: Interval Representation
 
-For partial orders, we represent elements as intervals [lower, upper] ⊆ ℝ.
-The interval width measures the "imprecision" in the plausibility assignment.
+This section studies a chosen interval representation [lower, upper] ⊆ ℝ.
+The interval width measures imprecision in that representation.  Existence of
+such a representation is data below, not a consequence of partial order alone.
 -/
 
 /-- An interval in ℝ representing an imprecise plausibility. -/
@@ -270,22 +270,23 @@ theorem linear_order_all_comparable {α : Type*} [LinearOrder α] (x y : α) :
   · exact Or.inr (le_of_lt hgt)
 
 /-!
-### Point-Valued Faithful Representations Force Totality
+### Order-Reflecting Point Representations Force Totality
 
-If a partial order admits a faithful point-valued representation into `ℝ` (i.e. an order embedding),
+If a partial order admits an order-reflecting point representation into `ℝ` (i.e. an order embedding),
 then it must already be total: any two points become comparable because `ℝ` is linearly ordered.
 
-This is the clean formal sense in which `LinearOrder` is not cosmetic: it is exactly what is needed
-to support point-valued (precise) representations. Dropping totality leads naturally to interval-
-valued semantics (`TotalityImprecision.lean`) rather than a point-valued embedding.
+This is stronger than the one-way fidelity used by Knuth and Skilling: their scalar
+valuation may consistently add comparisons between incomparable lattice elements.
+Dropping order reflection leads naturally to scalar extensions; retaining the
+original incomparability leads naturally to interval- or product-valued semantics.
 -/
 
-/-- A point-valued **faithful** representation into `ℝ`: order is reflected and preserved. -/
-def FaithfulPointRepresentation (α : Type*) [PartialOrder α] : Prop :=
+/-- A point-valued representation into `ℝ` that both preserves and reflects order. -/
+def OrderReflectingPointRepresentation (α : Type*) [PartialOrder α] : Prop :=
   ∃ Θ : α → ℝ, ∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b
 
-theorem totality_of_faithfulPointRepresentation {α : Type*} [PartialOrder α]
-    (hΘ : FaithfulPointRepresentation α) :
+theorem totality_of_orderReflectingPointRepresentation {α : Type*} [PartialOrder α]
+    (hΘ : OrderReflectingPointRepresentation α) :
     ∀ x y : α, x ≤ y ∨ y ≤ x := by
   rcases hΘ with ⟨Θ, hΘ⟩
   intro x y
@@ -293,28 +294,28 @@ theorem totality_of_faithfulPointRepresentation {α : Type*} [PartialOrder α]
   · exact Or.inl ((hΘ x y).2 hxy)
   · exact Or.inr ((hΘ y x).2 hyx)
 
-theorem no_faithfulPointRepresentation_of_incomparable {α : Type*} [PartialOrder α]
+theorem no_orderReflectingPointRepresentation_of_incomparable {α : Type*} [PartialOrder α]
     (hinc : ∃ x y : α, ¬(x ≤ y) ∧ ¬(y ≤ x)) :
-    ¬ FaithfulPointRepresentation α := by
+    ¬ OrderReflectingPointRepresentation α := by
   intro hΘ
   rcases hinc with ⟨x, y, hx, hy⟩
-  have htot := totality_of_faithfulPointRepresentation (α := α) hΘ x y
+  have htot := totality_of_orderReflectingPointRepresentation (α := α) hΘ x y
   cases htot with
   | inl hxy => exact hx hxy
   | inr hyx => exact hy hyx
 
-theorem no_pointRepresentation_with_incomparables
+theorem no_orderReflectingPointRepresentation_with_incomparables
     {α : Type*} [PartialKnuthSkillingAlgebra α]
     (x y : α) (hxy : PartialKnuthSkillingAlgebra.Incomparable x y) :
     ¬ ∃ (Θ : α → ℝ), ∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b := by
   intro hΘ
-  -- Any faithful point-valued representation forces totality, contradicting incomparability.
+  -- Any order-reflecting point representation forces totality, contradicting incomparability.
   have hinc : ∃ x y : α, ¬(x ≤ y) ∧ ¬(y ≤ x) := ⟨x, y, hxy.1, hxy.2⟩
-  exact no_faithfulPointRepresentation_of_incomparable (α := α) hinc (by
-    simpa [FaithfulPointRepresentation] using hΘ)
+  exact no_orderReflectingPointRepresentation_of_incomparable (α := α) hinc (by
+    simpa [OrderReflectingPointRepresentation] using hΘ)
 
 /-!
-### Theorem 4: The Totality-Precision Connection
+### Theorem 4: Totality Constrains Interval Separation
 
 For faithful representations:
 - PartialOrder allows incomparable elements → allows overlapping intervals → imprecision possible
@@ -350,15 +351,16 @@ theorem totality_no_overlapping_intervals {α : Type*} [PartialKnuthSkillingAlge
     · rw [← heq]; exact Or.inr (Or.inr rfl)
 
 /-!
-## Part 4: The Axiom-Framework Correspondence
+## Part 4: Labels for Two Representation Policies
 
-The precision axis in the probability hypercube corresponds exactly to
-this totality/partial distinction:
+The following finite labels describe two representation policies.  They do not
+assert that the source order alone determines the codomain or a probability
+framework.
 
 | Precision | Order Type | Representation | Framework |
 |-----------|------------|----------------|-----------|
-| Precise | LinearOrder | Θ : α → ℝ | Kolmogorov |
-| Imprecise | PartialOrder | Θ : α → [ℝ,ℝ] | Walley |
+| Precise | scalar point model | Θ : α → ℝ | may support precise probability |
+| Imprecise | interval model | Θ : α → [ℝ,ℝ] | may support lower/upper probability |
 -/
 
 /-- The precision axis values. -/
@@ -369,8 +371,8 @@ deriving DecidableEq, Repr
 
 /-- Map precision axis to order type requirement. -/
 def PrecisionAxis.orderRequirement : PrecisionAxis → String
-  | .precise => "LinearOrder (totality required)"
-  | .imprecise => "PartialOrder (incomparability allowed)"
+  | .precise => "chosen scalar point model"
+  | .imprecise => "chosen interval model"
 
 /-- Map precision axis to representation type. -/
 def PrecisionAxis.representationType : PrecisionAxis → String
@@ -379,59 +381,42 @@ def PrecisionAxis.representationType : PrecisionAxis → String
 
 /-- Map precision axis to probability framework. -/
 def PrecisionAxis.framework : PrecisionAxis → String
-  | .precise => "Kolmogorov probability / Cox's theorem"
-  | .imprecise => "Walley's coherent lower previsions / credal sets"
+  | .precise => "compatible with precise probability"
+  | .imprecise => "compatible with lower/upper probability"
 
-/-- The axiom-framework correspondence as a formal statement. -/
-theorem precision_corresponds_to_totality :
-    (PrecisionAxis.precise).orderRequirement = "LinearOrder (totality required)" ∧
-    (PrecisionAxis.imprecise).orderRequirement = "PartialOrder (incomparability allowed)" := by
+/-- The labels expose the representation choice without claiming it follows
+from the source order. -/
+theorem precisionAxis_labels :
+    (PrecisionAxis.precise).orderRequirement = "chosen scalar point model" ∧
+    (PrecisionAxis.imprecise).orderRequirement = "chosen interval model" := by
   simp [PrecisionAxis.orderRequirement]
 
 /-!
-## Summary: What Falls Out of the Axiomatics (PROVEN)
-
-**Goertzel's Question**: "What axioms do the imprecise probabilities fall out of?"
-
-**Answer**: Imprecise probability arises from **K&S axioms with totality removed**.
+## Summary: Exact Scope of the Proven Results
 
 ### What We Have Proven:
 
 1. **`PartialKnuthSkillingAlgebra`**: K&S axioms with PartialOrder instead of LinearOrder
    - Allows incomparable elements (neither x ≤ y nor y ≤ x)
 
-2. **`incomparable_implies_overlapping`**: For faithful representations,
-   incomparable algebra elements ↔ overlapping interval representations
-   - Proved by contrapositive using faithfulness
+2. **`incomparable_implies_overlapping`**: For a supplied faithful interval
+   representation, incomparable algebra elements have non-separated images
+   - This is one direction, proved by contrapositive using faithfulness
 
 3. **`linear_order_no_incomparable`**: LinearOrder forbids incomparable elements
    - Proved from trichotomy
 
-4. **`totality_no_overlapping_intervals`**: In LinearOrder + faithful representation,
+4. **`totality_no_overlapping_intervals`**: Under totality and an
+   order-respecting interval representation,
    all interval pairs are separated or equal (no overlaps)
    - Proved by case analysis on x ≤ y ∨ y ≤ x
 
-### The Axiom-Framework Correspondence:
-
-| K&S Axiom Set | Order Type | Intervals | Framework |
-|---------------|------------|-----------|-----------|
-| Full K&S | LinearOrder | No overlap possible | Kolmogorov |
-| K&S − totality | PartialOrder | Overlaps allowed | Walley |
-
-### Why Imprecision Emerges Naturally:
-
-1. PartialOrder allows incomparable elements
-2. Incomparable elements must have overlapping intervals (for faithful reps)
-3. Overlapping intervals = imprecise plausibility assignments
-4. This IS Walley's coherent lower previsions!
-
-### The Quantale Connection:
-
-- **Precise** ([0,1] quantale): Point-valued, × as tensor
-- **Imprecise** ([0,1]² quantale): Interval-valued, componentwise × as tensor
-
-Both are commutative quantales, so the weakness formula w(H) = ⨁_{(u,v)∈H} [μ(u) ⊗ μ(v)]
-applies uniformly across the precision axis!
+These results do **not** prove that deleting totality from the K&S hypotheses
+constructs a Walley-style coherent lower prevision, nor that a partial order
+cannot have a one-way faithful scalar valuation.  They identify the stronger
+order-reflection hypothesis under which a real-valued point representation
+would force totality, and the consequences of choosing a faithful interval
+representation when incomparability is to be retained.
 -/
 
 end KnuthSkilling.TotalityImprecision

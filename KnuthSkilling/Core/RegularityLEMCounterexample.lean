@@ -145,7 +145,11 @@ inductive H5 : Type
   | b : H5
   | ab : H5
   | top : H5
-  deriving DecidableEq, Fintype
+  deriving DecidableEq
+
+instance : Fintype H5 where
+  elems := {.bot, .a, .b, .ab, .top}
+  complete value := by cases value <;> simp
 
 namespace H5
 
