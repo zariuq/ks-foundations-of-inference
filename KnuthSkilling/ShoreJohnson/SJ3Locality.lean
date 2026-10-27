@@ -1,71 +1,23 @@
 import KnuthSkilling.ShoreJohnson.GradientSeparability
-import KnuthSkilling.ShoreJohnson.TheoremI
-import KnuthSkilling.ShoreJohnson.AppendixMinimizer
 import KnuthSkilling.ShoreJohnson.TwoBlock
 
 /-!
-# SJ3 -> locality (work in progress)
+# Analytic transport across two-block presentations
 
-This file is a focused workspace for the Shore–Johnson Appendix A step:
-
-*SJ3 (subset independence) -> locality of the shift2 derivative.*
-
-In our main development (`GradientSeparability.lean`), locality is currently kept
-as an explicit assumption (`DerivLocalAssumption`), scoped to EV-minimizers, and upgraded to
-all interior points via an explicit richness premise (`EVRichness`).
-
-Here we start the derivation of that minimizer-scoped locality from SJ3 using the existing
-two-block (`twoBlock`) and expected-value (`EVConstraintSet`) infrastructure.
-
-Important: this is an **in-progress** proof file and is not imported by the main library yet.
+The inference subset law concerns selected posteriors; a derivative transport law
+concerns the supplied objective. They are different assertions. This module proves
+locality from explicit analytic transport and objective permutation symmetry.
+Ratio invariance also implies locality directly, without an inference premise.
 -/
-
 namespace KnuthSkilling.ShoreJohnson.SJ3Locality
-
 open Classical
-
 open KnuthSkilling.Information.InformationEntropy
 open KnuthSkilling.ShoreJohnson.Inference
 open KnuthSkilling.ShoreJohnson.Objective
 open KnuthSkilling.ShoreJohnson.Constraints
 open KnuthSkilling.ShoreJohnson.GradientSeparability
-open KnuthSkilling.ShoreJohnson.TheoremI
 open KnuthSkilling.ShoreJohnson.AppendixMinimizer
 open KnuthSkilling.ShoreJohnson.TwoBlock
-
-/-!
-## Target statement (minimizer-scoped locality)
-
-`DerivLocalAssumption F hDiff` is intentionally a statement *about derivatives at minimizers*:
-it only assumes `q` and `q'` are minimizers for *some* EV constraint sets.
-
-To derive it from SJ3, we will need:
-
-1. a way to embed an EV inference problem into a two-block problem where the “irrelevant” block
-   can be varied independently,
-2. a stationarity/KKT layer tying minimizers to first-order equations (see `TheoremIRegularity`),
-3. a derivative-transport lemma connecting the two-block embedding back to the original shift2
-   derivative along a chosen coordinate pair.
-
-At present, (3) is the key missing infrastructure.
--/
-
-/-! ## Symmetry infrastructure (SJ Lemma II, objective-level)
-
-In the Shore–Johnson Appendix, permutation invariance is used to replace `F` by a symmetric
-objective (average over all permutations), which has the same minimizers.
-
-For the derivative-level locality proof, it is technically convenient to assume *objective*
-permutation invariance directly, and then transport shift2 derivatives under permutations.
-This matches the effect of the symmetrization step, without duplicating its construction here.
--/
-
-/-! ## Two-block transport helpers
-
-We re-export the core two-block/shift2 lemmas here for use in the SJ3-locality derivation.
-These are proved in `TwoBlock.lean` and are stated with explicit positivity
-assumptions to remain mathlib-grade.
--/
 
 theorem shift2ProbClamp_twoBlock_left_of_mem
     {n m : ℕ} (w : ℝ) (hw0 : 0 < w) (hw1 : w < 1)
@@ -131,12 +83,10 @@ theorem hasDerivAt_twoBlock_left_shift2ProbClamp
       (i := i) (j := j) (hij := hij) (u0 := u0) (hqi := hqi) (hu0 := hu0) (hu1 := hu1)
       (L := L) h)
 
-/-- Objective-level permutation invariance: values are unchanged under relabeling. -/
 def ObjectivePermuteInvariant (F : ObjectiveFunctional) : Prop :=
   ∀ {n : ℕ} (σ : Equiv.Perm (Fin n)) (p q : ProbDist n),
     F.D (ProbDist.permute σ q) (ProbDist.permute σ p) = F.D q p
 
-/-- Derivative-level permutation invariance for shift2 derivatives. -/
 def DerivPermuteInvariant (F : ObjectiveFunctional) (hDiff : HasShift2Deriv F) : Prop :=
   ∀ {n : ℕ} (σ : Equiv.Perm (Fin n)) (p q : ProbDist n)
     (i j : Fin n) (hij : i ≠ j)
@@ -147,32 +97,28 @@ def DerivPermuteInvariant (F : ObjectiveFunctional) (hDiff : HasShift2Deriv F) :
         (σ i) (σ j) (σ.injective.ne_iff.mpr hij)
         (fun k => hp (σ.symm k)) (fun k => hq (σ.symm k)))
 
-/-- If the objective is permutation-invariant, then shift2 derivatives transport under permutations.
-
-This is the derivative-level shadow of the SJ symmetrization step (Lemma II).
--/
 theorem derivPermuteInvariant_of_objectivePermuteInvariant
     (F : ObjectiveFunctional) (hDiff : HasShift2Deriv F)
     (hPerm : ObjectivePermuteInvariant F) :
     DerivPermuteInvariant F hDiff := by
   intro n σ p q i j hij hp hq
-  -- Define the two 1D curves and show they are identical by permutation-invariance.
+
   let φ := fun t => F.D (shift2ProbClamp q i j hij t) p
   let ψ := fun t =>
     F.D (shift2ProbClamp (ProbDist.permute σ q) (σ i) (σ j) (σ.injective.ne_iff.mpr hij) t)
       (ProbDist.permute σ p)
   have hφψ : φ = ψ := by
     funext t
-    -- Permute the clamped shift2 curve and use invariance of F.D.
+
     have hperm :
         ProbDist.permute σ (shift2ProbClamp q i j hij t) =
           shift2ProbClamp (ProbDist.permute σ q) (σ i) (σ j)
             (σ.injective.ne_iff.mpr hij) t :=
       _root_.KnuthSkilling.ShoreJohnson.AppendixMinimizer.permute_shift2ProbClamp
         (σ := σ) (q := q) (i := i) (j := j) (hij := hij) (t := t)
-    -- Rewrite using objective invariance.
+
     simpa [φ, ψ, hperm] using (hPerm (σ := σ) (p := p) (q := shift2ProbClamp q i j hij t)).symm
-  -- Since the functions are equal, their derivatives at the corresponding points are equal.
+
   have hDeriv₁ :
       HasDerivAt φ (Classical.choose (hDiff.deriv_exists p q i j hij hp hq)) (q.p i) :=
     Classical.choose_spec (hDiff.deriv_exists p q i j hij hp hq)
@@ -189,10 +135,10 @@ theorem derivPermuteInvariant_of_objectivePermuteInvariant
         (ProbDist.permute σ p) (ProbDist.permute σ q)
         (σ i) (σ j) (σ.injective.ne_iff.mpr hij)
         (fun k => hp (σ.symm k)) (fun k => hq (σ.symm k)))
-  -- The evaluation points agree after permutation.
+
   have hpoint : (ProbDist.permute σ q).p (σ i) = q.p i := by
     simp [ProbDist.permute_apply]
-  -- Transport derivatives across definitional equality of curves.
+
   have hDeriv₂' :
       HasDerivAt φ
         (Classical.choose
@@ -228,12 +174,6 @@ theorem twoBlock_permute_swap_eq
         (b := inrFin (n := n) (m := m) j) (x := k) hk_i hk_j)
   simp [ProbDist.permute_apply, hswap]
 
-/-- **Two-block derivative transport (minimal analytic lemma)**:
-embedding a system into a two-block construction does not change the shift2 derivative
-within each block.
-
-This is strictly weaker than full ratio-invariance and is the exact transport fact
-used in the SJ3 → locality proof. -/
 structure DerivTwoBlockTransport (F : ObjectiveFunctional) (hDiff : HasShift2Deriv F) : Prop where
   left :
     ∀ {n m : ℕ} (w : ℝ) (hw0 : 0 < w) (hw1 : w < 1)
@@ -282,7 +222,6 @@ structure DerivTwoBlockTransport (F : ObjectiveFunctional) (hDiff : HasShift2Der
             hpComb hqComb) =
         Classical.choose (hDiff.deriv_exists p' q' i' j' hi'j' hp' hq')
 
-/-- Ratio invariance implies the two-block transport property. -/
 theorem derivTwoBlockTransport_of_ratio
     (F : ObjectiveFunctional) (hDiff : HasShift2Deriv F)
     (hRatio : DerivRatioInvariant F hDiff) :
@@ -354,12 +293,13 @@ theorem eq_twoBlock_of_isMinimizer_twoBlock_ev_of_realizesEV
       (p₁ : ProbDist n) (p₂ : ProbDist m)
       (cs₁ : EVConstraintSet n) (cs₂ : EVConstraintSet m)
       (q₁ : ProbDist n) (q₂ : ProbDist m) (q : ProbDist (n + m)),
+      (∀ i, 0 < p₁.p i) → (∀ i, 0 < p₂.p i) →
       IsMinimizer F p₁ (toConstraintSet cs₁) q₁ →
       IsMinimizer F p₂ (toConstraintSet cs₂) q₂ →
       IsMinimizer F (Inference.ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) p₁ p₂)
         (toConstraintSet (twoBlockConstraints (n := n) (m := m) w cs₁ cs₂)) q →
       q = Inference.ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) q₁ q₂ := by
-  intro n m w hw0 hw1 p₁ p₂ cs₁ cs₂ q₁ q₂ q hq₁ hq₂ hq
+  intro n m w hw0 hw1 p₁ p₂ cs₁ cs₂ q₁ q₂ q hp₁ hp₂ hq₁ hq₂ hq
   have heq :
       toConstraintSet (twoBlockConstraints (n := n) (m := m) w cs₁ cs₂) =
         Inference.ConstraintSet.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1)
@@ -383,84 +323,25 @@ theorem eq_twoBlock_of_isMinimizer_twoBlock_ev_of_realizesEV
           (toConstraintSet cs₁) (toConstraintSet cs₂)) q := by
     simpa [heq] using hInf'
   exact hSJ.subset_independent_twoBlock w (le_of_lt hw0) (le_of_lt hw1) p₁ p₂
-    (toConstraintSet cs₁) (toConstraintSet cs₂) q₁ q₂ q hInf₁ hInf₂ hInf
+    (toConstraintSet cs₁) (toConstraintSet cs₂) q₁ q₂ q (admissible_ev p₁ cs₁ hp₁) (admissible_ev p₂ cs₂ hp₂) hInf₁ hInf₂ hInf
 
-theorem sj3_implies_derivLocalAssumption_of_transport
-    (I : InferenceMethod) (F : ObjectiveFunctional)
-    (hSJ : ShoreJohnsonAxioms I)
-    (hRealize : RealizesEV I F)
-    (hReg : TheoremIRegularity F)
-    (hPerm : ObjectivePermuteInvariant F)
-    (hTransport : DerivTwoBlockTransport F ⟨hReg.has_shift2_deriv⟩) :
-    DerivLocalAssumption F ⟨hReg.has_shift2_deriv⟩ := by
-  intro n m p q p' q' i j i' j' hij hi'j' hp hq hp' hq' hMin hMin' h_qi h_pi h_qj h_pj
-
-  /-
-  TODO (high-level plan):
-
-  - Unpack `hMin : IsEVMinimizer F p q` and `hMin' : IsEVMinimizer F p' q'` to get EV constraint sets
-    `cs` and `cs'` for which `q` and `q'` are minimizers.
-
-  - Use permutations to reduce to the case where the distinguished indices are `(0,1)` in each system.
-    This will require a “permute transport” lemma for shift2 derivatives of `F.D` under `ProbDist.permute`.
-
-  - Embed both problems into a larger two-block system with a freely-variable “irrelevant” block and
-    apply SJ3 (via `eq_twoBlock_of_isMinimizer_twoBlock_ev`) to show the relevant 2-block posterior
-    is independent of the irrelevant block.
-
-  - Use the stationarity/KKT layer from `TheoremIRegularity` to express the shift2 derivative at the
-    combined minimizer in terms of only the relevant block’s data; then transport back to the
-    original (unembedded) derivative.
-
-  Additional assumption used here:
-  - **Two-block derivative transport** (`DerivTwoBlockTransport`): embedding into a
-    two-block system does not change derivatives within each block. This is the
-    minimal analytic lemma sufficient for SJ3 → locality and follows from
-    full ratio-invariance.
-  -/
-
-  -- Step 1: Unpack the EV-minimizers.
-  rcases hMin with ⟨cs, hmin⟩
-  rcases hMin' with ⟨cs', hmin'⟩
-
-  -- Step 2: Build a two-block problem and use SJ3 to identify its minimizer.
-  -- We fix a nontrivial block mass `w = 1/2`.
-  let w : ℝ := (1 / 2 : ℝ)
-  have hw0 : 0 < w := by
-    norm_num
-  have hw1 : w < 1 := by
-    norm_num
-
-  let pComb : ProbDist (n + m) :=
-    ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) p p'
-  let CComb : EVConstraintSet (n + m) :=
-    twoBlockConstraints (n := n) (m := m) w cs cs'
-
-  -- Existence/uniqueness of inferred posterior for the combined constraint set.
-  obtain ⟨qComb, hInfComb, huniqComb⟩ :=
-    hSJ.unique (p := pComb) (C := toConstraintSet CComb)
-
-  -- Translate inference into minimizerhood for the combined EV constraints.
-  have hminComb : IsMinimizer F pComb (toConstraintSet CComb) qComb :=
-    (hRealize.infer_iff_minimizer_ev (p := pComb) (cs := CComb) (q := qComb)).1 hInfComb
-
-  -- SJ3 identifies the combined minimizer as a two-block posterior.
-  have hCombEq :
-      qComb =
-        ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) q q' :=
-    eq_twoBlock_of_isMinimizer_twoBlock_ev_of_realizesEV
-      (hSJ := hSJ) (hF := hRealize) (w := w) (hw0 := hw0) (hw1 := hw1)
-      (p₁ := p) (p₂ := p') (cs₁ := cs) (cs₂ := cs')
-      (q₁ := q) (q₂ := q') (q := qComb) hmin hmin' hminComb
-
-  -- Step 3: Use permutation invariance + two-block transport to relate derivatives.
-  let hDiff : HasShift2Deriv F := ⟨hReg.has_shift2_deriv⟩
+/-- Combine the actual two posteriors, then exchange matching coordinates.
+No inferred combined posterior or universal existence hypothesis is needed. -/
+theorem derivLocal_of_transport (F : ObjectiveFunctional) (hDiff : HasShift2Deriv F)
+    (hPerm : ObjectivePermuteInvariant F) (hTransport : DerivTwoBlockTransport F hDiff) :
+    DerivLocalAssumption F hDiff := by
+  intro n m p q p' q' i j i' j' hij hi'j' hp hq hp' hq' _ _ h_qi h_pi h_qj h_pj
+  let w : ℝ := 1/2
+  have hw0 : 0 < w := by norm_num [w]
+  have hw1 : w < 1 := by norm_num [w]
+  let pComb := ProbDist.twoBlock w hw0.le hw1.le p p'
+  let qComb := ProbDist.twoBlock w hw0.le hw1.le q q'
+  have hCombEq : qComb = ProbDist.twoBlock w hw0.le hw1.le q q' := rfl
   have hPermDeriv : DerivPermuteInvariant F hDiff :=
     derivPermuteInvariant_of_objectivePermuteInvariant F hDiff hPerm
   have hTransport' : DerivTwoBlockTransport F hDiff := by
     exact hTransport
 
-  -- Positivity on the combined distributions.
   have hpComb : ∀ k, 0 < pComb.p k := by
     intro k
     classical
@@ -497,7 +378,6 @@ theorem sj3_implies_derivLocalAssumption_of_transport
         simpa [hCombEq] using
           (twoBlock_pos_inr_of_pos (w := w) (hw0 := hw0) (hw1 := hw1) (P₁ := q) (P₂ := q') j0 hq')
 
-  -- Swap permutations for matching coordinates.
   let σi : Equiv.Perm (Fin (n + m)) :=
     Equiv.swap (inlFin (n := n) (m := m) i) (inrFin (n := n) (m := m) i')
   let σj : Equiv.Perm (Fin (n + m)) :=
@@ -550,7 +430,6 @@ theorem sj3_implies_derivLocalAssumption_of_transport
       (twoBlock_permute_swap_eq (w := w) (hw0 := hw0) (hw1 := hw1)
         (P₁ := q) (P₂ := q') (i := j) (j := j') hqjw)
 
-  -- Index inequality helpers.
   have hij_inl : inlFin (n := n) (m := m) i ≠ inlFin (n := n) (m := m) j := by
     intro h
     exact hij ((inlFin_eq_inlFin (n := n) (m := m)).1 h)
@@ -561,7 +440,6 @@ theorem sj3_implies_derivLocalAssumption_of_transport
     intro h
     exact (inlFin_ne_inrFin (n := n) (m := m) j i') h.symm
 
-  -- Step 3a: permutation invariance inside the combined system.
   have hL1 :
       Classical.choose (hDiff.deriv_exists pComb qComb
         (inlFin (n := n) (m := m) i) (inlFin (n := n) (m := m) j) hij_inl hpComb hqComb) =
@@ -571,7 +449,7 @@ theorem sj3_implies_derivLocalAssumption_of_transport
       hPermDeriv (σ := σi) (p := pComb) (q := qComb)
         (i := inlFin (n := n) (m := m) i) (j := inlFin (n := n) (m := m) j)
         (hij := hij_inl) (hp := hpComb) (hq := hqComb)
-    -- Simplify the permuted distributions and swapped indices.
+
     have hσi_i :
         σi (inlFin (n := n) (m := m) i) = inrFin (n := n) (m := m) i' := by
       simp [σi]
@@ -587,7 +465,7 @@ theorem sj3_implies_derivLocalAssumption_of_transport
       simpa [σi] using
         (Equiv.swap_apply_of_ne_of_ne (a := inlFin (n := n) (m := m) i)
           (b := inrFin (n := n) (m := m) i') (x := inlFin (n := n) (m := m) j) hji hji')
-    -- Rewrite with the permutation invariance.
+
     simpa [hpComb_perm_i, hqComb_perm_i, hσi_i, hσi_j] using hperm
 
   have hL2 :
@@ -624,7 +502,6 @@ theorem sj3_implies_derivLocalAssumption_of_transport
         (inrFin (n := n) (m := m) i') (inrFin (n := n) (m := m) j') hi'j'_inr hpComb hqComb) :=
     hL1.trans hL2
 
-  -- Step 3b: two-block transport transfers combined derivatives back to the original systems.
   have hTransport_left' :
       Classical.choose (hDiff.deriv_exists pComb
         (ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) q q')
@@ -684,29 +561,5 @@ theorem sj3_implies_derivLocalAssumption_of_transport
     simpa [hCombEq] using hTransport_right'
 
   exact hTransport_left.symm.trans (hLcomb.trans hTransport_right)
-
-theorem sj3_implies_derivLocalAssumption
-    (I : InferenceMethod) (F : ObjectiveFunctional)
-    (hSJ : ShoreJohnsonAxioms I)
-    (hRealize : RealizesEV I F)
-    (hReg : TheoremIRegularity F)
-    (hPerm : ObjectivePermuteInvariant F)
-    (hRatio :
-      _root_.KnuthSkilling.ShoreJohnson.GradientSeparability.DerivRatioInvariant
-        F ⟨hReg.has_shift2_deriv⟩) :
-    DerivLocalAssumption F ⟨hReg.has_shift2_deriv⟩ := by
-  have hTransport :
-      DerivTwoBlockTransport F ⟨hReg.has_shift2_deriv⟩ :=
-    derivTwoBlockTransport_of_ratio F ⟨hReg.has_shift2_deriv⟩ hRatio
-  intro n m p q p' q' i j i' j' hij hi'j' hp hq hp' hq' hMin hMin' h_qi h_pi h_qj h_pj
-  exact
-    (sj3_implies_derivLocalAssumption_of_transport
-      (I := I) (F := F) (hSJ := hSJ) (hRealize := hRealize)
-      (hReg := hReg) (hPerm := hPerm) (hTransport := hTransport)
-      (p := p) (q := q) (p' := p') (q' := q')
-      (i := i) (j := j) (i' := i') (j' := j')
-      (hij := hij) (hi'j' := hi'j')
-      (hp := hp) (hq := hq) (hp' := hp') (hq' := hq')
-      hMin hMin' h_qi h_pi h_qj h_pj)
 
 end KnuthSkilling.ShoreJohnson.SJ3Locality

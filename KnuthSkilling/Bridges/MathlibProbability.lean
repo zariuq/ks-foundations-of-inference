@@ -1,119 +1,72 @@
 import KnuthSkilling.Information.InformationEntropyMathlib
 import KnuthSkilling.Core.ScaleCompleteness
 import KnuthSkilling.Additive.Axioms.OpIsAddition
-
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 
 /-!
-# K&S → Mathlib Probability Bridge
+# Probability observations as Mathlib measures
 
-This file provides the **grounded** bridge from Knuth-Skilling axioms to mathlib's
-probability theory, maintaining the theoretical justification at every step.
-
-## Key Design Principle
-
-Everything is **derived from K&S axioms** where possible:
-- `op → +` is DERIVED via the representation theorem (see `Additive/Axioms/OpIsAddition.lean`)
-- Finite probability distributions emerge from finite atomic K&S algebras
-- σ-additivity (for countable case) requires the **natural extension** of
-  `SigmaCompleteEvents` + `KSScaleComplete` + `KSScottContinuous`
-
-## The Grounded Path
-
-```
-K&S Axioms + KSSeparation
-        │
-        │  DERIVED: Θ(op x y) = Θ x + Θ y  (representation theorem)
-        ↓
-RepresentationResult S  (Additive/Representation.lean)
-        │
-        ├─── Finite case ───────────────────────────────────
-        │    ProbDist n  (InformationEntropy.lean)
-        │         │
-        │         │  toMeasureTop (InformationEntropyMathlib.lean)
-        │         ↓
-        │    Measure (Fin n) [IsProbabilityMeasure]
-        │         │
-        │         │  toProbabilityMeasure (this file)
-        │         ↓
-        │    ProbabilityMeasure (Fin n)
-        │
-        └── See InformationEntropyMathlib.lean for the implementation
-```
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012), Appendix A
-- `Additive/Axioms/OpIsAddition.lean` - Documents that op ≅ + is DERIVED
-- `InformationEntropyMathlib.lean` - Existing finite bridge
-- `ScaleCompleteness.lean` - σ-additivity theorem
+The finite construction retains atomic weights, all event probabilities and
+extended KL, including infinity at support violations. It is faithful on
+probability distributions. A supplied KS event model reaches this construction
+through its explicit representation and positive-total normalization.
+`SigmaAdditiveMeasureData` separately packages supplied countably additive data;
+its measure constructor does not prove those premises from finite operator laws.
 -/
 
 namespace KnuthSkilling.MathlibProbability
-
 open MeasureTheory Classical
 open KnuthSkilling.Information
 open scoped BigOperators ENNReal
 
-/-! ## Section 1: Finite Case - ProbDist → ProbabilityMeasure
-
-The finite case is already handled in `InformationEntropyMathlib.lean`:
-- `ProbDist.toMeasureTop` converts to `Measure (Fin n)`
-- `instIsProbabilityMeasure_toMeasureTop` proves it's a probability measure
-
-We add the wrapper to create `ProbabilityMeasure (Fin n)` (the subtype).
--/
-
 namespace FiniteProbDist
-
 variable {n : ℕ}
 
-/-- Convert a K&S-grounded finite probability distribution to mathlib's `ProbabilityMeasure`.
-
-This completes the path:
-  K&S → Θ representation → ProbDist n → Measure (Fin n) → ProbabilityMeasure (Fin n)
-
-The measure construction is in `InformationEntropyMathlib.lean`; this just wraps it. -/
 noncomputable def toProbabilityMeasure (P : InformationEntropy.ProbDist n) :
     @ProbabilityMeasure (Fin n) ⊤ :=
   ⟨P.toMeasureTop, InformationEntropy.ProbDist.instIsProbabilityMeasure_toMeasureTop P⟩
 
-/-- The underlying measure of the probability measure is the same as `toMeasureTop`. -/
-@[simp]
-theorem toProbabilityMeasure_toMeasure (P : InformationEntropy.ProbDist n) :
+@[simp] theorem toProbabilityMeasure_toMeasure (P : InformationEntropy.ProbDist n) :
     (toProbabilityMeasure P : Measure (Fin n)) = P.toMeasureTop := rfl
 
-/-- Coercion to measure preserves singleton values. -/
 theorem toProbabilityMeasure_singleton (P : InformationEntropy.ProbDist n) (i : Fin n) :
-    (toProbabilityMeasure P : Measure (Fin n)) {i} = ENNReal.ofReal (P.p i) := by
-  simp [toProbabilityMeasure, InformationEntropy.ProbDist.toMeasureTop_apply_singleton]
+    (toProbabilityMeasure P : Measure (Fin n)) {i} = ENNReal.ofReal (P.p i) := by simp
 
-/-- The probability measure has total mass 1. -/
 theorem toProbabilityMeasure_univ (P : InformationEntropy.ProbDist n) :
-    (toProbabilityMeasure P : Measure (Fin n)) Set.univ = 1 := by
-  simp only [toProbabilityMeasure_toMeasure, InformationEntropy.ProbDist.toMeasureTop_univ]
+    (toProbabilityMeasure P : Measure (Fin n)) Set.univ = 1 := by simp
 
+/-- Every finite event has the supplied sum of atomic weights. -/
+theorem toProbabilityMeasure_apply (P : InformationEntropy.ProbDist n) (s : Set (Fin n)) :
+    (toProbabilityMeasure P : Measure (Fin n)) s =
+      ENNReal.ofReal (∑ i, if i ∈ s then P.p i else 0) := by
+  rw [toProbabilityMeasure_toMeasure]
+  change Divergence.Countable.toMeasure P.p s = _
+  rw [Divergence.Countable.toMeasure, Measure.sum_apply _ (show MeasurableSet s from trivial),
+    tsum_fintype, ENNReal.ofReal_sum_of_nonneg (fun i _ => by split_ifs; exact P.nonneg i; exact le_rfl)]
+  apply Finset.sum_congr rfl
+  intro i _
+  by_cases hi : i ∈ s <;> simp [Measure.smul_apply, Measure.dirac_apply', hi]
+
+/-- Equality of interpreted measures reflects equality of supplied probabilities. -/
+theorem toProbabilityMeasure_injective : Function.Injective (toProbabilityMeasure (n := n)) := by
+  intro P Q h
+  exact InformationEntropy.ProbDist.toMeasureTop_injective
+    (congrArg (fun μ : @ProbabilityMeasure (Fin n) ⊤ => (μ : Measure (Fin n))) h)
+
+/-- Extended KL commutes with this interpretation without a support premise. -/
+theorem klDiv_toProbabilityMeasure (P Q : InformationEntropy.ProbDist n) :
+    @InformationTheory.klDiv (Fin n) ⊤ (toProbabilityMeasure P : Measure (Fin n))
+      (toProbabilityMeasure Q : Measure (Fin n)) = InformationEntropy.klDivergenceTop P Q :=
+  InformationEntropy.ProbDist.klDiv_toMeasureTop_eq_klDivergenceTop P Q
+
+theorem klDiv_toProbabilityMeasure_eq_top (P Q : InformationEntropy.ProbDist n) (i : Fin n)
+    (hP : P.p i ≠ 0) (hQ : Q.p i = 0) :
+    @InformationTheory.klDiv (Fin n) ⊤ (toProbabilityMeasure P : Measure (Fin n))
+      (toProbabilityMeasure Q : Measure (Fin n)) = ⊤ :=
+  InformationEntropy.ProbDist.klDiv_toMeasureTop_eq_top_of_support_violation P Q i hP hQ
 end FiniteProbDist
 
-/-! ## Section 2: Countable Case - KSMeasure Construction
-
-For countable spaces, we use the σ-additivity theorem from `ScaleCompleteness.lean`.
-This requires the natural extension axioms:
-- `SigmaCompleteEvents E`: countable joins exist in the event algebra
-- `KSScaleComplete S R`: the scale is sequentially complete
-- `KSScottContinuous E S R`: the valuation is Scott continuous
-
-These are **necessary** additional axioms (cannot be derived from basic K&S),
-but they are mathematically natural extensions of the finite theory.
-
-The main theorem `ks_sigma_additive` in ScaleCompleteness.lean shows that under these
-axioms, the composition μ = Θ ∘ v is σ-additive for pairwise disjoint sequences.
--/
-
-/-- Package for building a measure from general σ-additive data.
-
-This structure collects all the data needed to construct a `Measure` from
-a σ-additive function on a measurable space. -/
+/-- Countable additivity is input data, not a consequence of normalization. -/
 structure SigmaAdditiveMeasureData (E : Type*) [MeasurableSpace E] where
   /-- The valuation function assigning real values to measurable sets -/
   μ : Set E → ℝ
@@ -148,41 +101,5 @@ theorem toMeasure_apply (m : SigmaAdditiveMeasureData E) (s : Set E) (hs : Measu
   Measure.ofMeasurable_apply s hs
 
 end SigmaAdditiveMeasureData
-
-/-! ## Section 3: Summary
-
-### What This File Provides
-
-1. **Finite case** (`FiniteProbDist.toProbabilityMeasure`):
-   - Bridge from `ProbDist n` to `ProbabilityMeasure (Fin n)`
-   - Uses existing construction in `InformationEntropyMathlib.lean`
-
-2. **Countable case** (`SigmaAdditiveMeasureData`):
-   - Generic structure for packaging σ-additive functions as measures
-   - The K&S-specific construction using `ks_sigma_additive` can be built on top
-
-### Theoretical Foundation
-
-The key insight is that **nothing is assumed that could have been derived**:
-- `op → +` is DERIVED via representation theorem (see `Additive/Axioms/OpIsAddition.lean`)
-- Finite additivity is DERIVED from K&S axioms
-- σ-additivity requires NECESSARY additional axioms, treated as natural extensions
-
-### Validation: Connection to Information Theory
-
-The bridges in `InformationEntropyMathlib.lean` and `DivergenceMathlib.lean` show that
-K&S-derived quantities match mathlib's definitions:
-
-**KL Divergence** (`InformationEntropyMathlib.lean`):
-  - `klDiv_toMeasureTop_eq_klDivergenceTop`: K&S `klDivergenceTop P Q` = mathlib `klDiv P.toMeasureTop Q.toMeasureTop`
-
-**Countable Divergence** (`DivergenceMathlib.lean`):
-  - `Countable.klDiv_toMeasure_eq_divergenceInfTop`: K&S countable divergence = mathlib klDiv
-
-These validation theorems confirm that the K&S → mathlib bridge preserves the
-mathematical content of the K&S axioms.
-
-This completes the theoretical grounding of K&S probability theory in mathlib.
--/
 
 end KnuthSkilling.MathlibProbability

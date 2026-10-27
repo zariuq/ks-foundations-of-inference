@@ -4,19 +4,12 @@ import KnuthSkilling.Multiplicative.Basic
 import KnuthSkilling.Multiplicative.ScaledMultRep
 
 /-!
-# Knuth–Skilling Appendix B: Product Rule from the Product Equation
+# The global inverse-representation route to scaled multiplication
 
-This file completes the Appendix B pipeline in the *fixed* formalization:
-
-1. Use `Multiplicative.Basic` to derive the product equation for `Ψ := Θ⁻¹` from
-   distributivity (Axiom 3) and an additive order-isomorphism representation of `⊗`.
-2. Apply `Multiplicative.productEquation_solution_of_continuous_strictMono`
-   to conclude `Ψ(x) = C * exp (A * x)`.
-3. Deduce that `⊗` is multiplication up to a global scale constant `C`, and obtain a
-   canonical normalization where the scale is exactly multiplication.
-
-This corresponds to the "Independence" subsection of the paper (TeX around lines 653–689)
-plus the Appendix B functional equation solution.
+An additive order isomorphism and distributivity give the product equation.
+Its exponential solver determines the tensor scale. The shared `ScaledMultRep`
+then provides the normalization laws. The separate direct tensor proof has
+weaker algebraic premises and supplies the same output interface.
 -/
 
 namespace KnuthSkilling.Multiplicative
@@ -67,35 +60,25 @@ theorem tensor_coe_eq_mul_div_const
   refine ⟨C, hC, ?_⟩
   intro x y
   have hC_ne : C ≠ 0 := ne_of_gt hC
-
-  -- Evaluate the exponential representation at `Θ x`, `Θ y`, and `Θ (x ⊗ y)`.
   have hx : (x : ℝ) = C * Real.exp (A * hRep.Θ x) := by
     simpa [Derived.Psi] using (hPsi (hRep.Θ x))
   have hy : (y : ℝ) = C * Real.exp (A * hRep.Θ y) := by
     simpa [Derived.Psi] using (hPsi (hRep.Θ y))
 
   have hxy : ((tensor x y : PosReal) : ℝ) = C * Real.exp (A * (hRep.Θ x + hRep.Θ y)) := by
-    -- `Θ (x ⊗ y) = Θ x + Θ y` by the representation.
     have : hRep.Θ (tensor x y) = hRep.Θ x + hRep.Θ y := hRep.map_op x y
-    -- Rewrite `Ψ(Θ(x⊗y))` using the formula for `Ψ` and `Θ(x⊗y)`.
     calc
       ((tensor x y : PosReal) : ℝ)
           = Derived.Psi hRep (hRep.Θ (tensor x y)) := by simp [Derived.Psi]
       _ = C * Real.exp (A * (hRep.Θ (tensor x y))) := by simpa using (hPsi (hRep.Θ (tensor x y)))
       _ = C * Real.exp (A * (hRep.Θ x + hRep.Θ y)) := by simp [this]
-
-  -- Convert the RHS to `(x*y)/C`.
-  -- We use `exp(A*(a+b)) = exp(A*a) * exp(A*b)`.
   calc
     ((tensor x y : PosReal) : ℝ)
         = C * (Real.exp (A * hRep.Θ x) * Real.exp (A * hRep.Θ y)) := by
-            -- unfold the exponential of a sum
             simp [hxy, mul_add, Real.exp_add]
     _ = ((C * Real.exp (A * hRep.Θ x)) * (C * Real.exp (A * hRep.Θ y))) / C := by
-            -- factor a `C` out of the product
             field_simp [hC_ne]
     _ = ((x : ℝ) * (y : ℝ)) / C := by
-            -- rewrite using `hx` and `hy`
             simp [hx, hy, mul_assoc, mul_left_comm]
 
 /-- Canonical normalization: rescale measures by `C` so that `⊗` becomes literal multiplication.
@@ -109,24 +92,9 @@ theorem tensor_mul_rule_normalized
       (∀ x : PosReal, 0 < ((x : ℝ) / C)) ∧
       (∀ x y : PosReal,
         ((tensor x y : PosReal) : ℝ) / C = (((x : ℝ) / C) * ((y : ℝ) / C))) := by
-  rcases tensor_coe_eq_mul_div_const (tensor := tensor) hRep hDistrib with ⟨C, hC, hMul⟩
-  refine ⟨C, hC, ?_, ?_⟩
-  · intro x
-    have hC_ne : C ≠ 0 := ne_of_gt hC
-    have hx_pos : 0 < (x : ℝ) := x.2
-    exact div_pos hx_pos hC
-  · intro x y
-    have hC_ne : C ≠ 0 := ne_of_gt hC
-    -- Reduce to a ring equality by clearing denominators.
-    -- Using `hMul` first makes the remaining goal purely algebraic.
-    have : ((tensor x y : PosReal) : ℝ) / C = (((x : ℝ) * (y : ℝ)) / C) / C := by
-      simp [hMul x y]
-    -- Now show `((x*y)/C)/C = (x/C)*(y/C)` by field arithmetic.
-    calc
-      ((tensor x y : PosReal) : ℝ) / C
-          = (((x : ℝ) * (y : ℝ)) / C) / C := this
-    _ = ((x : ℝ) / C) * ((y : ℝ) / C) := by
-          field_simp [hC_ne]
+  obtain ⟨C, hC, hMul⟩ := tensor_coe_eq_mul_div_const hRep hDistrib
+  let result : ScaledMultRep tensor := ⟨C, hC, hMul⟩
+  exact ⟨C, hC, fun x => div_pos x.2 hC, result.tensor_normalized⟩
 
 /-- If `⊗` is multiplication up to a global constant `C`, then it admits a concrete additive
 order-isomorphism representation with a logarithmic `Θ`.
@@ -141,48 +109,13 @@ noncomputable def additiveOrderIsoRep_of_mul_div_const
   Θ := (Real.expOrderIso.symm).trans (OrderIso.addRight (-Real.log C))
   map_op := by
     intro x y
-    apply Real.exp_injective
-
-    have hC_ne : C ≠ 0 := ne_of_gt hC
-    have hlogC : Real.exp (Real.log C) = C := Real.exp_log hC
-
-    -- Helper: `exp (expOrderIso.symm z) = z` for `z : Ioi 0`.
-    have hexp_log : ∀ z : PosReal, Real.exp (Real.expOrderIso.symm z) = (z : ℝ) := by
-      intro z
-      have h0 : Real.expOrderIso (Real.expOrderIso.symm z) = z := Real.expOrderIso.apply_symm_apply z
-      have h1 : ((Real.expOrderIso (Real.expOrderIso.symm z) : PosReal) : ℝ) = (z : ℝ) :=
-        congrArg (fun u : PosReal => (u : ℝ)) h0
-      have h2 := h1
-      rw [Real.coe_expOrderIso_apply] at h2
-      exact h2
-
-    -- Expand `Θ` as `log(z) - log(C)`.
-    have hΘ : ∀ z : PosReal,
-        ((Real.expOrderIso.symm).trans (OrderIso.addRight (-Real.log C))) z
-          = Real.expOrderIso.symm z + (-Real.log C) := by
-      intro z
-      simp [OrderIso.addRight_apply]
-
-    -- Compute `exp(Θ(tensor x y))` and `exp(Θ x + Θ y)` and compare.
-    calc
-      Real.exp (((Real.expOrderIso.symm).trans (OrderIso.addRight (-Real.log C))) (tensor x y))
-          = ((tensor x y : PosReal) : ℝ) / C := by
-              -- `exp(log(z) - log C) = z / C`.
-              rw [hΘ]
-              simp [Real.exp_add, Real.exp_neg, hexp_log (tensor x y), hlogC, div_eq_mul_inv]
-      _ = (((x : ℝ) * (y : ℝ)) / C) / C := by
-              simp [hMul x y]
-      _ = Real.exp
-            ((((Real.expOrderIso.symm).trans (OrderIso.addRight (-Real.log C))) x) +
-              (((Real.expOrderIso.symm).trans (OrderIso.addRight (-Real.log C))) y)) := by
-              -- RHS expands to `(x/C) * (y/C)`.
-              rw [hΘ x, hΘ y]
-              simp [Real.exp_add, Real.exp_neg, hexp_log x, hexp_log y, hlogC, div_eq_mul_inv,
-                mul_assoc, mul_left_comm, mul_comm]
-
-/-! ## ScaledMultRep Interface
-
-The K&S Appendix B path provides the `ScaledMultRep` interface. -/
+    change Real.expOrderIso.symm (tensor x y) + -Real.log C =
+      (Real.expOrderIso.symm x + -Real.log C) +
+        (Real.expOrderIso.symm y + -Real.log C)
+    rw [← Real.log_of_pos (tensor x y).2, ← Real.log_of_pos x.2, ← Real.log_of_pos y.2,
+      hMul, Real.log_div (mul_ne_zero (ne_of_gt x.2) (ne_of_gt y.2)) (ne_of_gt hC),
+      Real.log_mul (ne_of_gt x.2) (ne_of_gt y.2)]
+    ring
 
 /-- K&S Appendix B provides the `ScaledMultRep` interface.
 

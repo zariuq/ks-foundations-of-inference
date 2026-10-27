@@ -10,53 +10,16 @@ Key structures:
 - Probability rules (sum rule, product rule, Bayes' theorem, complement rule)
 -/
 
-import KnuthSkilling.Additive.Representation
+import KnuthSkilling.Probability.Regraduation
+import KnuthSkilling.Probability.BooleanRepresentation
 import KnuthSkilling.Multiplicative
 import KnuthSkilling.Multiplicative.DirectProduct
 
 namespace KnuthSkilling.Probability
 
 
-/-! ## The Representation Theorem
-
-**CROWN JEWEL OF KNUTH-SKILLING**:
-
-Given a K&S algebra, there exists a strictly monotone map Θ : α → ℝ that
-"linearizes" the operation: Θ(x ⊕ y) = Θ(x) + Θ(y).
-
-This says: ANY structure satisfying the K&S axioms is isomorphic to (ℝ≥0, +)!
-
-Lean note: this file *does not* commit to a specific Appendix A proof path.
-We only assume the packaged conclusion `HasNormalizedRepresentation` and derive
-the probability-calculus consequences from it.
-
-**Construction** (from K&S Appendix A):
-1. Pick a reference element a with ident < a
-2. Define Θ on iterates: Θ(n·a) = n
-3. For rationals: Θ(p/q · a) = p/q (by density of iterates)
-4. For reals: Extend by monotonicity and Archimedean property
-
-**Key insight**: The construction does NOT use Dedekind cuts! Instead, it uses
-the "grid extension" method - successively adding finer grid points by interleaving.
-
-The representation below formalizes the conclusion of this construction.
--/
-
-/-- **The Knuth-Skilling Representation Theorem**
-
-For any K&S algebra, there exists a strictly monotone function Θ : α → ℝ that:
-1. Is strictly monotone (preserves order)
-2. Maps identity to 0
-3. Linearizes the operation: Θ(x ⊕ y) = Θ(x) + Θ(y)
-
-This proves that K&S algebras are all isomorphic to (ℝ≥0, +) as ordered monoids!
-
-**Philosophical importance**: This is not an axiom - it's a THEOREM that shows
-the abstract symmetry requirements uniquely determine the additive structure.
-The Born rule, probability calculus, and measure theory all follow from this.
-
-Note: The full constructive proof (grid extension) is in WeakRegraduation + density
-arguments below. Here we state the existence theorem cleanly. -/
+/-- A supplied normalized additive representation is an ordered embedding.
+No surjectivity onto all nonnegative reals is asserted. -/
 theorem ks_representation_theorem
     [KnuthSkillingMonoidBase α]
     [KnuthSkilling.Additive.HasNormalizedRepresentation α] :
@@ -80,490 +43,6 @@ theorem ks_representation_theorem
     exact lt_of_le_of_ne hΘ_le hΘ_ne
   · exact hΘ_add
 
-/-! ## Connection to Probability: WeakRegraduation IS the Grid Construction
-
-The `WeakRegraduation` structure below captures the conclusion of the K&S
-representation theorem specialized to the probability context (on ℝ):
-- `regrade` is the linearizing map Θ
-- `combine_eq_add` is the linearization property
-- `zero`, `one` are the calibration
-
-The theorems `regrade_unit_frac`, `regrade_on_rat`, `strictMono_eq_id_of_eq_on_rat`
-implement the grid extension construction, proving that regrade = id on [0,1].
--/
-
-/-- Weak regraduation: only assumes the linearization of combine_fn.
-This is what the AssociativityTheorem directly provides. -/
-structure WeakRegraduation (combine_fn : ℝ → ℝ → ℝ) where
-  /-- The regraduation function φ. -/
-  regrade : ℝ → ℝ
-  /-- φ is strictly monotone, hence injective. -/
-  strictMono : StrictMono regrade
-  /-- Normalization: φ(0) = 0. -/
-  zero : regrade 0 = 0
-  /-- Normalization: φ(1) = 1 (fixes the overall scale). -/
-  one : regrade 1 = 1
-  /-- Core Cox equation: φ(S(x,y)) = φ(x) + φ(y).
-  This is the KEY property - it says φ linearizes the combination law. -/
-  combine_eq_add : ∀ x y, regrade (combine_fn x y) = regrade x + regrade y
-
-/-- Full regraduation: includes global additivity.
-
-**IMPORTANT**: For probability theory on [0,1], use `WeakRegraduation` instead!
-The `additive` property on [0,1] is DERIVABLE - see `additive_derived`.
-
-The derivation proceeds (on [0,1]):
-1. `combine_eq_add`: φ(S(x,y)) = φ(x) + φ(y) (from WeakRegraduation)
-2. `combine_rat`: S = + on ℚ ∩ [0,1] (from associativity + grid construction)
-3. `regrade_on_rat`: φ = id on ℚ ∩ [0,1] (from 1 + 2)
-4. `strictMono_eq_id_of_eq_on_rat`: φ = id on [0,1] (from 3 + density)
-5. Therefore: φ(x+y) = x+y = φ(x) + φ(y) on [0,1] (QED!)
-
-This structure requires GLOBAL additivity (∀ x y), which needs extension beyond [0,1].
-For probability, `CoxConsistency` uses `WeakRegraduation` directly, avoiding this. -/
-structure Regraduation (combine_fn : ℝ → ℝ → ℝ) extends WeakRegraduation combine_fn where
-  /-- φ respects addition on [0,1]. See `additive_derived` for the derivation.
-  Note: In probability contexts, we only need this on [0,1] since valuations
-  are bounded. The field uses ∀ x y for convenience when bounds are obvious. -/
-  additive : ∀ x y, regrade (x + y) = regrade x + regrade y
-
-/-! ### Formal Derivation of Additivity
-
-The K&S proof proceeds in stages:
-1. On integers: φ(n) = n (from iterate construction + normalization)
-2. On rationals: φ(p/q) = p/q (from φ(q · (1/q)) = q · φ(1/q) = 1)
-3. On reals: φ = id (from monotonicity + density of ℚ in ℝ)
-4. Therefore: additive holds (since φ = id means φ(x+y) = x+y = φ(x) + φ(y))
-
-The key mathematical fact is that a strictly monotone function that equals
-the identity on a dense subset must be the identity everywhere.
--/
-
-/-- A strictly monotone function that equals id on ℚ ∩ [0,1] must equal id on [0,1].
-
-This is the density argument that extends from rationals to reals.
-Proof: For any x ∈ [0,1], let (qₙ) be rationals converging to x from below,
-and (rₙ) be rationals converging from above. Then:
-  qₙ = φ(qₙ) ≤ φ(x) ≤ φ(rₙ) = rₙ
-Taking limits: x ≤ φ(x) ≤ x, so φ(x) = x. -/
-theorem strictMono_eq_id_of_eq_on_rat
-    (φ : ℝ → ℝ) (hφ : StrictMono φ)
-    (h_rat : ∀ q : ℚ, 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 → φ q = q) :
-    ∀ x : ℝ, 0 ≤ x → x ≤ 1 → φ x = x := by
-  intro x hx0 hx1
-  -- Handle boundary cases first
-  rcases eq_or_lt_of_le hx0 with rfl | hx0'
-  · -- x = 0
-    have h := h_rat 0 (by norm_num) (by norm_num)
-    simp only [Rat.cast_zero] at h
-    exact h
-  rcases eq_or_lt_of_le hx1 with hx1_eq | hx1'
-  · -- x = 1
-    rw [hx1_eq]
-    have h := h_rat 1 (by norm_num) (by norm_num)
-    simp only [Rat.cast_one] at h
-    exact h
-  -- Now 0 < x < 1, so we can find rationals on both sides within [0,1]
-  apply le_antisymm
-  · -- Show φ(x) ≤ x
-    by_contra h_gt
-    push_neg at h_gt
-    set ε := φ x - x with hε_def
-    have hε_pos : 0 < ε := by linarith
-    -- Find rational r with x < r < min(x + ε/2, 1)
-    have h_bound : x < min (x + ε / 2) 1 := by
-      simp only [lt_min_iff]
-      constructor <;> linarith
-    obtain ⟨r, hr_gt, hr_lt⟩ := exists_rat_btwn h_bound
-    have hr_le1 : (r : ℝ) ≤ 1 := by
-      have := lt_min_iff.mp hr_lt
-      linarith [this.2]
-    have hr_ge0 : 0 ≤ (r : ℝ) := by linarith
-    have h1 : φ x < φ r := hφ hr_gt
-    have h2 : φ r = r := h_rat r hr_ge0 hr_le1
-    have hr_lt_eps : (r : ℝ) < x + ε / 2 := by
-      have := lt_min_iff.mp hr_lt
-      exact this.1
-    linarith
-  · -- Show x ≤ φ(x)
-    by_contra h_lt
-    push_neg at h_lt
-    set ε := x - φ x with hε_def
-    have hε_pos : 0 < ε := by linarith
-    -- Find rational q with max(x - ε/2, 0) < q < x
-    have h_bound : max (x - ε / 2) 0 < x := by
-      simp only [max_lt_iff]
-      constructor <;> linarith
-    obtain ⟨q, hq_gt, hq_lt⟩ := exists_rat_btwn h_bound
-    have hq_ge0 : 0 ≤ (q : ℝ) := by
-      have := max_lt_iff.mp hq_gt
-      linarith [this.2]
-    have hq_le1 : (q : ℝ) ≤ 1 := by linarith
-    have h1 : φ q < φ x := hφ hq_lt
-    have h2 : φ q = q := h_rat q hq_ge0 hq_le1
-    have hq_gt_eps : (q : ℝ) > x - ε / 2 := by
-      have := max_lt_iff.mp hq_gt
-      exact this.1
-    linarith
-
-/-- On natural number iterates under combine_fn, φ equals the iterate index.
-
-**Key insight from AssociativityTheorem**: On the iterate image {iterate n 1 | n ∈ ℕ},
-the K&S operation equals addition (up to regrade). Combined with WeakRegraduation's
-`combine_eq_add`, this gives us φ(iterate n 1) = n · φ(1) = n.
-
-**Proof by induction**:
-- Base: φ(0) = 0 (from W.zero)
-- Step: φ(combine_fn (n : ℝ) 1) = φ(n) + φ(1) = n + 1 (from combine_eq_add + IH + W.one)
-
-The subtlety: we need combine_fn n 1 = n + 1 to apply this. This is EXACTLY what
-the AssociativityTheorem proves! On iterates, combine_fn = +.
-
-For the full connection, see AssociativityTheorem.lean which shows:
-  op_iterate_is_addition: A.op (iterate m a) (iterate n a) = iterate (m+n) a
-
-Here we assume combine_fn = + on ℕ, which follows from the AssociativityTheorem. -/
-theorem regrade_on_nat (W : WeakRegraduation combine_fn)
-    (h_combine_nat : ∀ m n : ℕ, combine_fn (m : ℝ) (n : ℝ) = ((m + n : ℕ) : ℝ)) :
-    ∀ n : ℕ, W.regrade (n : ℝ) = n := by
-  intro n
-  induction n with
-  | zero => simp [W.zero]
-  | succ n ih =>
-    -- φ(n+1) = φ(combine_fn n 1) = φ(n) + φ(1) = n + 1
-    have h1 : combine_fn (n : ℝ) (1 : ℝ) = ((n + 1 : ℕ) : ℝ) := by
-      have := h_combine_nat n 1
-      simp only [Nat.cast_one] at this
-      exact this
-    have h2 : W.regrade ((n + 1 : ℕ) : ℝ) = W.regrade (combine_fn (n : ℝ) 1) := by
-      congr 1
-      have := h1.symm
-      simp only [Nat.cast_add, Nat.cast_one] at this ⊢
-      exact this
-    have h3 : W.regrade (combine_fn (n : ℝ) 1) = W.regrade (n : ℝ) + W.regrade 1 :=
-      W.combine_eq_add n 1
-    rw [h2, h3, ih, W.one, Nat.cast_add, Nat.cast_one]
-
-/-- Cast equality: division in ℚ then cast to ℝ equals casting then dividing in ℝ. -/
-lemma rat_div_cast_eq (k n : ℕ) (_hn : (n : ℚ) ≠ 0) :
-    (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := by
-  push_cast; ring
-
-/-- Special case for 1/n. -/
-lemma rat_one_div_cast_eq (n : ℕ) (_hn : (n : ℚ) ≠ 0) :
-    ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := by
-  push_cast; ring
-
-/-- Helper: φ respects addition on rationals in [0,1].
-From combine_eq_add and h_combine_rat, we get φ(r + s) = φ(r) + φ(s). -/
-theorem regrade_add_rat (W : WeakRegraduation combine_fn)
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) → (r : ℝ) + (s : ℝ) ≤ 1 →
-                     combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
-    (r s : ℚ) (hr : 0 ≤ (r : ℝ)) (hs : 0 ≤ (s : ℝ)) (hrs : (r : ℝ) + (s : ℝ) ≤ 1) :
-    W.regrade ((r + s : ℚ) : ℝ) = W.regrade r + W.regrade s := by
-  -- combine_fn r s = r + s, and φ(combine_fn r s) = φ(r) + φ(s)
-  have h1 : combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ) := h_combine_rat r s hr hs hrs
-  calc W.regrade ((r + s : ℚ) : ℝ)
-      = W.regrade (combine_fn (r : ℝ) (s : ℝ)) := by rw [h1]
-    _ = W.regrade r + W.regrade s := W.combine_eq_add r s
-
-/-- Specialized version for unit fractions: combine_fn (k/n) (1/n) = (k+1)/n in reals.
-Following GPT-5.1's advice: prove bounds in ℚ first, then cast to ℝ via Rat.cast_nonneg. -/
-lemma combine_fn_unit_fracs {combine_fn : ℝ → ℝ → ℝ}
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) →
-                      (r : ℝ) + (s : ℝ) ≤ 1 → combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
-    (k n : ℕ) (hn : 0 < n) (hk : k + 1 ≤ n) :
-    combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) = ((k : ℝ) + 1) / (n : ℝ) := by
-  have hn_q_ne0 : (n : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.pos_iff_ne_zero.mp hn)
-  have hn_q_pos : (0 : ℚ) < n := by exact_mod_cast hn
-
-  -- Define the rationals we'll feed into h_combine_rat
-  let r : ℚ := (k : ℚ) / n
-  let s : ℚ := (1 : ℚ) / n
-
-  -- Prove bounds in ℚ first (the easy part)
-  have hr_q : 0 ≤ r := by dsimp [r]; positivity
-  have hs_q : 0 ≤ s := by dsimp [s]; positivity
-  have hrs_q : r + s ≤ 1 := by
-    dsimp [r, s]
-    have hkn : (k : ℚ) + 1 ≤ n := by exact_mod_cast hk
-    rw [← add_div, div_le_one hn_q_pos]
-    linarith
-
-  -- Cast bounds to ℝ using Rat.cast_nonneg (the key insight from GPT-5.1!)
-  have hr : 0 ≤ (r : ℝ) := Rat.cast_nonneg.mpr hr_q
-  have hs : 0 ≤ (s : ℝ) := Rat.cast_nonneg.mpr hs_q
-  have hrs : (r : ℝ) + (s : ℝ) ≤ 1 := by
-    have hrs_real : ((r + s : ℚ) : ℝ) ≤ 1 := by exact_mod_cast hrs_q
-    simpa [Rat.cast_add] using hrs_real
-
-  -- Now apply h_combine_rat in its natural ℚ form
-  have h := h_combine_rat r s hr hs hrs
-
-  -- Cast equalities to convert between forms
-  have hk_cast : (r : ℝ) = (k : ℝ) / (n : ℝ) := by
-    dsimp [r]; simp [Rat.cast_div, Rat.cast_natCast]
-  have h1_cast : (s : ℝ) = (1 : ℝ) / (n : ℝ) := by
-    dsimp [s]; simp [Rat.cast_natCast]
-  have h_sum : ((r + s : ℚ) : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
-    dsimp [r, s]
-    simp [Rat.cast_add, Rat.cast_div, Rat.cast_natCast]
-    field_simp
-
-  -- Put it all together
-  simpa [hk_cast, h1_cast, h_sum] using h
-
-/-- Helper: φ(1/n) = 1/n for positive n.
-
-Proof: n copies of 1/n sum to 1, and φ(1) = 1. By additivity (combine_eq_add + h_combine_rat),
-φ(1) = n · φ(1/n), so φ(1/n) = 1/n. -/
-theorem regrade_unit_frac (W : WeakRegraduation combine_fn)
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) → (r : ℝ) + (s : ℝ) ≤ 1 →
-                     combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
-    (n : ℕ) (hn : 0 < n) :
-    W.regrade ((1 : ℚ) / n) = (1 : ℝ) / n := by
-  -- Key: φ(k/n) = k · φ(1/n) for all k ≤ n (by induction using additivity)
-  -- At k = n: φ(1) = n · φ(1/n), and φ(1) = 1, so φ(1/n) = 1/n
-  have hn_pos : (n : ℝ) > 0 := Nat.cast_pos.mpr hn
-  have hn_ne0 : (n : ℝ) ≠ 0 := ne_of_gt hn_pos
-  have hn_q_ne0 : (n : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.pos_iff_ne_zero.mp hn)
-  -- Prove by induction: φ(k/n) = k · φ(1/n) for k ≤ n
-  have h_mult : ∀ k : ℕ, k ≤ n →
-      W.regrade (((k : ℚ) / n) : ℝ) = (k : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ) := by
-    intro k hk
-    induction k with
-    | zero =>
-      simp only [Nat.cast_zero, zero_div, Rat.cast_zero, W.zero, zero_mul]
-    | succ k ih =>
-      have hk' : k ≤ n := Nat.le_of_succ_le hk
-      have ih' := ih hk'
-      -- Use combine_fn_unit_fracs which handles all coercion issues internally
-      have h_combine' : combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ)) =
-          ((k : ℝ) + 1) / (n : ℝ) := combine_fn_unit_fracs h_combine_rat k n hn hk
-      -- Cast equalities for linking
-      have hk_cast_eq : (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := rat_div_cast_eq k n hn_q_ne0
-      have h1_cast_eq : ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
-      have hk1_cast_eq : ((((k + 1 : ℕ) : ℚ) / n) : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
-        rw [rat_div_cast_eq (k + 1) n hn_q_ne0]; simp only [Nat.cast_add, Nat.cast_one]
-      -- Goal: W.regrade (((k+1)/n : ℚ) : ℝ) = (k+1) * W.regrade ((1/n : ℚ) : ℝ)
-      -- Lean normalizes both sides to real-division form
-      calc W.regrade ((((k + 1 : ℕ) : ℚ) / n) : ℝ)
-          = W.regrade (((k : ℝ) + 1) / (n : ℝ)) := by rw [hk1_cast_eq]
-        _ = W.regrade (combine_fn ((k : ℝ) / (n : ℝ)) ((1 : ℝ) / (n : ℝ))) := by rw [← h_combine']
-        _ = W.regrade ((k : ℝ) / (n : ℝ)) + W.regrade ((1 : ℝ) / (n : ℝ)) := W.combine_eq_add _ _
-        _ = W.regrade (((k : ℚ) / n) : ℝ) + W.regrade ((((1 : ℚ) / n)) : ℝ) := by
-              rw [← hk_cast_eq, ← h1_cast_eq]
-        _ = (k : ℝ) * W.regrade ((((1 : ℚ) / n)) : ℝ) + W.regrade ((((1 : ℚ) / n)) : ℝ) := by
-              rw [ih']
-        _ = ((k : ℝ) + 1) * W.regrade ((((1 : ℚ) / n)) : ℝ) := by ring
-        _ = ((k + 1 : ℕ) : ℝ) * W.regrade ((((1 : ℚ) / n)) : ℝ) := by
-              simp only [Nat.cast_add, Nat.cast_one]
-  -- At k = n: φ(n/n) = φ(1) = 1, and φ(n/n) = n · φ(1/n)
-  have h_at_n := h_mult n (le_refl n)
-  -- h_at_n : W.regrade (((n : ℚ) / n) : ℝ) = (n : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ)
-  -- Note: Lean normalizes (((n : ℚ) / n) : ℝ) to (n : ℝ) / (n : ℝ), and similarly for 1/n
-  have h_nn : (n : ℝ) / (n : ℝ) = 1 := div_self hn_ne0
-  -- Use the cast equality to match h_mult's form
-  have h_nn' : (((n : ℚ) / n) : ℝ) = 1 := by
-    rw [rat_div_cast_eq n n hn_q_ne0]; exact h_nn
-  simp only [h_nn'] at h_at_n
-  rw [W.one] at h_at_n
-  -- h_at_n : 1 = (n : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ)
-  -- Goal: W.regrade (((1 : ℚ) / n) : ℝ) = (1 : ℝ) / (n : ℝ)
-  -- Use cast equality for 1/n
-  have h_1n_eq : (((1 : ℚ) / n) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
-  rw [h_1n_eq]
-  -- Goal: W.regrade ((1 : ℝ) / (n : ℝ)) = (1 : ℝ) / (n : ℝ)
-  -- From h_at_n: 1 = (n : ℝ) * W.regrade (((1 : ℚ) / n) : ℝ)
-  simp only [h_1n_eq] at h_at_n
-  -- h_at_n: 1 = (n : ℝ) * W.regrade ((1 : ℝ) / (n : ℝ))
-  field_simp at h_at_n ⊢
-  linarith
-
-theorem regrade_on_rat (W : WeakRegraduation combine_fn)
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) → (r : ℝ) + (s : ℝ) ≤ 1 →
-                     combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ)) :
-    ∀ q : ℚ, 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 → W.regrade q = q := by
-  intro q hq0 hq1
-  -- Write q = p/n where p = q.num and n = q.den
-  obtain ⟨p, n, hn, hq_eq⟩ : ∃ p : ℤ, ∃ n : ℕ, 0 < n ∧ q = p / n := by
-    use q.num, q.den
-    exact ⟨q.den_pos, (Rat.num_div_den q).symm⟩
-  -- Since q ≥ 0 and q = p/n with n > 0, we have p ≥ 0
-  have hn_pos : (n : ℝ) > 0 := Nat.cast_pos.mpr hn
-  have hn_ne0 : (n : ℝ) ≠ 0 := ne_of_gt hn_pos
-  have hn_q_ne0 : (n : ℚ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.pos_iff_ne_zero.mp hn)
-  have hp_nonneg : 0 ≤ p := by
-    have hq_real : (q : ℝ) = (p : ℤ) / (n : ℕ) := by
-      rw [hq_eq]; push_cast; ring
-    rw [hq_real] at hq0
-    have : 0 ≤ (p : ℝ) := by
-      have := mul_nonneg hq0 (le_of_lt hn_pos)
-      simp only [div_mul_cancel₀ _ hn_ne0] at this
-      exact this
-    exact Int.cast_nonneg_iff.mp this
-  -- Convert p to ℕ
-  obtain ⟨p', hp'⟩ := Int.eq_ofNat_of_zero_le hp_nonneg
-  subst hp'
-  -- Now q = p'/n where p', n are naturals with n > 0
-  have h_q_eq' : (q : ℝ) = (p' : ℝ) / (n : ℝ) := by
-    rw [hq_eq]; push_cast; ring
-  -- Since q ≤ 1 and q = p'/n with n > 0, we have p' ≤ n
-  have hp'_le_n : p' ≤ n := by
-    have : (p' : ℝ) / (n : ℝ) ≤ 1 := by rw [← h_q_eq']; exact hq1
-    rw [div_le_one hn_pos] at this
-    exact Nat.cast_le.mp this
-  -- Prove by induction: φ(k/n) = k/n for k ≤ n
-  have h_unit := regrade_unit_frac W h_combine_rat n hn
-  have h_kn : ∀ k : ℕ, k ≤ n → W.regrade ((((k : ℚ) / n)) : ℝ) = (k : ℝ) / (n : ℝ) := by
-    intro k hk
-    induction k with
-    | zero =>
-      simp only [Nat.cast_zero, zero_div, Rat.cast_zero, W.zero]
-    | succ k ih =>
-      have hk' : k ≤ n := Nat.le_of_succ_le hk
-      have ih' := ih hk'
-      -- Cast equalities
-      have hk_cast_eq : (((k : ℚ) / n) : ℝ) = (k : ℝ) / (n : ℝ) := rat_div_cast_eq k n hn_q_ne0
-      have h1_cast_eq : ((((1 : ℚ) / n)) : ℝ) = (1 : ℝ) / (n : ℝ) := rat_one_div_cast_eq n hn_q_ne0
-      have hk1_cast_eq : ((((k + 1 : ℕ) : ℚ) / n) : ℝ) = ((k : ℝ) + 1) / (n : ℝ) := by
-        rw [rat_div_cast_eq (k + 1) n hn_q_ne0]; simp only [Nat.cast_add, Nat.cast_one]
-      -- GPT-5.1 pattern: prove bounds in ℚ first, then cast via Rat.cast_nonneg
-      let r : ℚ := (k : ℚ) / n
-      let s : ℚ := (1 : ℚ) / n
-      have hn_q_pos : (0 : ℚ) < n := by exact_mod_cast hn
-      have hr_q : 0 ≤ r := by dsimp [r]; positivity
-      have hs_q : 0 ≤ s := by dsimp [s]; positivity
-      have hrs_q : r + s ≤ 1 := by
-        dsimp [r, s]
-        rw [← add_div, div_le_one hn_q_pos]
-        have : (k : ℚ) + 1 ≤ n := by exact_mod_cast hk
-        linarith
-      have hk_ge0 : 0 ≤ (r : ℝ) := Rat.cast_nonneg.mpr hr_q
-      have h1n_ge0 : 0 ≤ (s : ℝ) := Rat.cast_nonneg.mpr hs_q
-      have h_sum_le1 : (r : ℝ) + (s : ℝ) ≤ 1 := by
-        have hrs_real : ((r + s : ℚ) : ℝ) ≤ 1 := by exact_mod_cast hrs_q
-        simpa [Rat.cast_add] using hrs_real
-      -- Apply additivity
-      have h_add := regrade_add_rat W h_combine_rat r s hk_ge0 h1n_ge0 h_sum_le1
-      -- Rewrite sum
-      have h_sum_eq : (r + s : ℚ) = ((k + 1 : ℕ) : ℚ) / n := by
-        dsimp [r, s]; field_simp; simp only [Nat.cast_add, Nat.cast_one]
-      rw [h_sum_eq] at h_add
-      -- Link r and s back to the goal form
-      have hr_eq : (r : ℝ) = (k : ℝ) / (n : ℝ) := by dsimp [r]; simp [Rat.cast_div, Rat.cast_natCast]
-      have hs_eq : (s : ℝ) = (1 : ℝ) / (n : ℝ) := by dsimp [s]; simp [Rat.cast_natCast]
-      -- h_add : W.regrade ↑((k+1)/n) = W.regrade r + W.regrade s
-      -- Goal : W.regrade (((k+1)/n : ℚ) : ℝ) = (k+1)/n
-      simp only [hr_eq, hs_eq] at h_add
-      -- h_add now in real-division form for r and s
-      -- Bridge: convert h_add's LHS from rat-cast to real-division form
-      have h_add' : W.regrade (((k + 1 : ℕ) : ℝ) / (n : ℝ)) =
-                    W.regrade ((k : ℝ) / (n : ℝ)) + W.regrade ((1 : ℝ) / (n : ℝ)) := by
-        convert h_add using 2
-        all_goals simp only [Rat.cast_div, Rat.cast_natCast, Rat.cast_add, Rat.cast_one,
-                     Nat.cast_add, Nat.cast_one]
-      -- Bridge casts: ih' and h_unit are in ↑↑ form, we need ↑ form
-      have eq1 : W.regrade ((k : ℝ) / (n : ℝ)) = (k : ℝ) / (n : ℝ) := by
-        convert ih' using 2 <;> norm_cast
-      have eq2 : W.regrade ((1 : ℝ) / (n : ℝ)) = (1 : ℝ) / (n : ℝ) := by
-        convert h_unit using 2
-        -- Goal: 1 / ↑n = ↑1 / ↑n
-        norm_num
-      calc W.regrade ((((k + 1 : ℕ) : ℚ) / n) : ℝ)
-          = W.regrade (((k + 1 : ℕ) : ℝ) / (n : ℝ)) := by congr 1
-        _ = W.regrade ((k : ℝ) / (n : ℝ)) + W.regrade ((1 : ℝ) / (n : ℝ)) := h_add'
-        _ = (k : ℝ) / (n : ℝ) + (1 : ℝ) / (n : ℝ) := by rw [eq1, eq2]
-        _ = ((k : ℝ) + 1) / (n : ℝ) := by ring
-        _ = ((k + 1 : ℕ) : ℝ) / (n : ℝ) := by simp only [Nat.cast_add, Nat.cast_one]
-  -- Apply h_kn at k = p'
-  have h_result := h_kn p' hp'_le_n
-  -- Convert to the form we need
-  have h_q_rat : (q : ℝ) = ((((p' : ℚ) / n)) : ℝ) := by
-    rw [hq_eq]
-    simp only [Int.cast_natCast, Rat.cast_div, Rat.cast_natCast]
-  rw [h_q_rat, h_result, ← h_q_eq']
-  exact h_q_rat
-
-/-- Main derivation: φ = id on [0,1] when combine_fn = + on ℚ ∩ [0,1].
-
-**Dependency chain** (following K&S):
-1. AssociativityTheorem: K&S axioms (order + associativity) → combine_fn = + on ℕ
-2. Grid extension: combine_fn = + on ℕ → combine_fn = + on ℚ (by defining grid points)
-3. regrade_on_rat: combine_fn = + on ℚ → φ = id on ℚ
-4. strictMono_eq_id_of_eq_on_rat: φ = id on ℚ → φ = id on ℝ (by density)
-5. combine_fn_eq_add_derived: φ = id → combine_fn = + on [0,1]
-
-This theorem encapsulates steps 3-4. The hypothesis h_combine_rat comes from steps 1-2. -/
-theorem regrade_eq_id_on_unit (W : WeakRegraduation combine_fn)
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) → (r : ℝ) + (s : ℝ) ≤ 1 →
-                     combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ)) :
-    ∀ x : ℝ, 0 ≤ x → x ≤ 1 → W.regrade x = x := by
-  apply strictMono_eq_id_of_eq_on_rat W.regrade W.strictMono
-  exact regrade_on_rat W h_combine_rat
-
-/-- The additive property is DERIVED from WeakRegraduation + combine_fn = + on ℚ.
-
-Once we know φ = id on [0,1], additive follows immediately:
-  φ(x + y) = x + y = φ(x) + φ(y)
-
-This replaces the assumed `additive` field in `Regraduation`. -/
-theorem additive_derived (W : WeakRegraduation combine_fn)
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) → (r : ℝ) + (s : ℝ) ≤ 1 →
-                     combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
-    (x y : ℝ) (hx : 0 ≤ x ∧ x ≤ 1) (hy : 0 ≤ y ∧ y ≤ 1) (hxy : x + y ≤ 1) :
-    W.regrade (x + y) = W.regrade x + W.regrade y := by
-  -- φ = id on [0,1], so φ(x+y) = x+y and φ(x) + φ(y) = x + y
-  have hx_id := regrade_eq_id_on_unit W h_combine_rat x hx.1 hx.2
-  have hy_id := regrade_eq_id_on_unit W h_combine_rat y hy.1 hy.2
-  have hxy_id := regrade_eq_id_on_unit W h_combine_rat (x + y) (by linarith) hxy
-  rw [hx_id, hy_id, hxy_id]
-
-/-- combine_fn = + on [0,1] follows from φ = id.
-
-Since φ(combine_fn x y) = φ(x) + φ(y) = x + y = φ(x + y),
-and φ is injective, we get combine_fn x y = x + y. -/
-theorem combine_fn_eq_add_derived (W : WeakRegraduation combine_fn)
-    (h_combine_rat : ∀ r s : ℚ, 0 ≤ (r : ℝ) → 0 ≤ (s : ℝ) → (r : ℝ) + (s : ℝ) ≤ 1 →
-                     combine_fn (r : ℝ) (s : ℝ) = ((r + s : ℚ) : ℝ))
-    (x y : ℝ) (hx : 0 ≤ x ∧ x ≤ 1) (hy : 0 ≤ y ∧ y ≤ 1) (hxy : x + y ≤ 1) :
-    combine_fn x y = x + y := by
-  -- φ(combine_fn x y) = φ(x) + φ(y) = x + y = φ(x + y)
-  have h1 := W.combine_eq_add x y
-  have hx_id := regrade_eq_id_on_unit W h_combine_rat x hx.1 hx.2
-  have hy_id := regrade_eq_id_on_unit W h_combine_rat y hy.1 hy.2
-  have hxy_id := regrade_eq_id_on_unit W h_combine_rat (x + y) (by linarith) hxy
-  rw [hx_id, hy_id] at h1
-  -- Now h1 : φ(combine_fn x y) = x + y
-  -- And hxy_id : φ(x + y) = x + y
-  -- So φ(combine_fn x y) = φ(x + y)
-  -- By injectivity: combine_fn x y = x + y
-  have h2 : W.regrade (combine_fn x y) = W.regrade (x + y) := by
-    rw [h1, hxy_id]
-  exact W.strictMono.injective h2
-
-/-! ## Constructing Regraduation from WeakRegraduation
-
-The following shows how to build a full `Regraduation` from `WeakRegraduation` + `combine_rat`,
-making `additive` a DERIVED property rather than an assumption.
-
-**Key insight**: In the probability context, we only need additivity on [0,1] since
-valuations take values in [0,1]. The theorems `additive_derived` and `regrade_eq_id_on_unit`
-give us exactly this!
-
-For the unbounded case (general ℝ), one would need to extend the K&S construction
-beyond [0,1], but this is not needed for probability theory.
--/
-
-/-- Build `Regraduation` from `WeakRegraduation` with explicit global additive proof.
-
-Use this when you have a proof that φ is globally additive (e.g., from the full
-K&S construction extended beyond [0,1]).
-
-**Note**: For probability theory, you typically don't need `Regraduation` at all.
-The key theorems (`combine_fn_is_add`, `sum_rule`, etc.) work directly with
-`WeakRegraduation` + `combine_rat`. The `Regraduation` structure with global
-additivity is only needed for extensions beyond the probability context. -/
 def Regraduation.mk' (W : WeakRegraduation combine_fn)
     (h_additive : ∀ x y, W.regrade (x + y) = W.regrade x + W.regrade y) :
     Regraduation combine_fn where
@@ -574,18 +53,8 @@ def Regraduation.mk' (W : WeakRegraduation combine_fn)
   combine_eq_add := W.combine_eq_add
   additive := h_additive
 
-/-- Cox-style consistency axioms for deriving probability.
-
-**KEY DESIGN DECISION** (following GPT-5.1's Option 1):
-We use `WeakRegraduation` + `combine_rat` instead of full `Regraduation`.
-This makes the `additive` property 100% DERIVED, not assumed!
-
-The derivation chain:
-1. `weakRegrade`: provides φ with φ(S(x,y)) = φ(x) + φ(y)
-2. `combine_rat`: S = + on ℚ ∩ [0,1]
-3. `regrade_on_rat`: φ = id on ℚ ∩ [0,1] (derived from 1+2)
-4. `regrade_eq_id_on_unit`: φ = id on [0,1] (derived from 3 + density)
-5. `combine_fn_is_add`: S = + on [0,1] (derived from 1+4 + injectivity) -/
+/-- A supplied event-combination law with a normalized linearizer and rational calibration.
+The rational agreement is an explicit premise, not a consequence of associativity alone. -/
 structure CoxConsistency (α : Type*) [PlausibilitySpace α] [ComplementedLattice α]
     (v : Valuation α) where
   /-- There exists a function S for combining disjoint plausibilities -/
@@ -630,116 +99,32 @@ lemma combine_zero_zero (hC : CoxConsistency α v) :
     hC.combine_fn 0 0 = 0 := by
   exact hC.combine_zero 0
 
-/-- Helper: S(x, x) = 2x for x ∈ [0, 1/2] (so that x + x ≤ 1).
+/-- Rational calibration fixes the supplied combination law at valid event values. -/
+theorem combine_fn_is_add (hC : CoxConsistency α v) :
+    ∀ x y, 0 ≤ x → x ≤ 1 → 0 ≤ y → y ≤ 1 →
+    hC.combine_fn x y ≤ 1 → hC.combine_fn x y = x + y := by
+  intro x y hx0 hx1 hy0 hy1 hComb_le1
+  have hx := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat x hx0 hx1
+  have hy := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat y hy0 hy1
+  have hnonneg : 0 ≤ hC.combine_fn x y := hC.weakRegrade.strictMono.le_iff_le.mp (by
+    rw [hC.weakRegrade.zero, hC.weakRegrade.combine_eq_add, hx, hy]
+    exact add_nonneg hx0 hy0)
+  have hc := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat _ hnonneg hComb_le1
+  simpa only [hc, hx, hy] using hC.weakRegrade.combine_eq_add x y
 
-This is derived using the regraduation approach:
-1. φ(S(x, x)) = φ(x) + φ(x) = 2φ(x) (from combine_eq_add)
-2. φ(x) = x (from regrade_eq_id_on_unit, since x ∈ [0,1])
-3. So φ(S(x, x)) = 2x
-4. If S(x, x) ∈ [0,1], then φ(S(x, x)) = S(x, x), hence S(x, x) = 2x
-
-Note: The bound x ≤ 1/2 ensures x + x ≤ 1, needed for regrade_eq_id_on_unit. -/
 lemma combine_double (hC : CoxConsistency α v) (x : ℝ)
     (hx0 : 0 ≤ x) (hx1 : x ≤ 1/2) (hComb_le1 : hC.combine_fn x x ≤ 1) :
     hC.combine_fn x x = 2 * x := by
-  -- Use the derived fact that φ = id on [0,1]
-  have hx_le1 : x ≤ 1 := by linarith
-  have hxx_le1 : x + x ≤ 1 := by linarith
-  have hComb_ge0 : 0 ≤ hC.combine_fn x x := by
-    have h1 : hC.combine_fn 0 x ≤ hC.combine_fn x x := by
-      rcases eq_or_lt_of_le hx0 with rfl | hx_pos
-      · simp [hC.combine_zero]
-      -- combine_strict_mono : 0 < y → x₁ < x₂ → combine_fn x₁ y < combine_fn x₂ y
-      -- With y = x, x₁ = 0, x₂ = x: gives combine_fn 0 x < combine_fn x x
-      · exact le_of_lt (hC.combine_strict_mono hx_pos hx_pos)
-    have h2 : hC.combine_fn 0 x = x := by rw [hC.combine_comm, hC.combine_zero]
-    calc 0 ≤ x := hx0
-      _ = hC.combine_fn 0 x := h2.symm
-      _ ≤ hC.combine_fn x x := h1
-  -- φ(x) = x since x ∈ [0,1]
-  have hφx := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat x hx0 hx_le1
-  -- φ(S(x,x)) = φ(x) + φ(x) from combine_eq_add
-  have h1 := hC.weakRegrade.combine_eq_add x x
-  -- S(x,x) ∈ [0,1], so φ(S(x,x)) = S(x,x)
-  have hφComb := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat
-    (hC.combine_fn x x) hComb_ge0 hComb_le1
-  -- Conclude: S(x,x) = φ(S(x,x)) = φ(x) + φ(x) = 2x
-  calc hC.combine_fn x x = hC.weakRegrade.regrade (hC.combine_fn x x) := hφComb.symm
-    _ = hC.weakRegrade.regrade x + hC.weakRegrade.regrade x := h1
-    _ = x + x := by rw [hφx]
-    _ = 2 * x := by ring
+  rw [combine_fn_is_add v hC x x hx0 (by linarith) hx0 (by linarith) hComb_le1]
+  ring
 
-/-- **THE BIG THEOREM**: Cox consistency forces combine_fn to be addition!
+/-! ## Supplied linear negation profile
 
-This is WHY probability is additive - it follows from symmetry + monotonicity.
-The proof is now 100% derived from `WeakRegraduation` + `combine_rat`:
-
-1. φ(S(x,y)) = φ(x) + φ(y) (from weakRegrade.combine_eq_add)
-2. φ(x) = x and φ(y) = y (from regrade_eq_id_on_unit, since x,y ∈ [0,1])
-3. So φ(S(x,y)) = x + y
-4. S(x,y) ∈ [0,1] (hypothesis hComb_le1), so φ(S(x,y)) = S(x,y)
-5. Therefore S(x,y) = x + y
-
-**No assumed additivity!** The `additive` property of `Regraduation` is not used.
-Instead, we use `regrade_eq_id_on_unit` which is derived from `combine_rat`. -/
-theorem combine_fn_is_add (hC : CoxConsistency α v) :
-    ∀ x y, 0 ≤ x → x ≤ 1 → 0 ≤ y → y ≤ 1 →
-    hC.combine_fn x y ≤ 1 →  -- NEW: needed to apply regrade_eq_id_on_unit
-    hC.combine_fn x y = x + y := by
-  intro x y hx0 hx1 hy0 hy1 hComb_le1
-  -- S(x,y) ≥ 0 (from monotonicity + S(0,y) = y ≥ 0)
-  have hComb_ge0 : 0 ≤ hC.combine_fn x y := by
-    -- Use commutativity: S(x, y) = S(y, x), then monotonicity in first arg
-    have h1 : hC.combine_fn 0 y ≤ hC.combine_fn x y := by
-      rcases eq_or_lt_of_le hx0 with rfl | hx_pos
-      · -- x = 0: trivially hC.combine_fn 0 y ≤ hC.combine_fn 0 y
-        exact le_refl _
-      rcases eq_or_lt_of_le hy0 with rfl | hy_pos
-      · -- y = 0: S(0,0) ≤ S(x,0) means 0 ≤ x
-        simp only [hC.combine_zero]
-        exact hx0
-      -- x > 0, y > 0: use combine_strict_mono : 0 < y → x₁ < x₂ → combine_fn x₁ y < combine_fn x₂ y
-      · exact le_of_lt (hC.combine_strict_mono hy_pos hx_pos)
-    have h2 : hC.combine_fn 0 y = y := by rw [hC.combine_comm, hC.combine_zero]
-    calc 0 ≤ y := hy0
-      _ = hC.combine_fn 0 y := h2.symm
-      _ ≤ hC.combine_fn x y := h1
-  -- Use the DERIVED fact that φ = id on [0,1]
-  have hφx := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat x hx0 hx1
-  have hφy := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat y hy0 hy1
-  have hφComb := regrade_eq_id_on_unit hC.weakRegrade hC.combine_rat
-    (hC.combine_fn x y) hComb_ge0 hComb_le1
-  -- φ(S(x,y)) = φ(x) + φ(y) (from combine_eq_add)
-  have h1 := hC.weakRegrade.combine_eq_add x y
-  -- S(x,y) = φ(S(x,y)) = φ(x) + φ(y) = x + y (since φ = id on [0,1])
-  calc hC.combine_fn x y = hC.weakRegrade.regrade (hC.combine_fn x y) := hφComb.symm
-    _ = hC.weakRegrade.regrade x + hC.weakRegrade.regrade y := h1
-    _ = x + y := by rw [hφx, hφy]
-
-/-! ## Negation Function
-
-Cox's theorem also addresses complements via a negation function N : ℝ → ℝ.
-Following Knuth & Skilling: If a and b are complementary (Disjoint a b, a ⊔ b = ⊤),
-then v(b) = N(v(a)).
-
-We derive that N(x) = 1 - x from functional equation properties.
+The following record includes linearity as data. Its accessor is not a
+linearity derivation. Eventwise compatibility with an additive valuation
+will separately imply the complement equation on attained values.
 -/
 
-/-- Negation data: function N for evaluating complements.
-This parallels the combine_fn S for disjunction.
-
-**IMPORTANT**: The linearity N(x) = 1 - x is NOT derivable from
-continuity + involutive + antitone + boundary conditions alone!
-Counterexample: N(x) = (1 - x^p)^{1/p} for any p > 0 satisfies all these
-properties but N(x) ≠ 1 - x unless p = 1. See `involution_counterexample` below.
-
-However, linearity IS derivable from:
-- `negate_val` (consistency with complements) PLUS
-- `CoxConsistency` (which gives the sum rule via `complement_rule`)
-
-For standalone `NegationData` without `CoxConsistency`, we include `negate_linear`
-as an axiom. When combined with `CoxConsistency` in `CoxConsistencyFull`,
-it becomes derivable (see `negate_linear_from_cox`). -/
 structure NegationData (α : Type*) [PlausibilitySpace α]
     [ComplementedLattice α] (v : Valuation α) where
   /-- The negation function N from Cox's theorem -/
@@ -758,8 +143,8 @@ structure NegationData (α : Type*) [PlausibilitySpace α]
   /-- Regularity condition: N is continuous -/
   negate_continuous : Continuous negate
   /-- Linearity: N(x) = 1 - x on [0,1].
-  This is NOT derivable from continuity + involutive + antitone alone
-  (see counterexample below), but IS derivable when combined with CoxConsistency. -/
+  This is supplied, rather than derived from the preceding regularity fields.
+  Eventwise compatibility only determines values attained by the valuation. -/
   negate_linear : ∀ x, 0 ≤ x → x ≤ 1 → negate x = 1 - x
 
 /-- Extract linearity from NegationData. -/
@@ -867,6 +252,16 @@ theorem sum_rule (hC : CoxConsistency α v) {a b : α} (hDisj : Disjoint a b) :
   · rw [← hC.combine_disjoint hDisj]
     exact v.le_one (a ⊔ b)
 
+/-- The derived event law supplies the common sum-rule valuation with identical values. -/
+def CoxConsistency.toSumRuleValuation (hC : CoxConsistency α v) :
+    ProbabilityTheory.Common.SumRuleValuation α where
+  toNormalizedValuation := v.toNormalizedValuation
+  sum_rule a b := by
+    change v.val (a ⊔ b) = v.val a + v.val b - v.val (a ⊓ b)
+    have h := BooleanRepresentation.modular_of_disjoint_add v.val
+      (fun _ _ hd => sum_rule v hC hd) a b
+    linarith
+
 /-!
 ## Independence (Appendix B): direct product rule
 
@@ -888,7 +283,7 @@ namespace AppendixB
 
 open KnuthSkilling.Literature
 
-open Multiplicative
+open _root_.KnuthSkilling.Multiplicative
 
 variable {β γ : Type*} [PlausibilitySpace β] [PlausibilitySpace γ]
 
@@ -973,24 +368,17 @@ theorem complement_rule (hC : CoxConsistency α v) (a b : α)
   rw [h_top, v.val_top] at h1
   linarith
 
-/-- KEY THEOREM: In `CoxConsistencyFull`, negation linearity is DERIVABLE!
+/-- Compatibility determines complement values without assuming linearity of the scalar map. -/
+theorem negate_on_attained (hC : CoxConsistency α v) (N : ℝ → ℝ)
+    (hN : ∀ a b, Disjoint a b → a ⊔ b = ⊤ → v.val b = N (v.val a))
+    (a b : α) (h_disj : Disjoint a b) (h_top : a ⊔ b = ⊤) :
+    N (v.val a) = 1 - v.val a := by
+  rw [← hN a b h_disj h_top, complement_rule v hC a b h_disj h_top]
 
-When we have both:
-- `negate_val`: v(b) = negate(v(a)) for complements a, b
-- `complement_rule` (from CoxConsistency): v(b) = 1 - v(a) for complements
-
-Then for any complementary pair (a, b):
-  negate(v(a)) = v(b) = 1 - v(a)
-
-This shows negate(x) = 1 - x for all x in the range of the valuation. -/
+/-- Historical linear-profile interface, obtained from event compatibility alone. -/
 theorem negate_linear_from_cox (hCF : CoxConsistencyFull α v)
     (a b : α) (h_disj : Disjoint a b) (h_top : a ⊔ b = ⊤) :
-    hCF.negate (v.val a) = 1 - v.val a := by
-  -- From NegationData.negate_val: v(b) = negate(v(a))
-  have h1 : v.val b = hCF.negate (v.val a) := hCF.negate_val a b h_disj h_top
-  -- From complement_rule (using CoxConsistency): v(b) = 1 - v(a)
-  have h2 : v.val b = 1 - v.val a := complement_rule v hCF.toCoxConsistency a b h_disj h_top
-  -- Combine: negate(v(a)) = 1 - v(a)
-  rw [← h1, h2]
+    hCF.negate (v.val a) = 1 - v.val a :=
+  negate_on_attained v hCF.toCoxConsistency hCF.negate hCF.negate_val a b h_disj h_top
 
 end KnuthSkilling.Probability

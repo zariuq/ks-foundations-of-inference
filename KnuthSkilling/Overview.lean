@@ -1,110 +1,61 @@
 /-
-# Knuth-Skilling Foundations of Probability
+# Foundations of inference: constructions and their boundaries
 
-Derive probability theory from lattice-theoretic principles following:
-- Knuth & Skilling, "The Symmetrical Foundation of Measure, Probability and Quantum theories"
+## Ordered combination
 
-Key insight: Probability DERIVED from symmetry, not axiomatized!
+`Api` presents the public theorem statements. Additive representation means
+an order embedding preserving the supplied operation, not a surjection onto ℝ.
+Hölder uses absence of anomalous pairs; cuts and the maintained Grid construction
+use their stated separation profiles. Concrete real, nonnegative-real and
+identity-free positive-real models check that these profiles can be inhabited.
+Positive-anchor calibration compares the actual maps from different routes.
+`zero_anchor_globalization_impossible` rules out zero at a positive anchor.
+Unit calibration preserves the supplied map up to a positive scale and adds no
+representation-existence assumption.
 
-## Two Formalizations of K&S Content
+## Products and probability
 
-This formalization provides **two complete paths** to probability calculus, both from K&S's paper:
+Appendix B has a shared tensor proof with explicit regularity and distributivity
+premises. Its normalization is a faithful multiplicative observation and preserves
+authored folds. An additive embedding alone supplies no multiplicative law.
+The inverse-based route additionally requires a real order isomorphism.
 
-### Path 1: K&S Appendices A & B (Scalar Framework)
-- **Additive/Main**: Appendix A (⊕ → additive order isomorphism Θ)
-- **Multiplicative/Main**: Appendix B (⊗ → scaled multiplication via AdditiveOrderIsoRep)
-- **Probability/ProbabilityDerivation**: Full probability calculus via `CoxConsistency` structure
+`ProbabilityCalculus` is the common sum/product/Bayes interface. The scalar Cox
+profile and lattice bivaluations have different supplied assumptions; their
+calibration premises are not silently deduced from the operator laws.
+Normalizing event weights requires positive total mass. Finite coordinate and
+Mathlib-measure bridges prove preservation of the supplied probability answers.
+Countable additivity needs separately supplied event and continuity conditions.
 
-### Path 2: K&S Section 7 (Lattice/Conditional Framework)
-- **Multiplicative/Proofs/Direct/DirectProof.lean**: Direct proof of Appendix B (same result, different technique)
-- **Probability/ConditionalProbability/Basic.lean**: K&S Section 7 via `Bivaluation` + `ChainingAssociativity`
+## Information and variational inference
 
-**Important clarifications**:
-- Both paths formalize K&S's paper - they're not competing approaches (like Cox vs K&S)
-- `Multiplicative/Proofs/Direct/DirectProof.lean` is NOT "Aczél's derivation of probability" - it's just a direct algebraic
-  proof of K&S's Appendix B theorem that avoids "apply Appendix A again"
-- `Probability/ProbabilityDerivation` and `Probability/ConditionalProbability/Basic` formalize DIFFERENT K&S content:
-  - `Probability/ProbabilityDerivation`: scalar-valued plausibility functions (`CoxConsistency`)
-  - `Probability/ConditionalProbability/Basic`: conditional plausibility on lattice pairs (`Bivaluation`)
-- Both derive Bayes' theorem and product rules, but from different K&S axiom structures
+Extended KL retains singular source mass as infinity. Real KL interpretations
+require the stated support and summability premises.
+Appendix C's logarithmic rigidity requires its regularity gate; additive Hamel
+pathologies and nonsmooth minima separate that gate from algebra and optimality.
 
-## Canonical Interface (Use This!)
+Shore--Johnson is opt-in. Inference is specified on admissible constraints;
+existence and at-most-one uniqueness are separate. Concrete KL inference satisfies
+the guarded operator laws. The separable analytic profile is supplied separately:
+it has not been derived from those operator laws. Prior preservation has its own
+role, distinguished by the maximum-entropy control.
 
-**`ProbabilityCalculus.lean`** provides the single source of truth for end-results:
-- `ProbabilityCalculus.sumRule`: P(A ∨ B) = P(A) + P(B) for disjoint events
-- `ProbabilityCalculus.productRule`: P(A ∧ B) = P(A|B) · P(B)
-- `ProbabilityCalculus.bayesTheorem`: P(A|B) · P(B) = P(B|A) · P(A)
-- `ProbabilityCalculus.complementRule`: P(B) = 1 - P(A) for complements
+## Examples and countermodels
 
-Import `ProbabilityCalculus` for these canonical theorems. Don't use the
-path-specific versions in `Probability/ProbabilityDerivation` or `Probability/ConditionalProbability/Basic` directly.
+Finite weighted events provide inhabited probability models. The finite decision
+example proves extraction, observation-relative precision and attained credal
+minima. Expected utility and maximin are additional decision rules.
+Incomparability does not imply failure of Boolean complementation: the four-element
+diamond is Boolean. Disjoint additivity without relative complements need not imply
+modularity; numerical risk valuations must not be confused with event probabilities.
 
-## Module Structure
-
-- **Api.lean**: **PUBLIC CORE API** - single top-level entry point re-stating the headline
-  theorems (`faddeev_iff_shannonKhinchin`, `ks_representation_theorem`, `Psi_is_exp`,
-  `op_comm_of_hasRepresentationTheorem`), the key axioms/defs, and all three additive-representation
-  routes (Hölder, cuts, grid) in one place. Start here.
-- **Core/Basic.lean**: Core definitions (PlausibilitySpace, Valuation, KSSemigroupBase / Monoid / Algebra bases)
-- **Core/Algebra.lean**: Basic operations (iterate_op, separation axioms, identity-free ℕ+ iteration)
-- **Additive/Axioms/**: Separation machinery (sandwich separation, anomalous pairs)
-- **Additive/Main.lean**: **MAIN ENTRYPOINT** - Appendix A representation theorem
-  - `Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean`: canonical Hölder path
-  - `Additive/Proofs/GridInduction/`: grid/induction path (globalization + core)
-  - `Additive/Proofs/DirectCuts/`: Dedekind cuts alternative
-- **Multiplicative/Main.lean**: Appendix B product theorem (product equation → exponential → product rule)
-  - `Multiplicative/Proofs/Direct/DirectProof.lean`: **Alternative path** (direct derivation)
-- **Probability/ProbabilityDerivation.lean**: K&S's full derivation (Appendix A → B → probability calculus)
-- **Probability/ProbabilityCalculus.lean**: **CANONICAL INTERFACE** - single source of truth for end-results
-- **Variational.lean**: Appendix C variational theorem (Cauchy/log solution; Lagrange-multiplier motivation)
-- **Information/Divergence.lean**: K&S Section 6 divergence (per-atom and finite-vector forms)
-- **Probability/ConditionalProbability/**: K&S Section 7 on conditional probability (uses alternative path)
-  - `Probability/ConditionalProbability/Basic.lean`: Axiom 5 (Chaining Associativity), chain-product rule, Bayes' theorem
-- **Information/InformationEntropy.lean**: K&S Section 8 information/entropy (KL divergence, Shannon entropy, basic Shannon properties)
-
-## Axiom Hierarchy (Primary Assumption: NoAnomalousPairs)
-
-The canonical proof path uses **NoAnomalousPairs (NAP)** from the 1950s ordered-semigroup literature
-(Alimov 1950, Fuchs 1963), formalized via Eric Luap's OrderedSemigroups library:
-
-- **Canonical path (Hölder/Alimov)**: `[NoAnomalousPairs α]` → additive representation
-  - Location: `Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean`
-  - Lightweight, identity-free, proven complete
-
-- **Alternative path (Cuts)**: `[KSSeparationStrict α]` → additive representation
-  - Location: `Additive/Proofs/DirectCuts/`
-  - Uses Dedekind cuts; requires identity
-
-- **Alternative path (Grid/induction)**: `[KSSeparationStrict α]` → additive representation
-  - Location: `Additive/Proofs/GridInduction/` (`representationGlobalization_of_KSSeparationStrict`)
-  - COMPLETE and axiom-clean; the strict-gap interface `BEmptyStrictGapSpec` is discharged from
-    `KSSeparationStrict` (no `sorry`, no extra axioms)
-
-The relationship between axioms:
-- `KSSeparation` + `IdentIsMinimum` ⇒ `NoAnomalousPairs` (proven in `AnomalousPairs.lean`)
-- NAP is identity-free and historically prior (1950s vs K&S 2012)
-
-## Countermodels (opt-in)
-- Counterexamples clarifying which hypotheses are required live under
-  `KnuthSkilling/Additive/Counterexamples/`.
-  They are intentionally not imported by the main proof chain; import them explicitly when needed.
+The default entry point imports the core and interpretation layers below.
+Shore--Johnson and the counterexample aggregate remain explicit imports.
 -/
 
--- Public core API: single entry point re-stating the headline theorems, key axioms/defs,
--- and all three additive-representation routes (Hölder, cuts, grid). See `KnuthSkilling/Api.lean`.
 import KnuthSkilling.Api
-
--- Stable core facade (Appendices A/B/C + minimal axiom hierarchy).
 import KnuthSkilling.FoundationsOfInference
-
--- Additional K&S material beyond the FOI core.
 import KnuthSkilling.Bridges.GoertzelGroupFix
 import KnuthSkilling.Probability.Independence
 import KnuthSkilling.Probability.ConditionalProbability
 import KnuthSkilling.Core.SymmetricalFoundation
-
--- Shore–Johnson is first-class but intentionally not on the default import path.
--- (Paused/WIP; import explicitly when needed.)
--- import KnuthSkilling.ShoreJohnson
-
--- Counterexamples are opt-in and not imported by default.

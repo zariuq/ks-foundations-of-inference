@@ -7,6 +7,7 @@ Basic lemmas for KnuthSkillingAlgebra including:
 -/
 
 import KnuthSkilling.Core.Basic
+import Mathlib.Algebra.Group.Commute.Basic
 
 namespace KnuthSkilling
 
@@ -31,24 +32,18 @@ theorem iterate_op_zero (a : α) : iterate_op a 0 = ident := rfl
 theorem iterate_op_one (a : α) : iterate_op a 1 = a := by
   simp [iterate_op, op_ident_right]
 
-/-- For commutative K&S algebras, iterate_op respects addition.
-Note: The minimal KnuthSkillingAlgebra doesn't assume commutativity.
-For the probability case (combine_fn is commutative), this holds. -/
-theorem iterate_op_add_comm (x : α) (h_comm : ∀ a b : α, op a b = op b a)
-    (m n : ℕ) :
-    iterate_op x (m + n) = op (iterate_op x m) (iterate_op x n) := by
+/-- The independently defined iteration agrees with powers of the supplied monoid. -/
+theorem iterate_op_eq_pow (x : α) (n : ℕ) :
+    let _ : Monoid α := KnuthSkillingMonoidBase.toMonoid
+    iterate_op x n = x ^ n := by
+  let _ : Monoid α := KnuthSkillingMonoidBase.toMonoid
+  change iterate_op x n = x ^ n
   induction n with
-  | zero => simp [iterate_op, op_ident_right]
+  | zero => rfl
   | succ n ih =>
-    -- Use commutativity to swap arguments and apply associativity
-    calc iterate_op x (m + (n + 1))
-        = iterate_op x ((m + n) + 1) := by ring_nf
-      _ = op x (iterate_op x (m + n)) := rfl
-      _ = op x (op (iterate_op x m) (iterate_op x n)) := by rw [ih]
-      _ = op (op x (iterate_op x m)) (iterate_op x n) := by rw [← op_assoc]
-      _ = op (op (iterate_op x m) x) (iterate_op x n) := by rw [h_comm x]
-      _ = op (iterate_op x m) (op x (iterate_op x n)) := by rw [op_assoc]
-      _ = op (iterate_op x m) (iterate_op x (n + 1)) := rfl
+    change op x (iterate_op x n) = x ^ (n + 1)
+    rw [ih, pow_succ']
+    rfl
 
 /-- Relation between Nat.iterate (op a) and iterate_op.
 Nat.iterate (op a) n a = iterate_op a (n+1) -/
@@ -57,43 +52,25 @@ theorem nat_iterate_eq_iterate_op_succ (a : α) (n : ℕ) :
   induction n with
   | zero => simp [iterate_op, op_ident_right]
   | succ k ih =>
-    -- Goal: (op a)^[k+1] a = iterate_op a (k+2)
     rw [Function.iterate_succ']
     simp only [Function.comp_apply]
     rw [ih]
-    -- Now: op a (iterate_op a (k+1)) = iterate_op a (k+2)
-    -- By definition: iterate_op a (k+2) = op a (iterate_op a (k+1))
     rfl
 
 /-- iterate_op is strict mono in its iteration count for a > ident -/
 theorem iterate_op_strictMono (a : α) (ha : ident < a) : StrictMono (iterate_op a) := by
-  intro m n hmn
-  induction n with
-  | zero => exact (Nat.not_lt_zero m hmn).elim
-  | succ k ih =>
-    rcases Nat.lt_succ_iff_lt_or_eq.mp hmn with hlt | heq
-    · -- m < k case: use IH and then show iterate_op a k < iterate_op a (k+1)
-      have h1 : iterate_op a m < iterate_op a k := ih hlt
-      have h2 : iterate_op a k < iterate_op a (k + 1) := by
-        conv_lhs => rw [← op_ident_left (iterate_op a k)]
-        exact op_strictMono_left (iterate_op a k) ha
-      exact lt_trans h1 h2
-    · -- m = k case: show iterate_op a m < iterate_op a (k+1)
-      rw [heq]
-      conv_lhs => rw [← op_ident_left (iterate_op a k)]
-      exact op_strictMono_left (iterate_op a k) ha
+  apply strictMono_nat_of_lt_succ
+  intro n
+  change iterate_op a n < op a (iterate_op a n)
+  simpa only [op_ident_left] using op_strictMono_left (iterate_op a n) ha
 
 /-- op is monotone in the left argument (from strict monotonicity). -/
 theorem op_mono_left (y : α) {x₁ x₂ : α} (h : x₁ ≤ x₂) : op x₁ y ≤ op x₂ y := by
-  rcases h.lt_or_eq with hlt | heq
-  · exact le_of_lt (op_strictMono_left y hlt)
-  · rw [heq]
+  exact KSSemigroupBase.op_mono_left y h
 
 /-- op is monotone in the right argument (from strict monotonicity). -/
 theorem op_mono_right (x : α) {y₁ y₂ : α} (h : y₁ ≤ y₂) : op x y₁ ≤ op x y₂ := by
-  rcases h.lt_or_eq with hlt | heq
-  · exact le_of_lt (op_strictMono_right x hlt)
-  · rw [heq]
+  exact KSSemigroupBase.op_mono_right x h
 
 /-- iterate_op preserves the operation: a^{n+1} = a ⊕ a^n -/
 theorem iterate_op_succ (a : α) (n : ℕ) : iterate_op a (n + 1) = op a (iterate_op a n) := rfl
@@ -101,61 +78,16 @@ theorem iterate_op_succ (a : α) (n : ℕ) : iterate_op a (n + 1) = op a (iterat
 /-- Addition law for iterate_op: a^m ⊕ a^n = a^{m+n} -/
 theorem iterate_op_add (a : α) (m n : ℕ) :
     op (iterate_op a m) (iterate_op a n) = iterate_op a (m + n) := by
-  induction m with
-  | zero =>
-    simp only [iterate_op_zero, op_ident_left, Nat.zero_add]
-  | succ m ih =>
-    calc op (iterate_op a (m + 1)) (iterate_op a n)
-        = op (op a (iterate_op a m)) (iterate_op a n) := by rw [iterate_op_succ]
-      _ = op a (op (iterate_op a m) (iterate_op a n)) := by rw [op_assoc]
-      _ = op a (iterate_op a (m + n)) := by rw [ih]
-      _ = iterate_op a (m + n + 1) := by rw [← iterate_op_succ]
-      _ = iterate_op a (m + 1 + n) := by ring_nf
+  let _ : Monoid α := KnuthSkillingMonoidBase.toMonoid
+  change (iterate_op a m) * iterate_op a n = iterate_op a (m + n)
+  simp only [iterate_op_eq_pow]
+  exact (pow_add a m n).symm
 
 /-- Multiplication law: (a^n)^m = a^{nm} -/
 theorem iterate_op_mul (x : α) (n m : ℕ) :
     iterate_op (iterate_op x n) m = iterate_op x (n * m) := by
-  induction m with
-  | zero => simp only [iterate_op_zero, Nat.mul_zero]
-  | succ m ih =>
-    calc iterate_op (iterate_op x n) (m + 1)
-        = op (iterate_op x n) (iterate_op (iterate_op x n) m) := rfl
-      _ = op (iterate_op x n) (iterate_op x (n * m)) := by rw [ih]
-      _ = iterate_op x (n + n * m) := by rw [iterate_op_add]
-      _ = iterate_op x (n * (m + 1)) := by ring_nf
-
-/-- Repetition lemma (≤ version): If a^n ≤ x^m then a^{nk} ≤ x^{mk} -/
-theorem repetition_lemma_le (a x : α) (n m k : ℕ) (h : iterate_op a n ≤ iterate_op x m) :
-    iterate_op a (n * k) ≤ iterate_op x (m * k) := by
-  induction k with
-  | zero => simp only [Nat.mul_zero, iterate_op_zero]; exact le_refl _
-  | succ k ih =>
-    have eq_a : n * (k + 1) = n * k + n := by ring
-    have eq_x : m * (k + 1) = m * k + m := by ring
-    rw [eq_a, eq_x, ← iterate_op_add, ← iterate_op_add]
-    calc op (iterate_op a (n * k)) (iterate_op a n)
-        ≤ op (iterate_op a (n * k)) (iterate_op x m) := op_mono_right _ h
-      _ ≤ op (iterate_op x (m * k)) (iterate_op x m) := op_mono_left _ ih
-
-/-- Repetition lemma (< version): If a^n < x^m then a^{nk} < x^{mk} for k > 0 -/
-theorem repetition_lemma_lt (a x : α) (n m k : ℕ) (hk : k > 0) (h : iterate_op a n < iterate_op x m) :
-    iterate_op a (n * k) < iterate_op x (m * k) := by
-  cases k with
-  | zero => omega
-  | succ k =>
-    induction k with
-    | zero =>
-      rw [Nat.zero_add, Nat.mul_one, Nat.mul_one]
-      exact h
-    | succ k ih =>
-      have eq_a : n * (k + 1 + 1) = n * (k + 1) + n := by ring
-      have eq_x : m * (k + 1 + 1) = m * (k + 1) + m := by ring
-      rw [eq_a, eq_x, ← iterate_op_add, ← iterate_op_add]
-      calc op (iterate_op a (n * (k + 1))) (iterate_op a n)
-          < op (iterate_op a (n * (k + 1))) (iterate_op x m) :=
-            op_strictMono_right _ h
-        _ < op (iterate_op x (m * (k + 1))) (iterate_op x m) :=
-            op_strictMono_left _ (ih (Nat.succ_pos k))
+  let _ : Monoid α := KnuthSkillingMonoidBase.toMonoid
+  simpa only [iterate_op_eq_pow] using (pow_mul x n m).symm
 
 /-- iterate_op is strictly monotone in base for positive iterations -/
 theorem iterate_op_strictMono_base (m : ℕ) (hm : 0 < m) (x y : α) (hxy : x < y) :
@@ -187,6 +119,28 @@ theorem iterate_op_mono_base (m : ℕ) (x y : α) (hxy : x ≤ y) :
       _ ≤ op y (iterate_op y n) := op_mono_left (iterate_op y n) hxy
       _ = iterate_op y (n + 1) := rfl
 
+/-- For commutative K&S algebras, iterate_op respects addition.
+Note: The minimal KnuthSkillingAlgebra doesn't assume commutativity.
+For the probability case (combine_fn is commutative), this holds. -/
+theorem iterate_op_add_comm (x : α) (h_comm : ∀ a b : α, op a b = op b a)
+    (m n : ℕ) :
+    iterate_op x (m + n) = op (iterate_op x m) (iterate_op x n) := by
+  calc iterate_op x (m + n) = op (iterate_op x n) (iterate_op x m) := by
+         rw [Nat.add_comm]; exact (iterate_op_add x n m).symm
+       _ = op (iterate_op x m) (iterate_op x n) := h_comm _ _
+
+/-- Repetition lemma (≤ version): If a^n ≤ x^m then a^{nk} ≤ x^{mk} -/
+theorem repetition_lemma_le (a x : α) (n m k : ℕ) (h : iterate_op a n ≤ iterate_op x m) :
+    iterate_op a (n * k) ≤ iterate_op x (m * k) := by
+  have hi := iterate_op_mono_base k (iterate_op a n) (iterate_op x m) h
+  simpa only [iterate_op_mul] using hi
+
+/-- Repetition lemma (< version): If a^n < x^m then a^{nk} < x^{mk} for k > 0 -/
+theorem repetition_lemma_lt (a x : α) (n m k : ℕ) (hk : k > 0) (h : iterate_op a n < iterate_op x m) :
+    iterate_op a (n * k) < iterate_op x (m * k) := by
+  have hi := iterate_op_strictMono_base k hk (iterate_op a n) (iterate_op x m) h
+  simpa only [iterate_op_mul] using hi
+
 /-- Positive iterations are strictly greater than identity -/
 theorem iterate_op_pos (y : α) (hy : ident < y) (m : ℕ) (hm : m > 0) :
     ident < iterate_op y m := by
@@ -197,42 +151,21 @@ theorem iterate_op_pos (y : α) (hy : ident < y) (m : ℕ) (hm : m > 0) :
 then `y^m < ident` for all `m > 0`. -/
 theorem iterate_op_lt_ident_of_isNegative (y : α) (hy : IsNegative y) (m : ℕ) (hm : 0 < m) :
     iterate_op y m < ident := by
-  cases m with
-  | zero => cases hm
-  | succ k =>
-    -- `hm` is redundant in the successor case; clear it to avoid dependent generalization.
-    clear hm
-    induction k with
-    | zero =>
-      -- m = 1
-      have h1 : op y ident < ident := hy ident
-      -- `iterate_op y 1 = y = op y ident`
-      simpa [iterate_op_one, op_ident_right] using h1
-    | succ k ih =>
-      -- m = k+2
-      have hstep : op y (iterate_op y (k + 1)) < iterate_op y (k + 1) :=
-        hy (iterate_op y (k + 1))
-      have hstep' : iterate_op y (k + 1 + 1) < iterate_op y (k + 1) := by
-        simpa [iterate_op] using hstep
-      exact lt_trans hstep' ih
+  have hanti : StrictAnti (iterate_op y) := strictAnti_nat_of_succ_lt fun n => hy (iterate_op y n)
+  exact hanti hm
 
 /-- Connection: `iterate_op_pnat` equals `iterate_op` when n is positive.
     This bridges identity-free ℕ+ iteration with identity-based ℕ iteration. -/
 theorem iterate_op_pnat_eq (x : α) (n : ℕ+) :
     iterate_op_pnat x n = iterate_op x n.val := by
-  -- By induction on n
   induction n using PNat.recOn with
   | one =>
-    -- iterate_op_pnat x 1 = x, and iterate_op x 1 = x
     rw [iterate_op_pnat_one]
-    -- Goal: x = iterate_op x (1 : ℕ+).val
-    -- (1 : ℕ+).val = 1 : ℕ definitionally
     have h1 : (1 : ℕ+).val = 1 := rfl
     rw [h1]
     exact (iterate_op_one x).symm
   | succ n ih =>
     rw [iterate_op_pnat_succ, ih]
-    -- Now show: op x (iterate_op x n.val) = iterate_op x (n.val + 1)
     have hsucc : (n + 1 : ℕ+).val = n.val + 1 := PNat.add_coe n 1
     rw [hsucc, ← iterate_op_succ]
 
@@ -242,34 +175,11 @@ This is the key lemma for expanding iterates of sums. Note that this is FALSE wi
 commutativity (noncommutative `op` does not distribute over iterated sums). -/
 theorem iterate_op_op_distrib_of_comm (x y : α) (h_comm : ∀ a b : α, op a b = op b a) (m : ℕ) :
     iterate_op (op x y) m = op (iterate_op x m) (iterate_op y m) := by
-  induction m with
-  | zero => simp only [iterate_op_zero, op_ident_left]
-  | succ m ih =>
-    -- Goal: (x⊕y)^{m+1} = x^{m+1} ⊕ y^{m+1}
-    -- LHS = (x⊕y) ⊕ (x^m ⊕ y^m) by IH
-    -- RHS = (x ⊕ x^m) ⊕ (y ⊕ y^m)
-    -- We need to rearrange (x⊕y)⊕(x^m⊕y^m) to (x⊕x^m)⊕(y⊕y^m)
-    have step1 : op (op x y) (op (iterate_op x m) (iterate_op y m)) =
-        op x (op y (op (iterate_op x m) (iterate_op y m))) := by
-      rw [op_assoc]
-    have step2 : op y (op (iterate_op x m) (iterate_op y m)) =
-        op (op y (iterate_op x m)) (iterate_op y m) := by
-      rw [← op_assoc]
-    have step3 : op y (iterate_op x m) = op (iterate_op x m) y := h_comm y (iterate_op x m)
-    have step4 : op (op (iterate_op x m) y) (iterate_op y m) =
-        op (iterate_op x m) (op y (iterate_op y m)) := op_assoc _ _ _
-    have step5 : op x (op (iterate_op x m) (op y (iterate_op y m))) =
-        op (op x (iterate_op x m)) (op y (iterate_op y m)) := by
-      rw [← op_assoc]
-    calc iterate_op (op x y) (m + 1)
-        = op (op x y) (iterate_op (op x y) m) := rfl
-      _ = op (op x y) (op (iterate_op x m) (iterate_op y m)) := by rw [ih]
-      _ = op x (op y (op (iterate_op x m) (iterate_op y m))) := by rw [step1]
-      _ = op x (op (op y (iterate_op x m)) (iterate_op y m)) := by rw [step2]
-      _ = op x (op (op (iterate_op x m) y) (iterate_op y m)) := by rw [step3]
-      _ = op x (op (iterate_op x m) (op y (iterate_op y m))) := by rw [step4]
-      _ = op (op x (iterate_op x m)) (op y (iterate_op y m)) := by rw [step5]
-      _ = op (iterate_op x (m + 1)) (iterate_op y (m + 1)) := rfl
+  let _ : Monoid α := KnuthSkillingMonoidBase.toMonoid
+  have hxy : Commute x y := h_comm x y
+  change iterate_op (x * y) m = iterate_op x m * iterate_op y m
+  simp only [iterate_op_eq_pow]
+  exact hxy.mul_pow m
 
 /-- Variant: op distributes over iterate_op in opposite order -/
 theorem iterate_op_op_distrib_of_comm' (x y : α) (h_comm : ∀ a b : α, op a b = op b a) (m : ℕ) :
@@ -278,29 +188,7 @@ theorem iterate_op_op_distrib_of_comm' (x y : α) (h_comm : ∀ a b : α, op a b
 
 end Base
 
-/-! The Archimedean property (`bounded_by_iterate`, `op_archimedean_of_separation`) is
-derived from `KSSeparation` in `Additive/Axioms/SandwichSeparation.lean`. It is NOT an axiom. -/
-
 end KnuthSkillingAlgebra
-
-/-! ## Separation Typeclass
-
-`KSSeparation` captures the “rational separation” property used throughout the representation
-arguments: for `ident < x < y` and any base `a > ident`, some power of `a` sits strictly between a
-power of `x` and a power of `y`.
-
-In the original K&S Appendix A narrative this is treated as a derived lemma, but in our
-formalization it is an *explicit* typeclass assumption: it is **not** derivable from the base
-`KnuthSkillingAlgebra` axioms in general (see
-`KnuthSkilling/Additive/Counterexamples/KSSeparationNotDerivable.lean`).
-
-`_archive/ProbabilityTheory/KnuthSkilling/Separation/Derivation.lean`
-is the (still experimental) attempt to derive `KSSeparation` from additional structured hypotheses,
-and it currently packages the remaining hard step as a `Prop`-class (`LargeRegimeSeparationSpec`). -/
-
-/-! ## Unbundled Separation Predicates
-
-We define separation axioms as standalone predicates before bundling them into classes. -/
 
 /-- **Separation property (identity-free, semigroup version)**.
     For positive elements `a, x, y` with `x < y`, there exist `n, m ∈ ℕ+` such that
@@ -318,14 +206,6 @@ def SeparationSemigroupStrictProp [KSSemigroupBase α] : Prop :=
     ∃ n m : ℕ+, iterate_op_pnat x m < iterate_op_pnat a n ∧
                iterate_op_pnat a n < iterate_op_pnat y m
 
-/-! ## Identity-Free Separation (KSSeparationSemigroup)
-
-Following Eric Luap's approach, we define separation WITHOUT reference to identity.
-This uses `IsPositive` (element increases everything under multiplication) instead of
-`ident < a`, and `iterate_op_pnat` (ℕ+ iteration) instead of `iterate_op` (ℕ iteration).
-
-When identity exists, `KSSeparationSemigroup` is equivalent to `KSSeparation`. -/
-
 /-- **KSSeparationSemigroup**: Identity-free version of the separation axiom.
 
 Uses `IsPositive` instead of `ident < a` and `iterate_op_pnat` instead of `iterate_op`.
@@ -342,8 +222,6 @@ class KSSeparationSemigroup (α : Type*) [KSSemigroupBase α] where
 namespace KSSeparationSemigroup
 
 variable {α : Type*} [KSSemigroupBase α] [KSSeparationSemigroup α]
-
-/-! ### Connection to Unbundled Predicates -/
 
 /-- The `KSSeparationSemigroup` instance satisfies the unbundled `SeparationSemigroupProp` predicate. -/
 theorem separationSemigroupProp : SeparationSemigroupProp (α := α) := KSSeparationSemigroup.separation
@@ -429,7 +307,6 @@ theorem separationNegProp_of_identIsMinimum
     {α : Type*} [KnuthSkillingAlgebraBase α] :
     SeparationNegProp (α := α) := by
   intro a x y _ha hx _hy _hxy
-  -- In the probability setting, `ident` is the minimum, so `IsNegative x` is impossible.
   have hx_lt : x < ident := (isNegative_iff_lt_ident (a := x)).1 hx
   exact (False.elim (not_lt_of_ge (ident_le x) hx_lt))
 
@@ -490,15 +367,11 @@ theorem separationBilateralProp : SeparationBilateralProp (α := α) :=
 by
   classical
   refine ⟨?_, KSSeparationBilateral.separation_neg⟩
-  -- Build the positive-side semigroup separation from the (identity-based) `KSSeparation` field.
   intro a x y ha hx hy hxy
-  -- Convert `IsPositive` assumptions to `ident <`.
   have ha' : ident < a := (isPositive_iff_ident_lt a).1 ha
   have hx' : ident < x := (isPositive_iff_ident_lt x).1 hx
   have hy' : ident < y := (isPositive_iff_ident_lt y).1 hy
-  -- Apply the standard identity-based separation.
   obtain ⟨n, m, hm_pos, h_lo, h_hi⟩ := KSSeparation.separation ha' hx' hy' hxy
-  -- Convert ℕ to ℕ+ (as in `KSSeparationSemigroup_of_KSSeparation`).
   by_cases hn : n = 0
   · -- n = 0: contradiction since `x^m < ident` is impossible for positive `x`.
     exfalso
@@ -509,8 +382,6 @@ by
   · have hn_pos : 0 < n := Nat.pos_of_ne_zero hn
     let n' : ℕ+ := ⟨n, hn_pos⟩
     let m' : ℕ+ := ⟨m, hm_pos⟩
-    -- Connect `iterate_op_pnat` to `iterate_op` *before* splitting goals, so the lemmas are
-    -- available to both subgoals.
     have hx_eq : iterate_op_pnat x m' = KnuthSkillingAlgebra.iterate_op x m :=
       KnuthSkillingAlgebra.iterate_op_pnat_eq x m'
     have ha_eq : iterate_op_pnat a n' = KnuthSkillingAlgebra.iterate_op a n :=
@@ -523,8 +394,6 @@ by
 
 end KSSeparationBilateral
 
--- In the probability setting (`ident` is a minimum), `IsNegative` is impossible, so the
--- negative-side sandwich is trivial.
 theorem ksSeparationBilateral_of_ksSeparation
     {α : Type*} [KnuthSkillingAlgebraBase α] [KSSeparation α] :
     KSSeparationBilateral α :=
@@ -536,8 +405,6 @@ namespace KSSeparation
 open KnuthSkillingAlgebra
 
 variable {α : Type*} [KnuthSkillingMonoidBase α] [KSSeparation α]
-
-/-! ### Connection to Unbundled Predicates -/
 
 /-- The `KSSeparation` instance satisfies the unbundled `SeparationProp` predicate. -/
 theorem separationProp : SeparationProp (α := α) := KSSeparation.separation
@@ -575,26 +442,15 @@ This is the schematic inequality `x^m < a^n ≤ (x⊕x)^m = x^(2m)` that mimics 
 `log_a(x)` lies in some rational interval of width `1`. -/
 theorem separation_between_self_and_square {a x : α} (ha : ident < a) (hx : ident < x) :
     ∃ n m : ℕ, 0 < m ∧ iterate_op x m < iterate_op a n ∧ iterate_op a n ≤ iterate_op x (2 * m) := by
-  -- Apply separation to `x < x⊕x`.
   have hx2 : ident < iterate_op x 2 := iterate_op_pos x hx 2 (by decide)
   have hx_lt_x2 : x < iterate_op x 2 := by
-    -- `x = x^1 < x^2` since iterations of a positive element are strictly increasing.
     simpa [iterate_op_one] using (iterate_op_strictMono x hx (by decide : (1 : ℕ) < 2))
   rcases KSSeparation.separation (a := a) (x := x) (y := iterate_op x 2) ha hx hx2 hx_lt_x2 with
     ⟨n, m, hm_pos, hlt, hle⟩
   refine ⟨n, m, hm_pos, hlt, ?_⟩
-  -- Rewrite the upper bound `(x^2)^m` as `x^(2m)`.
   simpa [iterate_op_mul, Nat.mul_assoc] using hle
 
 end KSSeparation
-
-/-! ## A Strict Variant of Separation
-
-`KSSeparation` only guarantees `a^n ≤ y^m` on the upper side. For some Appendix A.3.4 steps
-(notably, ruling out “minimal” C-statistics hitting the cut), it is convenient to assume the
-strict strengthening where `a^n < y^m`.  This is packaged separately so we can precisely
-track where strictness is used.
--/
 
 /-- **KSSeparationStrict**: strengthen `KSSeparation` by making the upper bound strict.
 
@@ -667,10 +523,6 @@ theorem toKSSeparationStrict_of_denselyOrdered [DenselyOrdered α] : KSSeparatio
 
 end KSSeparation
 
-/-! ## Separation Equivalence (KSSeparation ↔ KSSeparationSemigroup)
-
-When identity exists, the identity-free `KSSeparationSemigroup` is equivalent to `KSSeparation`. -/
-
 section SeparationEquivalence
 
 open KnuthSkillingMonoidBase KnuthSkillingAlgebra
@@ -681,15 +533,10 @@ instance KSSeparationSemigroup_of_KSSeparation {α : Type*} [KnuthSkillingMonoid
     [KSSeparation α] : KSSeparationSemigroup α where
   separation := by
     intro a x y ha hx hy hxy
-    -- Convert IsPositive to ident < using the equivalence theorem
     have ha' : ident < a := (isPositive_iff_ident_lt a).mp ha
     have hx' : ident < x := (isPositive_iff_ident_lt x).mp hx
     have hy' : ident < y := (isPositive_iff_ident_lt y).mp hy
-    -- Apply the standard KSSeparation
     obtain ⟨n, m, hm_pos, h_lo, h_hi⟩ := KSSeparation.separation ha' hx' hy' hxy
-    -- Convert ℕ to ℕ+ (we have 0 < m and can take n ≥ 1 by the structure of separation)
-    -- Note: if n = 0, then iterate_op a 0 = ident, but ident ≤ iterate_op y m for any m,
-    -- and iterate_op x m < ident is impossible for positive x. So n > 0.
     by_cases hn : n = 0
     · -- n = 0 case: contradiction since iterate_op a 0 = ident and x^m < ident is impossible
       exfalso
@@ -699,7 +546,6 @@ instance KSSeparationSemigroup_of_KSSeparation {α : Type*} [KnuthSkillingMonoid
     · -- n > 0 case: can convert to ℕ+
       have hn_pos : 0 < n := Nat.pos_of_ne_zero hn
       use ⟨n, hn_pos⟩, ⟨m, hm_pos⟩
-      -- Connect iterate_op_pnat to iterate_op
       have h1 : iterate_op_pnat x ⟨m, hm_pos⟩ = iterate_op x m := iterate_op_pnat_eq x ⟨m, hm_pos⟩
       have h2 : iterate_op_pnat a ⟨n, hn_pos⟩ = iterate_op a n := iterate_op_pnat_eq a ⟨n, hn_pos⟩
       have h3 : iterate_op_pnat y ⟨m, hm_pos⟩ = iterate_op y m := iterate_op_pnat_eq y ⟨m, hm_pos⟩
@@ -717,24 +563,18 @@ instance KSSeparationSemigroupStrict_of_KSSeparationStrict {α : Type*} [KnuthSk
     [KSSeparationStrict α] : KSSeparationSemigroupStrict α where
   separation_strict := by
     intro a x y ha hx hy hxy
-    -- Convert `IsPositive` to `ident <`.
     have ha' : ident < a := (isPositive_iff_ident_lt a).mp ha
     have hx' : ident < x := (isPositive_iff_ident_lt x).mp hx
     have hy' : ident < y := (isPositive_iff_ident_lt y).mp hy
-    -- Apply the strict (identity-based) separation axiom.
     obtain ⟨n, m, hm_pos, h_lo, h_hi⟩ :=
       KSSeparationStrict.separation_strict (α := α) (a := a) (x := x) (y := y) ha' hx' hy' hxy
-    -- `n` cannot be 0: otherwise `x^m < ident`, contradicting positivity of `x`.
     by_cases hn : n = 0
     · subst hn
-      -- Here `h_lo : x^m < a^0 = ident`.
       have hxm_pos : ident < iterate_op x m := iterate_op_pos x hx' m hm_pos
       have : ¬ iterate_op x m < ident := not_lt.mpr (le_of_lt hxm_pos)
       exfalso
       simpa [iterate_op_zero] using this h_lo
     · have hn_pos : 0 < n := Nat.pos_of_ne_zero hn
-      -- Prepare the ℕ+/ℕ iteration conversion lemmas *before* splitting goals,
-      -- so they are available for both strict inequalities.
       let m' : ℕ+ := ⟨m, hm_pos⟩
       let n' : ℕ+ := ⟨n, hn_pos⟩
       have hx_eq : iterate_op_pnat x m' = iterate_op x m := iterate_op_pnat_eq x m'
@@ -746,19 +586,15 @@ instance KSSeparationSemigroupStrict_of_KSSeparationStrict {α : Type*} [KnuthSk
 
 /-- `KSSeparationSemigroup` implies `KSSeparation` when identity exists.
     This is the converse: we convert ℕ+ back to ℕ. -/
-def KSSeparation_of_KSSeparationSemigroup {α : Type*} [KnuthSkillingMonoidBase α]
+theorem KSSeparation_of_KSSeparationSemigroup {α : Type*} [KnuthSkillingMonoidBase α]
     [KSSeparationSemigroup α] : KSSeparation α where
   separation := by
     intro a x y ha hx hy hxy
-    -- Convert ident < to IsPositive
     have ha' : IsPositive a := (isPositive_iff_ident_lt a).mpr ha
     have hx' : IsPositive x := (isPositive_iff_ident_lt x).mpr hx
     have hy' : IsPositive y := (isPositive_iff_ident_lt y).mpr hy
-    -- Apply the semigroup separation
     obtain ⟨n, m, h_lo, h_hi⟩ := KSSeparationSemigroup.sep ha' hx' hy' hxy
-    -- Convert ℕ+ to ℕ
     use n.val, m.val, m.pos
-    -- Connect iterate_op to iterate_op_pnat
     have h1 : iterate_op x m.val = iterate_op_pnat x m := (iterate_op_pnat_eq x m).symm
     have h2 : iterate_op a n.val = iterate_op_pnat a n := (iterate_op_pnat_eq a n).symm
     have h3 : iterate_op y m.val = iterate_op_pnat y m := (iterate_op_pnat_eq y m).symm
@@ -770,18 +606,16 @@ def KSSeparation_of_KSSeparationSemigroup {α : Type*} [KnuthSkillingMonoidBase 
 This is the converse of `KSSeparationSemigroupStrict_of_KSSeparationStrict`.
 We convert `ident <` hypotheses to `IsPositive`, apply the identity-free strict sandwich axiom,
 and then translate back from `ℕ+` iteration to the identity-based `iterate_op`. -/
-def KSSeparationStrict_of_KSSeparationSemigroupStrict {α : Type*} [KnuthSkillingMonoidBase α]
+theorem KSSeparationStrict_of_KSSeparationSemigroupStrict {α : Type*} [KnuthSkillingMonoidBase α]
     [KSSeparationSemigroupStrict α] : KSSeparationStrict α where
+  separation := KSSeparation.separation (self := KSSeparation_of_KSSeparationSemigroup)
   separation_strict := by
     intro a x y ha hx hy hxy
-    -- Convert `ident <` to `IsPositive`.
     have ha' : IsPositive a := (isPositive_iff_ident_lt a).mpr ha
     have hx' : IsPositive x := (isPositive_iff_ident_lt x).mpr hx
     have hy' : IsPositive y := (isPositive_iff_ident_lt y).mpr hy
-    -- Apply the strict semigroup separation.
     obtain ⟨n, m, h_lo, h_hi⟩ :=
       KSSeparationSemigroupStrict.sep_strict (a := a) (x := x) (y := y) ha' hx' hy' hxy
-    -- Convert `ℕ+` to `ℕ`.
     refine ⟨n.val, m.val, m.pos, ?_, ?_⟩
     ·
       have hx_eq : iterate_op x m.val = iterate_op_pnat x m := (iterate_op_pnat_eq x m).symm
@@ -791,25 +625,6 @@ def KSSeparationStrict_of_KSSeparationSemigroupStrict {α : Type*} [KnuthSkillin
       have ha_eq : iterate_op a n.val = iterate_op_pnat a n := (iterate_op_pnat_eq a n).symm
       have hy_eq : iterate_op y m.val = iterate_op_pnat y m := (iterate_op_pnat_eq y m).symm
       simpa [ha_eq, hy_eq] using h_hi
-  separation := by
-    intro a x y ha hx hy hxy
-    -- Convert `ident <` to `IsPositive`.
-    have ha' : IsPositive a := (isPositive_iff_ident_lt a).mpr ha
-    have hx' : IsPositive x := (isPositive_iff_ident_lt x).mpr hx
-    have hy' : IsPositive y := (isPositive_iff_ident_lt y).mpr hy
-    -- Apply the strict semigroup separation, then weaken the upper bound.
-    obtain ⟨n, m, h_lo, h_hi⟩ :=
-      KSSeparationSemigroupStrict.sep_strict (a := a) (x := x) (y := y) ha' hx' hy' hxy
-    refine ⟨n.val, m.val, m.pos, ?_, ?_⟩
-    ·
-      have hx_eq : iterate_op x m.val = iterate_op_pnat x m := (iterate_op_pnat_eq x m).symm
-      have ha_eq : iterate_op a n.val = iterate_op_pnat a n := (iterate_op_pnat_eq a n).symm
-      simpa [hx_eq, ha_eq] using h_lo
-    ·
-      have ha_eq : iterate_op a n.val = iterate_op_pnat a n := (iterate_op_pnat_eq a n).symm
-      have hy_eq : iterate_op y m.val = iterate_op_pnat y m := (iterate_op_pnat_eq y m).symm
-      simpa [ha_eq, hy_eq] using (le_of_lt h_hi)
-
 end SeparationEquivalence
 
 end KnuthSkilling
@@ -818,13 +633,6 @@ namespace KnuthSkilling
 
 open KSSemigroupBase KnuthSkillingMonoidBase
 open KnuthSkillingAlgebra
-
-/-!
-## Commutation Helpers
-
-These small lemmas are convenient when reasoning about “new atom commutes with old atoms” style
-assumptions (see `Additive/Proofs/GridInduction/Core/Induction/Goertzel.lean`).
--/
 
 namespace KSSemigroupBase
 
@@ -846,18 +654,8 @@ theorem refl (x : α) : Commutes (α := α) x x :=
 /-- If `x` commutes with `y` and `z`, then it commutes with `y ⊕ z`. -/
 theorem op_right {x y z : α} (hxy : Commutes (α := α) x y) (hxz : Commutes (α := α) x z) :
     Commutes (α := α) x (op y z) := by
-  dsimp [Commutes] at hxy hxz ⊢
-  calc
-    op x (op y z) = op (op x y) z := by
-      simp [op_assoc]
-    _ = op (op y x) z := by
-      simp [hxy]
-    _ = op y (op x z) := by
-      simp [op_assoc]
-    _ = op y (op z x) := by
-      simp [hxz]
-    _ = op (op y z) x := by
-      simp [op_assoc]
+  let _ : Semigroup α := KSSemigroupBase.toSemigroup
+  exact (show Commute x y from hxy).mul_right (show Commute x z from hxz)
 
 /-- If `y` commutes with `x` and `z`, then `y ⊕ z` commutes with `x`. -/
 theorem op_left {x y z : α} (hyx : Commutes (α := α) y x) (hzx : Commutes (α := α) z x) :
@@ -882,12 +680,6 @@ theorem closed_op {x y z : α} (hy : y ∈ centralizer (α := α) x) (hz : z ∈
 end centralizer
 
 end KSSemigroupBase
-
-/-!
-## Identity-based commutation conveniences
-
-The identity element is not part of `KSSemigroupBase`, so “commutes with `ident`” lemmas live here.
--/
 
 section WithIdentity
 

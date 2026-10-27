@@ -1,5 +1,5 @@
 import Mathlib.Order.WithBot
-import KnuthSkilling.Core.Algebra
+import KnuthSkilling.Additive.Counterexamples.RankObstruction
 
 namespace KnuthSkilling.Additive.Counterexamples
 
@@ -146,87 +146,51 @@ theorem strictMono_baseOp_right (p : SDBase) : StrictMono (fun q => baseOp p q) 
       change p.2 + Nat.pow 2 (p.1 : ℕ) * q₁.2 < p.2 + Nat.pow 2 (p.1 : ℕ) * q₂.2
       exact this
 
+/-- Lift strict monotonicity through the identity adjoined below the positive carrier. -/
+private theorem withBot_strictMono (f : SD → SD) (g : SDBase → SDBase) (k : SDBase)
+    (hz : f none = some k) (hs : ∀ p, f (some p) = some (g p))
+    (hg : StrictMono g) (hk : ∀ p, k < g p) : StrictMono f := by
+  intro x y h
+  cases x with
+  | none =>
+    cases y with
+    | none => exact (lt_irrefl _ h).elim
+    | some q => rw [hz, hs]; exact WithBot.coe_lt_coe.mpr (hk q)
+  | some p =>
+    cases y with
+    | none => exact (WithBot.not_lt_bot (some p : SD) h).elim
+    | some q => rw [hs, hs]; exact WithBot.coe_lt_coe.mpr (hg (WithBot.coe_lt_coe.mp h))
+
 theorem op_strictMono_left : ∀ y : SD, StrictMono (fun x => op x y) := by
   intro y
   cases y with
   | none =>
-    -- y = ⊥, op x ⊥ = x
-    have hop : (fun x : SD => op x (none : SD)) = fun x => x := by
-      funext x; cases x <;> rfl
-    rw [hop]; exact strictMono_id
+    have hop : (fun x : SD => op x (none : SD)) = id := by funext x; cases x <;> rfl
+    rw [hop]
+    exact strictMono_id
   | some q =>
-    intro x₁ x₂ hx
-    cases x₁ with
-    | none =>
-      cases x₂ with
-      | none =>
-        exact (lt_irrefl _ hx).elim
-      | some p =>
-        -- op ⊥ q = q and op (some p) q = baseOp p q; first coordinate strictly increases.
-        have hNat : (q.1 : ℕ) < ((p.1 + q.1 : PNat) : ℕ) := by
-          -- coe (p.1 + q.1) = coe p.1 + coe q.1
-          simp
-        have hPNat : q.1 < p.1 + q.1 := (PNat.coe_lt_coe q.1 (p.1 + q.1)).1 hNat
-        have hBase : q < baseOp p q := by
-          refine (Prod.Lex.toLex_lt_toLex (x := (ofLex q : PNat × ℕ))
-              (y := (ofLex (baseOp p q) : PNat × ℕ))).2 ?_
-          exact Or.inl hPNat
-        -- Lift the SDBase strict inequality to SD.
-        have hLift : (some q : SD) < some (baseOp p q) :=
-          (WithBot.coe_lt_coe (a := q) (b := baseOp p q)).2 hBase
-        exact hLift
-    | some p₁ =>
-      cases x₂ with
-      | none =>
-        exact (WithBot.not_lt_bot (a := (some p₁ : SD)) hx).elim
-      | some p₂ =>
-        have hx' : p₁ < p₂ := by
-          exact (WithBot.coe_lt_coe (a := p₁) (b := p₂)).1 (by
-            simpa [WithBot.some_eq_coe] using hx)
-        have hBase : baseOp p₁ q < baseOp p₂ q := strictMono_baseOp_left q hx'
-        have hLift : (some (baseOp p₁ q) : SD) < some (baseOp p₂ q) :=
-          (WithBot.coe_lt_coe (a := baseOp p₁ q) (b := baseOp p₂ q)).2 hBase
-        exact hLift
+    apply withBot_strictMono (fun x => op x (some q)) (fun p => baseOp p q) q
+      rfl (fun _ => rfl) (strictMono_baseOp_left q)
+    intro p
+    apply Prod.Lex.toLex_lt_toLex.mpr
+    left
+    change q.1 < p.1 + q.1
+    have hp := p.1.pos
+    exact_mod_cast (show (q.1 : ℕ) < (p.1 : ℕ) + q.1 by omega)
 
 theorem op_strictMono_right : ∀ x : SD, StrictMono (fun y => op x y) := by
   intro x
   cases x with
-  | none =>
-    -- x = ⊥, op ⊥ y = y
-    have hop : (fun y : SD => op (none : SD) y) = fun y => y := by
-      funext y; rfl
-    rw [hop]; exact strictMono_id
+  | none => intro a b h; exact h
   | some p =>
-    intro y₁ y₂ hy
-    cases y₁ with
-    | none =>
-      cases y₂ with
-      | none =>
-        exact (lt_irrefl _ hy).elim
-      | some q =>
-        -- op p ⊥ = p and op p (some q) = baseOp p q; first coordinate strictly increases.
-        have hNat : (p.1 : ℕ) < ((p.1 + q.1 : PNat) : ℕ) := by
-          simp
-        have hPNat : p.1 < p.1 + q.1 := (PNat.coe_lt_coe p.1 (p.1 + q.1)).1 hNat
-        have hBase : p < baseOp p q := by
-          refine (Prod.Lex.toLex_lt_toLex (x := (ofLex p : PNat × ℕ))
-              (y := (ofLex (baseOp p q) : PNat × ℕ))).2 ?_
-          exact Or.inl hPNat
-        have hLift : (some p : SD) < some (baseOp p q) :=
-          (WithBot.coe_lt_coe (a := p) (b := baseOp p q)).2 hBase
-        exact hLift
-    | some q₁ =>
-      cases y₂ with
-      | none =>
-        exact (WithBot.not_lt_bot (a := (some q₁ : SD)) hy).elim
-      | some q₂ =>
-        have hy' : q₁ < q₂ := by
-          exact (WithBot.coe_lt_coe (a := q₁) (b := q₂)).1 (by
-            simpa [WithBot.some_eq_coe] using hy)
-        have hBase : baseOp p q₁ < baseOp p q₂ := strictMono_baseOp_right p hy'
-        have hLift : (some (baseOp p q₁) : SD) < some (baseOp p q₂) :=
-          (WithBot.coe_lt_coe (a := baseOp p q₁) (b := baseOp p q₂)).2 hBase
-        exact hLift
+    apply withBot_strictMono (fun y => op (some p) y) (baseOp p) p
+      rfl (fun _ => rfl) (strictMono_baseOp_right p)
+    intro q
+    apply Prod.Lex.toLex_lt_toLex.mpr
+    left
+    change p.1 < p.1 + q.1
+    have hq := q.1.pos
+    exact_mod_cast (show (p.1 : ℕ) < (p.1 : ℕ) + q.1 by omega)
 
 def fst : SD → ℕ
   | ⊥ => 0
@@ -385,28 +349,12 @@ theorem fst_iterate_op_coe (p : SDBase) :
     simp [KnuthSkillingAlgebra.iterate_op, this, ih, harith]
 
 theorem baseA_lt_baseX : baseA < baseX := by
-  have hbase :
-      (toLex ((⟨1, Nat.one_pos⟩ : PNat), 1) : SDBase) <
-        (toLex ((⟨1, Nat.one_pos⟩ : PNat), 2) : SDBase) := by
-    refine (Prod.Lex.toLex_lt_toLex (x := ((⟨1, Nat.one_pos⟩ : PNat), 1))
-      (y := ((⟨1, Nat.one_pos⟩ : PNat), 2))).2 ?_
-    exact Or.inr ⟨rfl, by decide⟩
-  have : ((toLex ((⟨1, Nat.one_pos⟩ : PNat), 1) : SDBase) : SD) <
-      ((toLex ((⟨1, Nat.one_pos⟩ : PNat), 2) : SDBase) : SD) := by
-    simpa using hbase
-  simpa [baseA, baseX] using this
+  change (some (toLex ((1 : PNat), 1)) : SD) < some (toLex ((1 : PNat), 2))
+  exact WithBot.coe_lt_coe.mpr (Prod.Lex.toLex_lt_toLex.mpr (Or.inr ⟨rfl, by decide⟩))
 
 theorem baseX_lt_baseY : baseX < baseY := by
-  have hbase :
-      (toLex ((⟨1, Nat.one_pos⟩ : PNat), 2) : SDBase) <
-        (toLex ((⟨1, Nat.one_pos⟩ : PNat), 3) : SDBase) := by
-    refine (Prod.Lex.toLex_lt_toLex (x := ((⟨1, Nat.one_pos⟩ : PNat), 2))
-      (y := ((⟨1, Nat.one_pos⟩ : PNat), 3))).2 ?_
-    exact Or.inr ⟨rfl, by decide⟩
-  have : ((toLex ((⟨1, Nat.one_pos⟩ : PNat), 2) : SDBase) : SD) <
-      ((toLex ((⟨1, Nat.one_pos⟩ : PNat), 3) : SDBase) : SD) := by
-    simpa using hbase
-  simpa [baseX, baseY] using this
+  change (some (toLex ((1 : PNat), 2)) : SD) < some (toLex ((1 : PNat), 3))
+  exact WithBot.coe_lt_coe.mpr (Prod.Lex.toLex_lt_toLex.mpr (Or.inr ⟨rfl, by decide⟩))
 
 /-- In this semidirect/lex model, `KSSeparation` would force an impossible inequality.
 
@@ -415,43 +363,29 @@ This is the essence of why `KSSeparation` fails here:
 - any sandwich `baseX^m < baseA^n ≤ baseY^m` forces `n = m` by comparing first coordinates,
 - but strict monotonicity gives `baseA^m < baseX^m`, contradicting `baseX^m < baseA^m`. -/
 theorem separation_contradiction (hSep : KSSeparation SD) : False := by
-  have ha : (ident : SD) < baseA := by
-    simpa [SD.ident] using (WithBot.bot_lt_iff_ne_bot (x := baseA)).2 (by simp [baseA])
-  have hx : (ident : SD) < baseX := by
-    simpa [SD.ident] using (WithBot.bot_lt_iff_ne_bot (x := baseX)).2 (by simp [baseX])
-  have hy : (ident : SD) < baseY := by
-    simpa [SD.ident] using (WithBot.bot_lt_iff_ne_bot (x := baseY)).2 (by simp [baseY])
-  have hxy : baseX < baseY := baseX_lt_baseY
-  rcases hSep.separation (a := baseA) (x := baseX) (y := baseY) ha hx hy hxy with
-    ⟨n, m, hm_pos, hxm_lt, han_le⟩
-  -- Extract the iterate exponents from the lex first coordinate (`fst`).
-  let pA : SDBase := toLex ((1 : PNat), 1)
-  let pX : SDBase := toLex ((1 : PNat), 2)
-  let pY : SDBase := toLex ((1 : PNat), 3)
-  have hfstA : SD.fst (iterate_op baseA n) = n := by
-    have hpA : (pA.1 : ℕ) = 1 := by rfl
-    have := (fst_iterate_op_coe (p := pA) n)
-    simpa [baseA, pA, hpA] using this
-  have hfstX : SD.fst (iterate_op baseX m) = m := by
-    have hpX : (pX.1 : ℕ) = 1 := by rfl
-    have := (fst_iterate_op_coe (p := pX) m)
-    simpa [baseX, pX, hpX] using this
-  have hfstY : SD.fst (iterate_op baseY m) = m := by
-    have hpY : (pY.1 : ℕ) = 1 := by rfl
-    have := (fst_iterate_op_coe (p := pY) m)
-    simpa [baseY, pY, hpY] using this
-  have hmn : m ≤ n := by
-    have h := SD.fst_le_of_lt (x := iterate_op baseX m) (y := iterate_op baseA n) hxm_lt
-    simpa [hfstX, hfstA] using h
-  have hnm : n ≤ m := by
-    have h := SD.fst_le_of_le (x := iterate_op baseA n) (y := iterate_op baseY m) han_le
-    simpa [hfstA, hfstY] using h
-  have hnm_eq : n = m := le_antisymm hnm hmn
-  -- With n=m, we get x^m < a^m, contradicting monotonicity in the base element (a < x).
-  have ham_lt : iterate_op baseA m < iterate_op baseX m :=
-    KnuthSkillingAlgebra.iterate_op_strictMono_base m hm_pos baseA baseX baseA_lt_baseX
-  have hxm_lt' : iterate_op baseX m < iterate_op baseA m := by simpa [hnm_eq] using hxm_lt
-  exact lt_irrefl (iterate_op baseA m) (lt_trans ham_lt hxm_lt')
+  let R : RankData SD :=
+    { rk := fst
+      rk_le_of_le := fst_le_of_le
+      rk_iterate := by
+        intro x n
+        cases x with
+        | none =>
+          induction n with
+          | zero => rfl
+          | succ n ih =>
+            change fst (SD.op (⊥ : SD) (iterate_op (⊥ : SD) n)) = (n + 1) * 0
+            change fst (iterate_op (⊥ : SD) n) = n * 0 at ih
+            rw [op_bot_left]
+            simpa only [Nat.mul_zero] using ih
+        | some p => exact fst_iterate_op_coe p n
+      rk_pos_of_ident_lt := by
+        intro x hx
+        cases x with
+        | none => exact (lt_irrefl _ hx).elim
+        | some p => exact p.1.pos }
+  apply not_KSSeparation_of_same_rank R ?_ hSep
+  exact ⟨baseA, baseX, baseY, by change (⊥ : SD) < baseA; simp [baseA], by change (⊥ : SD) < baseX; simp [baseX],
+    by change (⊥ : SD) < baseY; simp [baseY], baseA_lt_baseX, baseX_lt_baseY, rfl, rfl⟩
 
 theorem not_KSSeparation : ¬ KSSeparation SD := by
   intro hSep

@@ -1,36 +1,17 @@
 import KnuthSkilling.Multiplicative.Basic
 
 /-!
-# ScaledMultRep: Common Interface for Appendix B Results
+# Scaled multiplication and its faithful observations
 
-This file provides the **single source of truth** for K&S Appendix B's conclusion:
-the tensor operation ⊗ on positive reals is scaled multiplication.
-
-## Design Principle
-
-Like `AdditiveOrderIsoRep` for Appendix A, this interface captures the OUTPUT of Appendix B
-without depending on HOW it was proven. Multiple proof paths can provide this interface:
-
-- `Main.lean`: K&S's actual path (uses AdditiveOrderIsoRep from Appendix A)
-- `Proofs/Direct/DirectProof.lean`: Direct algebraic proof (weaker assumptions)
-
-Downstream code (ProbabilityDerivation, Section 7, etc.) depends only on this interface.
-
-## The Result
-
-**Appendix B Theorem**: Any tensor ⊗ on (0,∞) satisfying distributivity and associativity
-(plus regularity conditions) must be scaled multiplication:
-
-  `x ⊗ y = (x * y) / C` for some global constant C > 0
-
-Setting C = 1 by normalization gives `x ⊗ y = x * y`.
+A fixed tensor determines its scale uniquely. Dividing by that scale is a
+faithful multiplicative observation, including finite left folds. This compares
+interpretations of the same supplied operation; it does not identify all Cox
+regraduations or replace their independent calibration premises.
 -/
 
 namespace KnuthSkilling.Multiplicative
 
 open KnuthSkilling.Literature
-
-/-! ## The Interface -/
 
 /-- **ScaledMultRep**: The tensor operation has a scaled multiplication representation.
 
@@ -88,9 +69,56 @@ theorem tensor_assoc (h : ScaledMultRep tensor) (x y z : PosReal) :
   have hyz_pos : 0 < (y : ℝ) * (z : ℝ) := mul_pos y.2 z.2
   field_simp
 
-end ScaledMultRep
+/-- The observed tensor at one determines the scale, independently of proof route. -/
+theorem C_unique (h₁ h₂ : ScaledMultRep tensor) : h₁.C = h₂.C := by
+  let u : PosReal := ⟨1, by norm_num⟩
+  have h := (h₁.tensor_eq u u).symm.trans (h₂.tensor_eq u u)
+  have hi : h₁.C⁻¹ = h₂.C⁻¹ := by simpa only [u, one_mul, one_div] using h
+  exact inv_inj.mp hi
 
-/-! ## Constructors from Existence Proofs -/
+/-- The derived tensor identity is the scale, not necessarily the real number one. -/
+@[instance_reducible] def toMonoid (h : ScaledMultRep tensor) : Monoid PosReal where
+  mul := tensor
+  one := ⟨h.C, h.C_pos⟩
+  mul_assoc := h.tensor_assoc
+  one_mul x := by
+    apply Subtype.ext
+    change (tensor ⟨h.C, h.C_pos⟩ x : ℝ) = (x : ℝ)
+    rw [h.tensor_eq]
+    field_simp [h.C_ne_zero]
+  mul_one x := by
+    apply Subtype.ext
+    change (tensor x ⟨h.C, h.C_pos⟩ : ℝ) = (x : ℝ)
+    rw [h.tensor_eq]
+    field_simp [h.C_ne_zero]
+
+/-- A law-carrying observation of the original tensor into real multiplication. -/
+noncomputable def normalizationHom (h : ScaledMultRep tensor) :
+    let _ : Monoid PosReal := h.toMonoid
+    PosReal →* ℝ := by
+  let _ : Monoid PosReal := h.toMonoid
+  exact { toFun x := (x : ℝ) / h.C
+          map_one' := by change h.C / h.C = 1; exact div_self h.C_ne_zero
+          map_mul' x y := h.tensor_normalized x y }
+
+theorem normalization_injective (h : ScaledMultRep tensor) :
+    Function.Injective h.normalizationHom := by
+  intro x y hxy
+  apply Subtype.ext
+  change (x : ℝ) / h.C = (y : ℝ) / h.C at hxy
+  exact (div_left_inj' h.C_ne_zero).mp hxy
+
+/-- All occurrences of the authored fold are interpreted by the same observation. -/
+theorem observe_fold (h : ScaledMultRep tensor) (s : PosReal) (xs : List PosReal) :
+    ((xs.foldl tensor s : PosReal) : ℝ) / h.C =
+      ((s : ℝ) / h.C) * (xs.map (fun (x : PosReal) => (x : ℝ) / h.C)).prod := by
+  let _ : Monoid PosReal := h.toMonoid
+  exact observe_foldl h.normalizationHom s xs
+
+theorem normalization_independent (h₁ h₂ : ScaledMultRep tensor) (x : PosReal) :
+    (x : ℝ) / h₁.C = (x : ℝ) / h₂.C := by rw [C_unique h₁ h₂]
+
+end ScaledMultRep
 
 /-- Build `ScaledMultRep` from an existence proof.
 
@@ -100,5 +128,30 @@ noncomputable def ScaledMultRep.ofExists
     (h : ∃ C : ℝ, 0 < C ∧ ∀ x y : PosReal, ((tensor x y : PosReal) : ℝ) = ((x : ℝ) * (y : ℝ)) / C) :
     ScaledMultRep tensor :=
   ⟨h.choose, h.choose_spec.1, h.choose_spec.2⟩
+
+namespace ScaleExample
+/-- A tensor whose identity and normalization scale are two. -/
+noncomputable def tensor (x y : PosReal) : PosReal :=
+  ⟨(x : ℝ) * (y : ℝ) / 2, by
+    change (0 : ℝ) < (x : ℝ) * (y : ℝ) / 2
+    exact div_pos (mul_pos x.2 y.2) (by norm_num)⟩
+
+noncomputable def representation : ScaledMultRep tensor where
+  C := 2
+  C_pos := by norm_num
+  tensor_eq _ _ := rfl
+
+/-- Using the unscaled real readout violates the tensor observation law. -/
+theorem wrong_scale_fails :
+    (tensor ⟨2, by norm_num⟩ ⟨2, by norm_num⟩ : ℝ) ≠ (2 : ℝ) * 2 := by
+  norm_num [tensor]
+
+/-- The correctly normalized fold uses the actual tensor and retains both inputs. -/
+theorem normalized_fold :
+    (([⟨2, by norm_num⟩, ⟨4, by norm_num⟩].foldl tensor ⟨2, by norm_num⟩ : PosReal) : ℝ) / 2 = 2 := by
+  have h := representation.observe_fold ⟨2, by norm_num⟩ [⟨2, by norm_num⟩, ⟨4, by norm_num⟩]
+  norm_num [representation] at h
+  simpa only [List.foldl_cons, List.foldl_nil] using h
+end ScaleExample
 
 end KnuthSkilling.Multiplicative

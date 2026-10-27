@@ -11,48 +11,20 @@ import Mathlib.Analysis.Calculus.Deriv.Slope
 import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Topology.Order.IntermediateValue
 import Mathlib.Topology.Order.MonotoneContinuity
--- Import KS tools for additive functions on positive reals (no extra axioms - pure mathlib theorems)
 import KnuthSkilling.Multiplicative.FunctionalEquation
 
 /-!
-# Cox's Theorem: The Product Rule Derivation
+# Cox conjunction generators and negation equations
 
-This file provides the complete derivation of the probability product rule from
-Cox's axioms, following Cox's original approach in "The Algebra of Probable Inference" (1961).
+A total real operation is supplied with global associativity, identity and
+continuity, closure of `(0,1]`, and strict monotonicity for valid fixed arguments.
+The root/grid construction yields a continuous additive observation on that
+interval. Exponentiation yields a multiplicative observation; it need not make
+the authored operation literal multiplication in its original coordinates.
 
-## Cox's Approach
-
-Cox's key insight is that the product rule F(x,y) = x·y is FORCED by:
-1. **Associativity**: F(F(x,y),z) = F(x,F(y,z))
-2. **Boundary conditions**: F(1,y) = y, F(x,1) = x, F(0,y) = 0, F(x,0) = 0
-3. **Monotonicity**: F is strictly increasing in each argument
-4. **Continuity**: F is continuous
-
-The derivation proceeds in three stages:
-1. Associativity + monotonicity + continuity → Additive representation Θ
-2. Additive representation → Multiplicative representation via exp
-3. Multiplicative representation → Product rule F(x,y) = x·y
-
-## Mathematical Context
-
-This solves the functional equation F(F(x,y),z) = F(x,F(y,z)) on [0,1].
-The same equation appears in Knuth-Skilling's work on ordered semigroups.
-Cox's "reparametrization" corresponds to K&S's "regraduation" concept.
-
-## Main Results
-
-1. `CoxFullAxioms`: Complete axiom package for Cox's theorem
-2. `cox_implies_aczelHypothesis`: Cox axioms → Aczél hypothesis (associativity + monotonicity + continuity)
-3. `multiplicativeRep_of_additiveRep`: Additive Θ → Multiplicative g = exp∘Θ
-4. `productRule_of_multiplicativeRep`: Multiplicative rep → F(x,y) = x·y (up to reparametrization)
-5. `cox_productRule`: Main theorem: Cox axioms → product rule
-
-## References
-
-- Cox, R.T. "The Algebra of Probable Inference" (1961), Chapter 3
-- Jaynes, E.T. "Probability Theory: The Logic of Science" (2003), Chapter 2
-- Van Horn, K.S. "Constructing a logic of plausible inference" (2003)
-- Aczél, J. "Lectures on Functional Equations" (1966)
+The final negation section has its own functional-equation and differentiability
+hypotheses. Its power-family conclusion is restricted to the declared domain.
+Neither result supplies event semantics or a countably additive measure.
 -/
 
 namespace ProbabilityTheory.Cox
@@ -60,13 +32,6 @@ namespace ProbabilityTheory.Cox
 open Real
 open Filter
 open Topology
-
-/-!
-## §1: Cox's Full Axioms
-
-We package Cox's complete axiom set for the conjunction function F : (0,1] → (0,1] → (0,1].
-Note: We work on (0,1] to avoid issues with F(0,·) = 0 complicating the functional equation.
--/
 
 /-- Cox's full axiom set for the conjunction function on (0,1].
 
@@ -94,12 +59,19 @@ namespace CoxFullAxioms
 
 variable (C : CoxFullAxioms)
 
-/-!
-## §2: Cox Axioms Imply Aczél Hypothesis
+/-- The operation index prevents collision with ordinary real multiplication. -/
+@[ext] structure Conjunction (C : CoxFullAxioms) where
+  val : ℝ
 
-We show that Cox's axioms on (0,1] imply the Aczél hypothesis, which is the
-key to solving the associativity functional equation.
--/
+instance : Monoid (Conjunction C) where
+  one := ⟨1⟩
+  mul x y := ⟨C.F x.val y.val⟩
+  mul_assoc x y z := Conjunction.ext (C.F_assoc x.val y.val z.val)
+  one_mul x := Conjunction.ext (C.F_one_left x.val)
+  mul_one x := Conjunction.ext (C.F_one_right x.val)
+
+@[simp] theorem Conjunction.val_one : (1 : Conjunction C).val = 1 := rfl
+@[simp] theorem Conjunction.val_mul (x y : Conjunction C) : (x * y).val = C.F x.val y.val := rfl
 
 /-- Cox axioms imply the operation is associative. -/
 theorem assoc : ∀ x y z : ℝ, C.F (C.F x y) z = C.F x (C.F y z) := C.F_assoc
@@ -107,27 +79,7 @@ theorem assoc : ∀ x y z : ℝ, C.F (C.F x y) z = C.F x (C.F y z) := C.F_assoc
 /-- Cox axioms imply continuity of F as a function ℝ × ℝ → ℝ. -/
 theorem continuous : Continuous (fun p : ℝ × ℝ => C.F p.1 p.2) := C.F_continuous
 
-/-!
-## §3: The Additive Representation
-
-The key step in Cox's derivation is showing that an associative, monotone, continuous
-operation admits an additive representation: there exists Θ such that
-
-  Θ(F(x,y)) = Θ(x) + Θ(y)
-
-This is the Aczél representation theorem. We state it as a hypothesis here and
-connect to the K&S infrastructure.
--/
-
-/-- The additive representation form for Cox's F.
-
-If F satisfies Cox's axioms, then there exists a strictly increasing continuous
-function Θ : (0,1] → ℝ such that Θ(F(x,y)) = Θ(x) + Θ(y).
-
-This is Aczél's theorem applied to Cox's setting.
-
-Note: We use StrictMonoOn (0, ∞) because the Cox operation is only defined on (0,1],
-and the natural representation function (log) is only monotone on positive reals. -/
+/-- A supplied total observation, faithful and additive on `(0,1]`. -/
 structure AdditiveRepresentation (C : CoxFullAxioms) where
   /-- The representation function Θ -/
   Θ : ℝ → ℝ
@@ -138,27 +90,27 @@ structure AdditiveRepresentation (C : CoxFullAxioms) where
   /-- Θ represents F additively: Θ(F(x,y)) = Θ(x) + Θ(y) for x, y ∈ (0,1] -/
   Θ_additive : ∀ x y, 0 < x → x ≤ 1 → 0 < y → y ≤ 1 → Θ (C.F x y) = Θ x + Θ y
 
-/-!
-### Aczél's Theorem: Proof via Iteration
-
-We prove the additive representation theorem using the iteration structure.
-The key insight: F defines a semigroup structure, and log linearizes it.
-
-**Proof Strategy**:
-
-1. **Iteration**: Define iterate n a = F(a, F(a, ...)) n times, with iterate 0 a = 1.
-2. **Additivity on grid**: F(iterate m a, iterate n a) = iterate (m+n) a by associativity.
-3. **Logarithm construction**: For general F, construct Θ using the iteration structure
-   and continuity to extend from the discrete grid.
-
-For the standard product rule F(x,y) = x·y, we use Θ = log directly.
--/
-
 /-- Iteration for Cox axioms: iterate 0 a = 1, iterate (n+1) a = F(a, iterate n a). -/
 noncomputable def iterate (n : ℕ) (a : ℝ) : ℝ :=
   match n with
-  | 0 => 1  -- Identity element for Cox is 1
+  | 0 => 1
   | n + 1 => C.F a (iterate n a)
+
+/-- The supplied recursive iterate agrees with powers in its local interpretation. -/
+lemma iterate_eq_pow (a : ℝ) (n : ℕ) :
+    (⟨C.iterate n a⟩ : Conjunction C) = (⟨a⟩ : Conjunction C) ^ n := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    change (⟨a⟩ : Conjunction C) * ⟨C.iterate n a⟩ = (⟨a⟩ : Conjunction C) ^ (n + 1)
+    rw [ih, pow_succ']
+
+/-- Closure is valid at certainty as well as in the open unit interval. -/
+lemma iterate_mem_unit (a : ℝ) (ha : a ∈ Set.Ioc (0 : ℝ) 1) (n : ℕ) :
+    C.iterate n a ∈ Set.Ioc (0 : ℝ) 1 := by
+  induction n with
+  | zero => exact ⟨zero_lt_one, le_rfl⟩
+  | succ n ih => exact C.F_range a _ ha.1 ha.2 ih.1 ih.2
 
 /-- iterate 0 a = 1 -/
 @[simp] lemma iterate_zero (a : ℝ) : C.iterate 0 a = 1 := rfl
@@ -172,28 +124,15 @@ lemma iterate_succ (n : ℕ) (a : ℝ) : C.iterate (n + 1) a = C.F a (C.iterate 
 /-- Iterates satisfy the additive property: F(iterate m a, iterate n a) = iterate (m+n) a -/
 theorem iterate_add (a : ℝ) : ∀ m n, C.F (C.iterate m a) (C.iterate n a) = C.iterate (m + n) a := by
   intro m n
-  induction m with
-  | zero =>
-    simp only [iterate_zero, Nat.zero_add]
-    exact C.F_one_left _
-  | succ m ih =>
-    calc C.F (C.iterate (m + 1) a) (C.iterate n a)
-        = C.F (C.F a (C.iterate m a)) (C.iterate n a) := rfl
-      _ = C.F a (C.F (C.iterate m a) (C.iterate n a)) := C.F_assoc a _ _
-      _ = C.F a (C.iterate (m + n) a) := by rw [ih]
-      _ = C.iterate (m + n + 1) a := rfl
-      _ = C.iterate (m + 1 + n) a := by ring_nf
+  have h := congrArg Conjunction.val (pow_add (⟨a⟩ : Conjunction C) m n).symm
+  rw [← C.iterate_eq_pow a m, ← C.iterate_eq_pow a n,
+    ← C.iterate_eq_pow a (m + n)] at h
+  exact h
 
 /-- For a ∈ (0,1), iterates are in (0,1] and strictly decreasing. -/
 lemma iterate_mem_Ioc (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
     ∀ n, 0 < C.iterate n a ∧ C.iterate n a ≤ 1 := by
-  intro n
-  induction n with
-  | zero => simp [iterate_zero]
-  | succ n ih =>
-    constructor
-    · exact (C.F_range a (C.iterate n a) ha_pos (le_of_lt ha_lt) ih.1 ih.2).1
-    · exact (C.F_range a (C.iterate n a) ha_pos (le_of_lt ha_lt) ih.1 ih.2).2
+  exact fun n => C.iterate_mem_unit a ⟨ha_pos, ha_lt.le⟩ n
 
 /-- Iterates are strictly decreasing: iterate (n+1) a < iterate n a for a ∈ (0,1). -/
 lemma iterate_strictAnti (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
@@ -205,7 +144,6 @@ lemma iterate_strictAnti (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
     rw [iterate_one]
     exact ha_lt
   | succ n ih =>
-    -- iterate (n+2) a = F(a, iterate (n+1) a) < F(a, iterate n a) = iterate (n+1) a
     have h1 : C.iterate (n + 1) a < C.iterate n a := ih
     have h2 : C.iterate (n + 2) a = C.F a (C.iterate (n + 1) a) := rfl
     have h3 : C.iterate (n + 1) a = C.F a (C.iterate n a) := rfl
@@ -221,7 +159,6 @@ lemma F_lt_right (a x : ℝ) (_ha_pos : 0 < a) (ha_lt : a < 1) (hx_pos : 0 < x) 
 /-- Iterates converge to 0 as n → ∞. -/
 lemma iterate_tendsto_zero (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
     Filter.Tendsto (C.iterate · a) Filter.atTop (nhds 0) := by
-  -- The sequence is strictly decreasing and bounded below by 0, so converges to infimum
   have hdecr : Antitone (C.iterate · a) := by
     intro m n hmn
     induction hmn with
@@ -232,13 +169,9 @@ lemma iterate_tendsto_zero (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
         _ ≤ C.iterate m a := ih
   have hbdd : BddBelow (Set.range (C.iterate · a)) := ⟨0, by
     intro x ⟨n, hn⟩; rw [← hn]; exact le_of_lt (C.iterate_mem_Ioc a ha_pos ha_lt n).1⟩
-  -- Limit L exists
   set L := ⨅ n, C.iterate n a with hL_def
   have hconv := tendsto_atTop_ciInf hdecr hbdd
-  -- Show L = 0 by contradiction: if L > 0, then F(a, L) < L contradicts being infimum
   by_contra hne
-  -- hne : ¬(Filter.Tendsto (C.iterate · a) Filter.atTop (nhds 0))
-  -- We know it converges to L, so this means L ≠ 0
   have hL_nonneg : L ≥ 0 := le_ciInf (fun n => le_of_lt (C.iterate_mem_Ioc a ha_pos ha_lt n).1)
   have hL_ne_zero : L ≠ 0 := by
     intro heq
@@ -248,14 +181,11 @@ lemma iterate_tendsto_zero (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
       exact hconv
     exact hne hconv'
   have hL_pos : L > 0 := lt_of_le_of_ne hL_nonneg (Ne.symm hL_ne_zero)
-  -- F(a, L) < L
   have hFL_lt_L : C.F a L < L := by
     have hL_le_one : L ≤ 1 := ciInf_le_of_le hbdd 0 (by simp [iterate_zero])
     exact C.F_lt_right a L ha_pos ha_lt hL_pos hL_le_one
-  -- But iterate (n+1) a = F(a, iterate n a) → F(a, L) as n → ∞
   have hconv_succ : Filter.Tendsto (fun n => C.iterate (n + 1) a) Filter.atTop (nhds L) := by
     exact hconv.comp (Filter.tendsto_add_atTop_nat 1)
-  -- Also iterate (n+1) a = F(a, iterate n a) → F(a, L) by continuity
   have hF_cont : Continuous (fun x => C.F a x) := by
     have : (fun x => C.F a x) = Function.uncurry C.F ∘ (fun x => (a, x)) := by ext; simp
     rw [this]
@@ -263,14 +193,11 @@ lemma iterate_tendsto_zero (a : ℝ) (ha_pos : 0 < a) (ha_lt : a < 1) :
     exact continuous_prodMk.mpr ⟨continuous_const, continuous_id⟩
   have hconv_F : Filter.Tendsto (fun n => C.F a (C.iterate n a)) Filter.atTop (nhds (C.F a L)) := by
     exact (hF_cont.tendsto L).comp hconv
-  -- So F(a, L) = L, contradicting F(a, L) < L
   have : C.F a L = L := tendsto_nhds_unique hconv_F hconv_succ
   linarith
 
 /-- The diagonal function F(x,x) is continuous. -/
 lemma diagonal_continuous : Continuous (fun x => C.F x x) := by
-  have h : (fun x => C.F x x) = Function.uncurry C.F ∘ (fun x => (x, x)) := by ext; simp
-  rw [h]
   exact C.F_continuous.comp (continuous_id.prodMk continuous_id)
 
 /-- F(x,x) < x for x ∈ (0,1). This follows from F(x,x) < F(1,x) = x. -/
@@ -282,7 +209,6 @@ lemma diagonal_lt (x : ℝ) (hx_pos : 0 < x) (hx_lt : x < 1) : C.F x x < x := by
 lemma diagonal_strictMono : StrictMonoOn (fun x => C.F x x) (Set.Ioc 0 1) := by
   intro x hx y hy hxy
   simp only [Set.mem_Ioc] at hx hy
-  -- F(x,x) < F(x,y) < F(y,y) using both monotonicity axioms
   have h1 : C.F x x < C.F x y := C.F_strictMono_right x hx.1 hx.2 hxy
   have h2 : C.F x y < C.F y y := C.F_strictMono_left y hy.1 hy.2 hxy
   exact lt_trans h1 h2
@@ -290,124 +216,16 @@ lemma diagonal_strictMono : StrictMonoOn (fun x => C.F x x) (Set.Ioc 0 1) := by
 /-- F(x,x) tends to 0 as x → 0+. -/
 lemma diagonal_tendsto_zero :
     Filter.Tendsto (fun x => C.F x x) (nhdsWithin 0 (Set.Ioi 0)) (nhds 0) := by
-  -- F(x,x) < x for x ∈ (0,1), and x → 0, so F(x,x) → 0 by squeeze
-  have hF_lt : ∀ x, 0 < x → x < 1 → C.F x x < x := fun x hx hxlt => C.diagonal_lt x hx hxlt
-  have hF_pos : ∀ x, 0 < x → x ≤ 1 → 0 < C.F x x := fun x hx hxle => (C.F_range x x hx hxle hx hxle).1
-  -- Use squeeze: 0 ≤ F(x,x) ≤ x and x → 0
+  have hmem : Set.Ioo (0 : ℝ) 1 ∈ nhdsWithin 0 (Set.Ioi 0) := by
+    rw [mem_nhdsWithin]
+    exact ⟨Set.Iio 1, isOpen_Iio, by norm_num, fun _ hx => ⟨hx.2, hx.1⟩⟩
   apply tendsto_of_tendsto_of_tendsto_of_le_of_le'
-  · -- Lower bound: constant 0 tends to 0
-    exact tendsto_const_nhds
-  · -- Upper bound: id tends to 0 from the right
-    -- nhdsWithin 0 (Ioi 0) ≤ nhds 0, and id : nhds 0 → nhds 0
-    exact Filter.Tendsto.mono_left (f := id) Filter.tendsto_id nhdsWithin_le_nhds
-  · -- Eventually 0 ≤ F(x,x) for x ∈ (0,1)
-    -- We work on Ioo 0 1 where F is well-defined
-    have h1_mem : Set.Ioo (0:ℝ) 1 ∈ nhdsWithin 0 (Set.Ioi 0) := by
-      rw [mem_nhdsWithin]
-      refine ⟨Set.Ioo (-1) 1, isOpen_Ioo, ?_, ?_⟩
-      · simp only [Set.mem_Ioo]; norm_num
-      · intro x hx
-        simp only [Set.mem_inter_iff, Set.mem_Ioo, Set.mem_Ioi] at hx
-        exact ⟨hx.2, hx.1.2⟩
-    filter_upwards [h1_mem] with x hx
-    simp only [Set.mem_Ioo] at hx
-    exact le_of_lt (hF_pos x hx.1 (le_of_lt hx.2))
-  · -- Eventually F(x,x) ≤ x for x ∈ (0,1)
-    have h1_mem : Set.Ioo (0:ℝ) 1 ∈ nhdsWithin 0 (Set.Ioi 0) := by
-      rw [mem_nhdsWithin]
-      refine ⟨Set.Ioo (-1) 1, isOpen_Ioo, ?_, ?_⟩
-      · simp only [Set.mem_Ioo]; norm_num
-      · intro x hx
-        simp only [Set.mem_inter_iff, Set.mem_Ioo, Set.mem_Ioi] at hx
-        exact ⟨hx.2, hx.1.2⟩
-    filter_upwards [h1_mem] with x hx
-    simp only [Set.mem_Ioo] at hx
-    exact le_of_lt (hF_lt x hx.1 hx.2)
-
-/-- **Square Root Lemma**: For any b ∈ (0,1), there exists y ∈ (0,1) such that F(y,y) = b.
-
-This is the key lemma for extending Θ to dyadic rationals. -/
-lemma exists_sqrt (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
-    ∃ y, 0 < y ∧ y < 1 ∧ C.F y y = b := by
-  -- F(x,x) is continuous, F(1,1) = 1, F(x,x) → 0 as x → 0+
-  -- By IVT, for any b ∈ (0,1), ∃ y ∈ (0,1) with F(y,y) = b
-  have hF_one : C.F 1 1 = 1 := C.F_one_right 1
-  have hcont : Continuous (fun x => C.F x x) := C.diagonal_continuous
-  -- Step 1: Find ε > 0 such that F(ε, ε) < b
-  -- F(x,x) → 0 as x → 0+, so there exists x with 0 < x and F(x,x) < b
-  have htendsto := C.diagonal_tendsto_zero
-  -- Use Metric.tendsto_nhds to extract the ball condition
-  rw [Metric.tendsto_nhds] at htendsto
-  -- Get δ > 0 such that 0 < x < δ implies |F(x,x) - 0| < b
-  have hev := htendsto b hb_pos
-  rw [eventually_nhdsWithin_iff] at hev
-  rw [Metric.eventually_nhds_iff] at hev
-  obtain ⟨δ, hδ_pos, hδ⟩ := hev
-  -- Take ε = min (δ/2) (1/2)
-  set ε := min (δ/2) (1/2) with hε_def
-  have hε_pos : 0 < ε := by positivity
-  have hε_lt_δ : ε < δ := calc ε ≤ δ/2 := min_le_left _ _
-    _ < δ := by linarith
-  have hε_le_half : ε ≤ 1/2 := min_le_right _ _
-  have hε_lt_one : ε < 1 := lt_of_le_of_lt hε_le_half (by norm_num)
-  -- ε satisfies dist ε 0 < δ
-  have hε_dist : dist ε 0 < δ := by
-    rw [dist_zero_right, Real.norm_eq_abs, abs_of_pos hε_pos]
-    exact hε_lt_δ
-  -- So by hδ, since ε ∈ Ioi 0, we have dist (F ε ε) 0 < b
-  have hFε_dist : dist (C.F ε ε) 0 < b := hδ hε_dist hε_pos
-  have hFε_pos : 0 < C.F ε ε := (C.F_range ε ε hε_pos (le_of_lt hε_lt_one) hε_pos (le_of_lt hε_lt_one)).1
-  have hFε_lt_b : C.F ε ε < b := by
-    rw [dist_zero_right, Real.norm_eq_abs, abs_of_pos hFε_pos] at hFε_dist
-    exact hFε_dist
-  -- Step 2: Apply IVT on [ε, 1]
-  -- F(ε, ε) < b < 1 = F(1, 1), so ∃ y ∈ (ε, 1) with F(y, y) = b
-  have hcont_on : ContinuousOn (fun x => C.F x x) (Set.Icc ε 1) := hcont.continuousOn
-  have hεle1 : ε ≤ 1 := le_of_lt hε_lt_one
-  have hb_between : b ∈ Set.Ioo (C.F ε ε) (C.F 1 1) := by
-    simp only [Set.mem_Ioo, hF_one]
-    exact ⟨hFε_lt_b, hb_lt⟩
-  -- IVT: intermediate_value_Ioo gives y ∈ (ε, 1) with F(y,y) = b
-  obtain ⟨y, hy_mem, hy_eq⟩ := intermediate_value_Ioo hεle1 hcont_on hb_between
-  use y
-  simp only [Set.mem_Ioo] at hy_mem
-  exact ⟨lt_trans hε_pos hy_mem.1, hy_mem.2, hy_eq⟩
-
-/-- **Unique Square Root**: For any b ∈ (0,1), there exists a UNIQUE y ∈ (0,1) such that F(y,y) = b. -/
-lemma exists_unique_sqrt (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
-    ∃! y, 0 < y ∧ y < 1 ∧ C.F y y = b := by
-  obtain ⟨y, hy_pos, hy_lt, hy_eq⟩ := C.exists_sqrt b hb_pos hb_lt
-  use y
-  refine ⟨⟨hy_pos, hy_lt, hy_eq⟩, ?_⟩
-  intro z ⟨hz_pos, hz_lt, hz_eq⟩
-  -- F(y,y) = b = F(z,z), and F is strictly increasing on (0,1], so y = z
-  by_contra hne
-  -- Ne.lt_or_gt hne gives: z < y ∨ y < z (since hne : ¬z = y)
-  rcases Ne.lt_or_gt hne with h | h
-  · -- z < y, so F(z,z) < F(y,y), contradiction
-    have hlt : C.F z z < C.F y y := C.diagonal_strictMono ⟨hz_pos, le_of_lt hz_lt⟩ ⟨hy_pos, le_of_lt hy_lt⟩ h
-    rw [hz_eq, hy_eq] at hlt
-    exact lt_irrefl b hlt
-  · -- y < z, so F(y,y) < F(z,z), contradiction
-    have hlt : C.F y y < C.F z z := C.diagonal_strictMono ⟨hy_pos, le_of_lt hy_lt⟩ ⟨hz_pos, le_of_lt hz_lt⟩ h
-    rw [hy_eq, hz_eq] at hlt
-    exact lt_irrefl b hlt
-
-/-- The unique square root function: sqrt_F b is the unique y ∈ (0,1) with F(y,y) = b. -/
-noncomputable def sqrt_F (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) : ℝ :=
-  (C.exists_unique_sqrt b hb_pos hb_lt).choose
-
-lemma sqrt_F_spec (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
-    0 < C.sqrt_F b hb_pos hb_lt ∧
-    C.sqrt_F b hb_pos hb_lt < 1 ∧
-    C.F (C.sqrt_F b hb_pos hb_lt) (C.sqrt_F b hb_pos hb_lt) = b :=
-  (C.exists_unique_sqrt b hb_pos hb_lt).choose_spec.1
-
-/-!
-### Helper Lemmas for Iteration
-
-We use the existing `iterate` function which defines x^n = F(x, F(x, ...F(x, 1)...))
--/
+  · exact tendsto_const_nhds
+  · exact Filter.tendsto_id.mono_left nhdsWithin_le_nhds
+  · filter_upwards [hmem] with x hx
+    exact (C.F_range x x hx.1 hx.2.le hx.1 hx.2.le).1.le
+  · filter_upwards [hmem] with x hx
+    exact (C.diagonal_lt x hx.1 hx.2).le
 
 /-- F preserves positivity. -/
 lemma F_pos (x y : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) (hy_pos : 0 < y) (hy_le : y ≤ 1) :
@@ -418,28 +236,18 @@ lemma F_pos (x y : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) (hy_pos : 0 < y) (hy_
 lemma F_mono_right (x : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) {y z : ℝ}
     (_hy_pos : 0 < y) (_hy_le : y ≤ 1) (_hz_pos : 0 < z) (_hz_le : z ≤ 1) (h : y ≤ z) :
     C.F x y ≤ C.F x z := by
-  by_cases heq : y = z
-  · rw [heq]
-  · have : y < z := lt_of_le_of_ne h heq
-    exact le_of_lt ((C.F_strictMono_right x hx_pos hx_le) this)
+  exact (C.F_strictMono_right x hx_pos hx_le).monotone h
 
 /-- iterate at 1 gives 1. -/
 lemma iterate_at_one (n : ℕ) : C.iterate n 1 = 1 := by
   induction n with
   | zero => rfl
-  | succ n ih =>
-    calc C.iterate (n + 1) 1 = C.F 1 (C.iterate n 1) := rfl
-      _ = C.F 1 1 := by rw [ih]
-      _ = 1 := C.F_one_right 1
+  | succ n ih => exact (congrArg (C.F 1) ih).trans (C.F_one_left 1)
 
 /-- iterate maps (0,1] to (0,1]. Uses the existing iterate_mem_Ioc for strict inequality case. -/
 lemma iterate_le_one (n : ℕ) (x : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) :
     C.iterate n x ≤ 1 := by
-  by_cases hx_lt : x < 1
-  · exact (C.iterate_mem_Ioc x hx_pos hx_lt n).2
-  · push_neg at hx_lt
-    have hx_eq : x = 1 := le_antisymm hx_le hx_lt
-    rw [hx_eq, C.iterate_at_one]
+  exact (C.iterate_mem_unit x ⟨hx_pos, hx_le⟩ n).2
 
 /-- iterate 2 gives the diagonal F(x,x). -/
 lemma iterate_two (x : ℝ) : C.iterate 2 x = C.F x x := by
@@ -450,14 +258,7 @@ lemma iterate_two (x : ℝ) : C.iterate 2 x = C.F x x := by
 lemma iterate_continuous (n : ℕ) : Continuous (C.iterate n) := by
   induction n with
   | zero => exact continuous_const
-  | succ n ih =>
-    have h : C.iterate (n + 1) = (fun x => C.F x (C.iterate n x)) := by
-      ext x; rfl
-    rw [h]
-    have hcomp : (fun x => C.F x (C.iterate n x)) =
-                 Function.uncurry C.F ∘ (fun x => (x, C.iterate n x)) := by ext; simp
-    rw [hcomp]
-    exact C.F_continuous.comp (continuous_id.prodMk ih)
+  | succ n ih => exact C.F_continuous.comp (continuous_id.prodMk ih)
 
 /-- iterate is strictly monotone on (0,1] for n ≥ 1. -/
 lemma iterate_strictMono_on (n : ℕ) (hn : 1 ≤ n) :
@@ -465,70 +266,26 @@ lemma iterate_strictMono_on (n : ℕ) (hn : 1 ≤ n) :
   induction n with
   | zero => omega
   | succ n ih =>
-    intro x hx y hy hxy
     cases n with
     | zero =>
-      rw [iterate_one, iterate_one]
-      exact hxy
+      intro x hx y hy hxy
+      change C.iterate 1 x < C.iterate 1 y
+      simpa only [iterate_one] using hxy
     | succ n =>
-      -- Need: F(x, iterate (n+1) x) < F(y, iterate (n+1) y)
-      have hn1 : 1 ≤ n + 1 := by omega
-      have hiter_x_lt_y : C.iterate (n+1) x < C.iterate (n+1) y := ih hn1 hx hy hxy
-      -- Need y < 1 to use iterate_mem_Ioc, or handle y = 1 case
-      by_cases hy_eq : y = 1
-      · -- y = 1 case: show F(x, iter (n+1) x) < F(1, iter (n+1) 1)
-        have hx_lt : x < 1 := by rw [hy_eq] at hxy; exact hxy
-        have hiter_x_lt : C.iterate (n+1) x < C.iterate (n+1) 1 := by rw [← hy_eq]; exact hiter_x_lt_y
-        rw [C.iterate_at_one] at hiter_x_lt
-        have hiter_x_pos : 0 < C.iterate (n+1) x := (C.iterate_mem_Ioc x hx.1 hx_lt (n+1)).1
-        have hiter_x_le : C.iterate (n+1) x ≤ 1 := C.iterate_le_one (n+1) x hx.1 hx.2
-        -- F(x, iter_x) < F(x, 1) = x < 1 = F(1, 1) = F(y, iter y)
-        calc C.F x (C.iterate (n+1) x)
-            < C.F x 1 := C.F_strictMono_right x hx.1 hx.2 hiter_x_lt
-          _ = x := C.F_one_right x
-          _ < 1 := hx_lt
-          _ = C.F 1 1 := (C.F_one_right 1).symm
-          _ = C.F y (C.iterate (n+1) y) := by rw [hy_eq, C.iterate_at_one]
-      · -- y < 1 case
-        have hy_lt : y < 1 := lt_of_le_of_ne hy.2 hy_eq
-        calc C.F x (C.iterate (n+1) x)
-            < C.F x (C.iterate (n+1) y) := C.F_strictMono_right x hx.1 hx.2 hiter_x_lt_y
-          _ < C.F y (C.iterate (n+1) y) := by
-              have hmem := C.iterate_mem_Ioc y hy.1 hy_lt (n+1)
-              exact C.F_strictMono_left (C.iterate (n+1) y) hmem.1 hmem.2 hxy
-
-/-!
-## §3.5: nth Roots Following Ling (1965)
-
-Following Ling's Section 4, we define nth roots and prove the key lemmas needed
-for the representation theorem. The main construction:
-
-**Notation** (Ling's convention, adapted):
-- sₙ(x) = x^n = iterate n x (n-fold application of F)
-- rₙ(x) = min{y : sₙ(y) = x} (nth root)
-- g*(m/n) = sₘ(rₙ(c)) for fixed base point c
-
-**Key lemmas from Ling Section 4**:
-- Lemma 1: {x^n} is nondecreasing (for x > identity)
-- Lemma 2: Archimedean property
-- Lemma 3: lim x^n = annihilator
-- Lemma 4-5: Endpoint properties
-- Lemma 6-7: Order properties
-- Lemma 8-14: nth root properties
--/
+      intro x hx y hy hxy
+      have hi := ih (by omega) hx hy hxy
+      have hym := C.iterate_mem_unit y hy (n + 1)
+      change C.F x (C.iterate (n + 1) x) < C.F y (C.iterate (n + 1) y)
+      exact lt_trans ((C.F_strictMono_right x hx.1 hx.2) hi)
+        ((C.F_strictMono_left _ hym.1 hym.2) hxy)
 
 /-- For each n ≥ 2 and b ∈ (0,1), there exists y ∈ (0,1) with iterate n y = b.
 This is existence of nth roots by IVT. -/
 lemma exists_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
     ∃ y, 0 < y ∧ y < 1 ∧ C.iterate n y = b := by
-  -- iterate n 1 = 1 > b, and iterate n tends to 0 as x → 0+
-  -- By IVT, there exists y with iterate n y = b
   have h_at_1 : C.iterate n 1 = 1 := C.iterate_at_one n
-  -- Find ε > 0 with iterate n ε < b (using diagonal tends to 0)
   have h_small : ∃ ε, 0 < ε ∧ ε < 1 ∧ C.iterate n ε < b := by
-    -- For n ≥ 2: iterate n ε ≤ iterate 2 ε = F(ε, ε), and F(ε,ε) → 0 as ε → 0+
     have h_diag_tends := C.diagonal_tendsto_zero
-    -- Use Metric.tendsto_nhds to get δ-ball condition
     rw [Metric.tendsto_nhds] at h_diag_tends
     have hev := h_diag_tends b hb_pos
     rw [eventually_nhdsWithin_iff, Metric.eventually_nhds_iff] at hev
@@ -537,7 +294,6 @@ lemma exists_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt
     refine ⟨by positivity, by linarith [min_le_right (δ/2) (1/2)], ?_⟩
     have hε_pos : 0 < min (δ/2) (1/2) := by positivity
     have hε_lt : min (δ/2) (1/2) < 1 := by linarith [min_le_right (δ/2) (1/2)]
-    -- iterate n ε ≤ F(ε, ε) for n ≥ 2
     have h_iter_le_diag : C.iterate n (min (δ/2) (1/2)) ≤ C.F (min (δ/2) (1/2)) (min (δ/2) (1/2)) := by
       have h2 : C.iterate 2 (min (δ/2) (1/2)) = C.F (min (δ/2) (1/2)) (min (δ/2) (1/2)) := C.iterate_two _
       cases n with
@@ -546,12 +302,10 @@ lemma exists_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt
         cases n' with
         | zero => omega
         | succ n'' =>
-          -- For n ≥ 2, iterate is decreasing, so iterate n ≤ iterate 2
           have hanti : ∀ k, C.iterate (k + 1) (min (δ/2) (1/2)) ≤
                            C.iterate k (min (δ/2) (1/2)) := by
             intro k
             exact le_of_lt (C.iterate_strictAnti (min (δ/2) (1/2)) hε_pos hε_lt k)
-          -- By induction: iterate (n''+2) ≤ iterate 2
           have : ∀ m, C.iterate (m + 2) (min (δ/2) (1/2)) ≤ C.iterate 2 (min (δ/2) (1/2)) := by
             intro m
             induction m with
@@ -562,7 +316,6 @@ lemma exists_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt
                 _ ≤ C.iterate 2 (min (δ/2) (1/2)) := ihm
           rw [← h2]
           exact this n''
-    -- F(ε, ε) < b by the tendsto property
     have hdiag_lt : C.F (min (δ/2) (1/2)) (min (δ/2) (1/2)) < b := by
       have hdist : dist (min (δ/2) (1/2)) 0 < δ := by
         simp only [dist_zero_right, Real.norm_eq_abs, abs_of_pos hε_pos]
@@ -576,7 +329,6 @@ lemma exists_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt
       rwa [abs_of_pos hFpos] at this
     exact lt_of_le_of_lt h_iter_le_diag hdiag_lt
   obtain ⟨ε, hε_pos, hε_lt, hiter_ε⟩ := h_small
-  -- Now apply IVT on [ε, 1]
   have hεle1 : ε ≤ 1 := le_of_lt hε_lt
   have hcont : ContinuousOn (C.iterate n) (Set.Icc ε 1) := (C.iterate_continuous n).continuousOn
   have hb_mem : b ∈ Set.Ioo (C.iterate n ε) (C.iterate n 1) := by
@@ -588,27 +340,32 @@ lemma exists_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt
 /-- nth roots are unique by strict monotonicity. -/
 lemma exists_unique_nth_root (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
     ∃! y, 0 < y ∧ y < 1 ∧ C.iterate n y = b := by
-  obtain ⟨y, hy_pos, hy_lt, hy_eq⟩ := C.exists_nth_root n hn b hb_pos hb_lt
-  refine ⟨y, ⟨hy_pos, hy_lt, hy_eq⟩, ?_⟩
-  intro z ⟨hz_pos, hz_lt, hz_eq⟩
-  by_contra hne
-  rcases Ne.lt_or_gt hne with h | h
-  · -- z < y, so iterate n z < iterate n y, contradiction
-    have hlt : C.iterate n z < C.iterate n y := by
-      apply C.iterate_strictMono_on n (by omega)
-      · exact ⟨hz_pos, le_of_lt hz_lt⟩
-      · exact ⟨hy_pos, le_of_lt hy_lt⟩
-      · exact h
-    rw [hz_eq, hy_eq] at hlt
-    exact lt_irrefl b hlt
-  · -- y < z, so iterate n y < iterate n z, contradiction
-    have hlt : C.iterate n y < C.iterate n z := by
-      apply C.iterate_strictMono_on n (by omega)
-      · exact ⟨hy_pos, le_of_lt hy_lt⟩
-      · exact ⟨hz_pos, le_of_lt hz_lt⟩
-      · exact h
-    rw [hy_eq, hz_eq] at hlt
-    exact lt_irrefl b hlt
+  obtain ⟨y, hy, hy1, heq⟩ := C.exists_nth_root n hn b hb_pos hb_lt
+  refine ⟨y, ⟨hy, hy1, heq⟩, fun z hz => ?_⟩
+  exact (C.iterate_strictMono_on n (by omega)).injOn ⟨hz.1, hz.2.1.le⟩ ⟨hy, hy1.le⟩
+    (hz.2.2.trans heq.symm)
+
+/-- **Square Root Lemma**: For any b ∈ (0,1), there exists y ∈ (0,1) such that F(y,y) = b.
+
+This is the key lemma for extending Θ to dyadic rationals. -/
+lemma exists_sqrt (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
+    ∃ y, 0 < y ∧ y < 1 ∧ C.F y y = b := by
+  simpa only [C.iterate_two] using C.exists_nth_root 2 (by omega) b hb_pos hb_lt
+
+/-- **Unique Square Root**: For any b ∈ (0,1), there exists a UNIQUE y ∈ (0,1) such that F(y,y) = b. -/
+lemma exists_unique_sqrt (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
+    ∃! y, 0 < y ∧ y < 1 ∧ C.F y y = b := by
+  simpa only [C.iterate_two] using C.exists_unique_nth_root 2 (by omega) b hb_pos hb_lt
+
+/-- The unique square root function: sqrt_F b is the unique y ∈ (0,1) with F(y,y) = b. -/
+noncomputable def sqrt_F (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) : ℝ :=
+  (C.exists_unique_sqrt b hb_pos hb_lt).choose
+
+lemma sqrt_F_spec (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
+    0 < C.sqrt_F b hb_pos hb_lt ∧
+    C.sqrt_F b hb_pos hb_lt < 1 ∧
+    C.F (C.sqrt_F b hb_pos hb_lt) (C.sqrt_F b hb_pos hb_lt) = b :=
+  (C.exists_unique_sqrt b hb_pos hb_lt).choose_spec.1
 
 /-- The unique nth root function rₙ(b) = min{y : yⁿ = b}.
 Following Ling (1965), Definition 4.15. -/
@@ -623,92 +380,34 @@ lemma nth_root_spec (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt :
   (C.exists_unique_nth_root n hn b hb_pos hb_lt).choose_spec.1
 
 /-- **Ling's Lemma 12**: The nth root is strictly increasing in n.
-For c ∈ (0,1): r_n(c) < r_{n+1}(c) for all n ≥ 2.
-
-Proof: We have iterate n (r_n) = c and iterate (n+1) (r_{n+1}) = c.
-Since r_n < 1, we get iterate (n+1) (r_n) = F(r_n, iterate n r_n) = F(r_n, c) < F(1, c) = c.
-So iterate (n+1) r_n < c = iterate (n+1) r_{n+1}.
-By strict monotonicity of iterate (n+1), we get r_n < r_{n+1}. -/
+For c ∈ (0,1): r_n(c) < r_{n+1}(c) for all n ≥ 2. -/
 lemma nth_root_lt_succ (n : ℕ) (hn : 2 ≤ n) (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
     C.nth_root n hn b hb_pos hb_lt < C.nth_root (n + 1) (by omega : 2 ≤ n + 1) b hb_pos hb_lt := by
-  -- Get properties of both roots
-  have hn1 : 2 ≤ n + 1 := by omega
-  set r_n := C.nth_root n hn b hb_pos hb_lt with hr_n
-  set r_n1 := C.nth_root (n + 1) hn1 b hb_pos hb_lt with hr_n1
-  have hr_n_spec := C.nth_root_spec n hn b hb_pos hb_lt
-  have hr_n1_spec := C.nth_root_spec (n + 1) hn1 b hb_pos hb_lt
-  -- r_n ∈ (0, 1) and iterate n r_n = b
-  have hr_n_pos : 0 < r_n := hr_n_spec.1
-  have hr_n_lt : r_n < 1 := hr_n_spec.2.1
-  have hr_n_eq : C.iterate n r_n = b := hr_n_spec.2.2
-  -- r_{n+1} ∈ (0, 1) and iterate (n+1) r_{n+1} = b
-  have hr_n1_pos : 0 < r_n1 := hr_n1_spec.1
-  have hr_n1_lt : r_n1 < 1 := hr_n1_spec.2.1
-  have hr_n1_eq : C.iterate (n + 1) r_n1 = b := hr_n1_spec.2.2
-  -- Key: iterate (n+1) r_n < b
-  have h_iter_rn_lt : C.iterate (n + 1) r_n < b := by
-    calc C.iterate (n + 1) r_n
-        = C.F r_n (C.iterate n r_n) := rfl
-      _ = C.F r_n b := by rw [hr_n_eq]
-      _ < C.F 1 b := C.F_strictMono_left b hb_pos (le_of_lt hb_lt) hr_n_lt
-      _ = b := C.F_one_left b
-  -- iterate (n+1) r_n < b = iterate (n+1) r_{n+1}
-  -- By strict monotonicity of iterate (n+1), r_n < r_{n+1}
-  have h_mono := C.iterate_strictMono_on (n + 1) (by omega : 1 ≤ n + 1)
-  -- Both roots are in (0, 1]
-  have hr_n_mem : r_n ∈ Set.Ioc 0 1 := ⟨hr_n_pos, le_of_lt hr_n_lt⟩
-  have hr_n1_mem : r_n1 ∈ Set.Ioc 0 1 := ⟨hr_n1_pos, le_of_lt hr_n1_lt⟩
-  -- Use strict monotonicity: iterate (n+1) r_n < iterate (n+1) r_{n+1} implies r_n < r_{n+1}
-  -- (by contrapositive)
-  by_contra h_not_lt
-  push_neg at h_not_lt
-  rcases le_or_gt r_n1 r_n with h_le | h_gt
-  · -- r_{n+1} ≤ r_n case
-    rcases lt_or_eq_of_le h_le with h_strict | h_eq
-    · -- r_{n+1} < r_n leads to contradiction
-      have h_iter_lt := h_mono hr_n1_mem hr_n_mem h_strict
-      rw [hr_n1_eq] at h_iter_lt
-      linarith
-    · -- r_n = r_{n+1} leads to contradiction (iterate (n+1) r_n < b = iterate (n+1) r_n1)
-      have h_eq' : C.iterate (n + 1) r_n = C.iterate (n + 1) r_n1 := by rw [h_eq]
-      rw [hr_n1_eq] at h_eq'
-      linarith
-  · -- r_n < r_{n+1}: this IS what we want to prove, contradiction with h_not_lt
-    linarith
+  obtain ⟨hp, hl, heq⟩ := C.nth_root_spec n hn b hb_pos hb_lt
+  obtain ⟨hp', hl', heq'⟩ := C.nth_root_spec (n + 1) (by omega) b hb_pos hb_lt
+  apply (C.iterate_strictMono_on (n + 1) (by omega)).lt_iff_lt ⟨hp, hl.le⟩ ⟨hp', hl'.le⟩ |>.mp
+  rw [iterate_succ, heq, heq']
+  exact C.F_lt_right _ b hp hl hb_pos hb_lt.le
 
 /-- **Ling's Lemma 13**: The nth root converges to 1 as n → ∞.
-For any c ∈ (0,1): lim_{n→∞} r_n(c) = 1.
-
-Proof: The sequence {r_n(c)} is increasing (by Lemma 12) and bounded above by 1,
-so it converges to some limit L ≤ 1. If L < 1, then:
-- Choose K such that iterate K (L) < b/2 (possible by iterate_tendsto_zero)
-- For large n, r_n is close to L, so iterate K (r_n) < b by continuity
-- But iterate n (r_n) = b and iterate n (r_n) < iterate K (r_n) for n > K
-  (iterates are decreasing in n for fixed argument < 1)
-- This gives b < b, contradiction. Hence L = 1. -/
+For any c ∈ (0,1): lim_{n→∞} r_n(c) = 1. -/
 lemma nth_root_tendsto_one (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
     Filter.Tendsto (fun n => if hn : 2 ≤ n then C.nth_root n hn b hb_pos hb_lt else 0)
                    Filter.atTop (nhds 1) := by
-  -- Define the sequence
   let r : ℕ → ℝ := fun n => if hn : 2 ≤ n then C.nth_root n hn b hb_pos hb_lt else 0
-  -- r_n < 1 and r_n > 0 for all n ≥ 2
   have hr_lt_one : ∀ n, 2 ≤ n → r n < 1 := fun n hn => by
     simp only [r, dif_pos hn]; exact (C.nth_root_spec n hn b hb_pos hb_lt).2.1
   have hr_pos : ∀ n, 2 ≤ n → 0 < r n := fun n hn => by
     simp only [r, dif_pos hn]; exact (C.nth_root_spec n hn b hb_pos hb_lt).1
-  -- iterate n (r_n) = b for all n ≥ 2
   have hr_eq : ∀ n, 2 ≤ n → C.iterate n (r n) = b := fun n hn => by
     simp only [r, dif_pos hn]; exact (C.nth_root_spec n hn b hb_pos hb_lt).2.2
-  -- Sequence is increasing (Lemma 12)
   have hr_increasing : ∀ n, 2 ≤ n → r n < r (n + 1) := fun n hn => by
     have hn1 : 2 ≤ n + 1 := by omega
     simp only [r, dif_pos hn, dif_pos hn1]
     exact C.nth_root_lt_succ n hn b hb_pos hb_lt
-  -- Bounded monotone sequence converges
   have hbdd : BddAbove (Set.range (fun n => r (n + 2))) := ⟨1, by
     intro x ⟨n, hn⟩; rw [← hn]; exact le_of_lt (hr_lt_one (n + 2) (by omega))⟩
   have hmono : Monotone (fun n => r (n + 2)) := fun m n hmn => by
-    -- Show r (m + 2) ≤ r (n + 2) when m ≤ n by induction on n - m
     obtain ⟨d, hd⟩ := Nat.exists_eq_add_of_le hmn
     subst hd
     induction d with
@@ -717,78 +416,57 @@ lemma nth_root_tendsto_one (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
       have h1 : r (m + 2) ≤ r ((m + d) + 2) := ih (Nat.le_add_right m d)
       calc r (m + 2) ≤ r ((m + d) + 2) := h1
         _ ≤ r ((m + d) + 3) := le_of_lt (hr_increasing ((m + d) + 2) (by omega))
-  -- Get the limit L
   have hL := tendsto_atTop_ciSup hmono hbdd
   set L := ⨆ n, r (n + 2) with L_def
   have hL_le_one : L ≤ 1 := ciSup_le fun n => le_of_lt (hr_lt_one (n + 2) (by omega))
   have hL_ge_r2 : L ≥ r 2 := le_ciSup_of_le hbdd 0 (le_refl (r (0 + 2)))
   have hL_pos : 0 < L := lt_of_lt_of_le (hr_pos 2 (by omega)) hL_ge_r2
-  -- We prove L = 1, then derive the goal
   suffices hL_eq_one : L = 1 by
-    -- The shifted sequence r(n+2) → L = 1
-    -- We need to show the original r → 1
     rw [hL_eq_one] at hL
-    -- For n ≥ 2: r n = (fun k => r (k + 2)) (n - 2)
-    -- Use composition with the shifting function
     have hsub_tendsto : Filter.Tendsto (fun n => n - 2) Filter.atTop Filter.atTop :=
       Filter.tendsto_atTop_atTop_of_monotone (fun _ _ h => Nat.sub_le_sub_right h 2)
         (fun b => ⟨b + 2, by omega⟩)
     apply (hL.comp hsub_tendsto).congr'
-    -- Eventually r n = r ((n - 2) + 2)
     filter_upwards [Filter.eventually_ge_atTop 2] with n hn
     simp only [Function.comp_apply, Nat.sub_add_cancel hn, r, dif_pos hn]
-  -- Show L = 1 by contradiction
   by_contra hL_ne_one
   have hL_lt_one : L < 1 := lt_of_le_of_ne hL_le_one hL_ne_one
-  -- Key: For L < 1, iterate K (L) can be made < b/2 for large K
   have h_iter_L_tends : Filter.Tendsto (C.iterate · L) Filter.atTop (nhds 0) :=
     C.iterate_tendsto_zero L hL_pos hL_lt_one
-  -- Get K such that iterate K (L) < b/2
   rw [Metric.tendsto_atTop] at h_iter_L_tends
   obtain ⟨K, hK⟩ := h_iter_L_tends (b/2) (by linarith)
-  -- For large n, r_n is close to L, so iterate K (r_n) is close to iterate K (L)
-  -- Use continuity of iterate K
   have hcont_K : Continuous (C.iterate K) := C.iterate_continuous K
   have hcont_K_at_L : ContinuousAt (C.iterate K) L := hcont_K.continuousAt
   rw [Metric.continuousAt_iff] at hcont_K_at_L
   obtain ⟨δ, hδ_pos, hδ⟩ := hcont_K_at_L (b/4) (by linarith)
-  -- Get N such that |r_{N+2} - L| < δ
   have hL_tendsto : Filter.Tendsto (fun n => r (n + 2)) Filter.atTop (nhds L) := hL
   rw [Metric.tendsto_atTop] at hL_tendsto
   obtain ⟨N, hN⟩ := hL_tendsto δ hδ_pos
-  -- Take n = max(N + 2, K + 3) so n ≥ 2, n > K, and r_n is close to L
   let n := max (N + 2) (K + 3)
   have hn_ge_2 : 2 ≤ n := Nat.le_trans (by omega : 2 ≤ N + 2) (Nat.le_max_left (N + 2) (K + 3))
   have hn_gt_K : K < n := Nat.lt_of_lt_of_le (by omega : K < K + 3) (Nat.le_max_right (N + 2) (K + 3))
   have hN_le : N ≤ n - 2 := Nat.le_sub_of_add_le (Nat.le_max_left (N + 2) (K + 3))
-  -- |r_n - L| < δ
   have hr_n_close : dist (r n) L < δ := by
     have h := hN (n - 2) hN_le
     have h_simp : n - 2 + 2 = n := Nat.sub_add_cancel hn_ge_2
     simp only [h_simp] at h
     exact h
-  -- |iterate K (r_n) - iterate K (L)| < b/4
   have h_iter_close : dist (C.iterate K (r n)) (C.iterate K L) < b / 4 := hδ hr_n_close
-  -- iterate K (L) < b/2 (since |iterate K (L) - 0| < b/2)
   have h_iter_L_small : C.iterate K L < b / 2 := by
     have hK' := hK K (le_refl K)
     simp only [dist_zero_right, Real.norm_eq_abs] at hK'
     have h_iter_pos : 0 < C.iterate K L := (C.iterate_mem_Ioc L hL_pos hL_lt_one K).1
     rwa [abs_of_pos h_iter_pos] at hK'
-  -- iterate K (r_n) < b/2 + b/4 = 3b/4
   have h_iter_rn_small : C.iterate K (r n) < 3 * b / 4 := by
     have h1 : |C.iterate K (r n) - C.iterate K L| < b / 4 := by
       rw [Real.dist_eq] at h_iter_close; exact h_iter_close
     have h2 : C.iterate K (r n) < C.iterate K L + b / 4 := by linarith [abs_sub_lt_iff.mp h1]
     linarith
-  -- iterate n (r_n) < iterate K (r_n) for n > K (iterates decrease)
   have h_iter_decreasing : C.iterate n (r n) < C.iterate K (r n) := by
     have hr_n_pos : 0 < r n := hr_pos n hn_ge_2
     have hr_n_lt : r n < 1 := hr_lt_one n hn_ge_2
-    -- iterate is strictly anti in first argument for fixed second argument < 1
     have hanti : ∀ m, C.iterate (m + 1) (r n) < C.iterate m (r n) :=
       C.iterate_strictAnti (r n) hr_n_pos hr_n_lt
-    -- By induction: iterate n (r n) ≤ iterate (K+1) (r n) < iterate K (r n) when n > K
     have h_le : ∀ m, m ≤ n - (K + 1) → C.iterate n (r n) ≤ C.iterate (n - m) (r n) := by
       intro m hm
       induction m with
@@ -804,25 +482,9 @@ lemma nth_root_tendsto_one (b : ℝ) (hb_pos : 0 < b) (hb_lt : b < 1) :
     have h_eq : n - (n - (K + 1)) = K + 1 := by omega
     rw [h_eq] at h
     exact lt_of_le_of_lt h (hanti K)
-  -- But iterate n (r_n) = b, so b < 3b/4
   have h_eq_b : C.iterate n (r n) = b := hr_eq n hn_ge_2
   rw [h_eq_b] at h_iter_decreasing
   linarith
-
-/-!
-### Aczél's Construction Following Ling (1965)
-
-Following Ling's Section 4 (pages 198-203), we prove the representation theorem
-using an elementary construction:
-
-1. **Base point**: Fix c ∈ (0,1)
-2. **Define g***: g*(m/n) = sₘ(rₙ(c)) = iterate m (nth_root n c)
-3. **Key lemma**: sₘ rₙ = s_{im} r_{in} ensures well-definedness
-4. **Four propositions**: g* is nondecreasing, strictly monotone, additive, continuous
-5. **Extension**: Extend g* to reals by continuity
-
-This provides a constructive proof of Aczél's theorem.
--/
 
 /-- Helper: 2 ≤ i * n when 1 ≤ i and 2 ≤ n. -/
 private lemma le_two_i_mul_n (i n : ℕ) (hi : 1 ≤ i) (hn : 2 ≤ n) : 2 ≤ i * n := by
@@ -833,14 +495,10 @@ private lemma le_two_i_mul_n (i n : ℕ) (hi : 1 ≤ i) (hn : 2 ≤ n) : 2 ≤ i
 /-- Power of power: iterate n (iterate i a) = iterate (n * i) a.
 This is the fundamental property (a^i)^n = a^{in} for the semigroup operation. -/
 lemma iterate_mul (a : ℝ) (n i : ℕ) : C.iterate n (C.iterate i a) = C.iterate (n * i) a := by
-  induction n with
-  | zero => simp [iterate_zero]
-  | succ n ih =>
-    calc C.iterate (n + 1) (C.iterate i a)
-        = C.F (C.iterate i a) (C.iterate n (C.iterate i a)) := rfl
-      _ = C.F (C.iterate i a) (C.iterate (n * i) a) := by rw [ih]
-      _ = C.iterate (i + n * i) a := C.iterate_add a i (n * i)
-      _ = C.iterate ((n + 1) * i) a := by ring_nf
+  have h := congrArg Conjunction.val (pow_mul (⟨a⟩ : Conjunction C) i n).symm
+  rw [← C.iterate_eq_pow a i, ← C.iterate_eq_pow (C.iterate i a) n,
+    ← C.iterate_eq_pow a (i * n), Nat.mul_comm i n] at h
+  exact h
 
 /-- The ith iterate of the (i*n)th root equals the nth root.
 This is the key sub-lemma for Lemma 14. -/
@@ -848,22 +506,15 @@ lemma iterate_i_nth_root_eq (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
     (n i : ℕ) (hn : 2 ≤ n) (hi : 1 ≤ i) :
     C.iterate i (C.nth_root (i * n) (le_two_i_mul_n i n hi hn) c hc_pos hc_lt) =
     C.nth_root n hn c hc_pos hc_lt := by
-  -- Let r_{in} = nth_root (i*n) c and r_n = nth_root n c
-  -- We show iterate i r_{in} = r_n by uniqueness of nth roots
   set r_in := C.nth_root (i * n) (le_two_i_mul_n i n hi hn) c hc_pos hc_lt with hr_in
   set r_n := C.nth_root n hn c hc_pos hc_lt with hr_n
   set y := C.iterate i r_in with hy_def
-  -- r_in satisfies: iterate (i*n) r_in = c
   have hr_in_spec := C.nth_root_spec (i * n) (le_two_i_mul_n i n hi hn) c hc_pos hc_lt
-  -- r_n satisfies: iterate n r_n = c
   have hr_n_spec := C.nth_root_spec n hn c hc_pos hc_lt
-  -- y = iterate i r_in is positive and < 1
   have hy_pos : 0 < y := (C.iterate_mem_Ioc r_in hr_in_spec.1 hr_in_spec.2.1 i).1
-  -- For i ≥ 1 and r_in < 1: iterate i r_in ≤ iterate 1 r_in = r_in < 1
   have hy_lt' : y < 1 := by
     cases Nat.lt_or_eq_of_le hi with
     | inl h_gt =>
-      -- i ≥ 2, so iterate i r_in < iterate 1 r_in = r_in < 1
       have h_anti : Antitone (C.iterate · r_in) := by
         intro m n hmn
         induction hmn with
@@ -875,19 +526,16 @@ lemma iterate_i_nth_root_eq (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
         _ = r_in := C.iterate_one r_in
         _ < 1 := hr_in_spec.2.1
     | inr h_eq =>
-      -- i = 1, so y = iterate 1 r_in = r_in < 1
       calc y = C.iterate i r_in := rfl
         _ = C.iterate 1 r_in := by rw [h_eq]
         _ = r_in := C.iterate_one r_in
         _ < 1 := hr_in_spec.2.1
-  -- iterate n y = iterate n (iterate i r_in) = iterate (n * i) r_in = iterate (i * n) r_in = c
   have hy_spec : C.iterate n y = c := by
     calc C.iterate n y
         = C.iterate n (C.iterate i r_in) := rfl
       _ = C.iterate (n * i) r_in := C.iterate_mul r_in n i
       _ = C.iterate (i * n) r_in := by ring_nf
       _ = c := hr_in_spec.2.2
-  -- By uniqueness of nth roots, y = r_n
   have huniq := C.exists_unique_nth_root n hn c hc_pos hc_lt
   have hy_props : 0 < y ∧ y < 1 ∧ C.iterate n y = c := ⟨hy_pos, hy_lt', hy_spec⟩
   exact huniq.unique hy_props hr_n_spec
@@ -901,7 +549,6 @@ lemma iterate_nth_root_scale (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
     (m n i : ℕ) (hn : 2 ≤ n) (_hm : 1 ≤ m) (hi : 1 ≤ i) :
     C.iterate m (C.nth_root n hn c hc_pos hc_lt) =
     C.iterate (i * m) (C.nth_root (i * n) (le_two_i_mul_n i n hi hn) c hc_pos hc_lt) := by
-  -- By iterate_i_nth_root_eq: nth_root n c = iterate i (nth_root (i*n) c)
   have h_key := C.iterate_i_nth_root_eq c hc_pos hc_lt n i hn hi
   calc C.iterate m (C.nth_root n hn c hc_pos hc_lt)
       = C.iterate m (C.iterate i (C.nth_root (i * n) (le_two_i_mul_n i n hi hn) c hc_pos hc_lt)) := by
@@ -923,30 +570,22 @@ lemma g_star_antitone (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
     (m₁ n₁ m₂ n₂ : ℕ) (hm₁ : 1 ≤ m₁) (hn₁ : 2 ≤ n₁) (hm₂ : 1 ≤ m₂) (hn₂ : 2 ≤ n₂)
     (h : (m₁ : ℚ) / n₁ ≤ (m₂ : ℚ) / n₂) :
     C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ ≤ C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁ := by
-  -- Strategy: bring to common denominator, then use that iterate is antitone
   unfold g_star
   have hn₁' : 1 ≤ n₁ := Nat.one_le_of_lt hn₁
   have hn₂' : 1 ≤ n₂ := Nat.one_le_of_lt hn₂
-  -- Scale both to common denominator n₁ * n₂
   have h1 := C.iterate_nth_root_scale c hc_pos hc_lt m₁ n₁ n₂ hn₁ hm₁ hn₂'
   have h2 := C.iterate_nth_root_scale c hc_pos hc_lt m₂ n₂ n₁ hn₂ hm₂ hn₁'
   rw [h1, h2]
-  -- Rewrite n₂ * n₁ = n₁ * n₂
   have hcomm : n₂ * n₁ = n₁ * n₂ := Nat.mul_comm n₂ n₁
   have h_root_eq : C.nth_root (n₂ * n₁) (le_two_i_mul_n n₂ n₁ hn₂' hn₁) c hc_pos hc_lt =
                    C.nth_root (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt := by
     simp only [hcomm]
   rw [h_root_eq]
-  -- Now need: iterate (n₁ * m₂) r ≤ iterate (n₂ * m₁) r where r = nth_root (n₁ * n₂) c
-  -- From h: m₁/n₁ ≤ m₂/n₂, so m₁ * n₂ ≤ m₂ * n₁
   have h_cross : m₁ * n₂ ≤ m₂ * n₁ := by
     have hn₁_pos : (0 : ℚ) < n₁ := by positivity
     have hn₂_pos : (0 : ℚ) < n₂ := by positivity
-    -- div_le_div_iff₀: a / b ≤ c / d ↔ a * d ≤ c * b
     have hq := (div_le_div_iff₀ hn₁_pos hn₂_pos).mp h
-    -- hq : (m₁ : ℚ) * n₂ ≤ m₂ * n₁
     exact_mod_cast hq
-  -- iterate is antitone: more iterations gives smaller results
   set r := C.nth_root (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt with hr_def
   have hr_spec := C.nth_root_spec (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt
   have h_anti : Antitone (C.iterate · r) := by
@@ -955,7 +594,6 @@ lemma g_star_antitone (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
     | refl => exact le_refl _
     | step _ ih =>
       exact le_trans (le_of_lt (C.iterate_strictAnti r hr_spec.1 hr_spec.2.1 _)) ih
-  -- n₂ * m₁ = m₁ * n₂ and n₁ * m₂ = m₂ * n₁ (by commutativity)
   simp only [Nat.mul_comm n₂ m₁, Nat.mul_comm n₁ m₂]
   exact h_anti h_cross
 
@@ -964,7 +602,6 @@ lemma g_star_strictAnti (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
     (m₁ n₁ m₂ n₂ : ℕ) (hm₁ : 1 ≤ m₁) (hn₁ : 2 ≤ n₁) (hm₂ : 1 ≤ m₂) (hn₂ : 2 ≤ n₂)
     (h : (m₁ : ℚ) / n₁ < (m₂ : ℚ) / n₂) :
     C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ < C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁ := by
-  -- Strategy: bring to common denominator and use strict antitone of iterates.
   unfold g_star
   have hn₁' : 1 ≤ n₁ := Nat.one_le_of_lt hn₁
   have hn₂' : 1 ≤ n₂ := Nat.one_le_of_lt hn₂
@@ -977,13 +614,11 @@ lemma g_star_strictAnti (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
         C.nth_root (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt := by
     simp only [hcomm]
   rw [h_root_eq]
-  -- From h: m₁/n₁ < m₂/n₂, so m₁ * n₂ < m₂ * n₁.
   have h_cross : m₁ * n₂ < m₂ * n₁ := by
     have hn₁_pos : (0 : ℚ) < n₁ := by positivity
     have hn₂_pos : (0 : ℚ) < n₂ := by positivity
     have hq := (div_lt_div_iff₀ hn₁_pos hn₂_pos).mp h
     exact_mod_cast hq
-  -- iterate is strictly antitone in the exponent.
   set r := C.nth_root (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt with hr_def
   have hr_spec := C.nth_root_spec (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt
   have h_anti : StrictAnti (fun k => C.iterate k r) :=
@@ -1011,62 +646,29 @@ lemma g_star_additive (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1)
     (m₁ n₁ m₂ n₂ : ℕ) (hm₁ : 1 ≤ m₁) (hn₁ : 2 ≤ n₁) (hm₂ : 1 ≤ m₂) (hn₂ : 2 ≤ n₂) :
     C.F (C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁) (C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂) =
     C.g_star c hc_pos hc_lt (m₁ * n₂ + m₂ * n₁) (n₁ * n₂) (sum_prod_ge_one m₁ n₁ m₂ n₂ hm₁ hn₂) (prod_ge_two n₁ n₂ hn₁ hn₂) := by
-  -- g*(m₁/n₁) = iterate m₁ (nth_root n₁ c)
-  -- By iterate_nth_root_scale with i = n₂:
-  --   = iterate (n₂ * m₁) (nth_root (n₂ * n₁) c)
-  -- Similarly for g*(m₂/n₂) with i = n₁:
-  --   = iterate (n₁ * m₂) (nth_root (n₁ * n₂) c)
-  -- Then F(iterate a r, iterate b r) = iterate (a + b) r by iterate_add
   unfold g_star
-  -- Need: 1 ≤ n₂ and 1 ≤ n₁ for iterate_nth_root_scale
   have hn₂' : 1 ≤ n₂ := Nat.one_le_of_lt hn₂
   have hn₁' : 1 ≤ n₁ := Nat.one_le_of_lt hn₁
-  -- Scale first term by n₂
   have h1 := C.iterate_nth_root_scale c hc_pos hc_lt m₁ n₁ n₂ hn₁ hm₁ hn₂'
-  -- Scale second term by n₁
   have h2 := C.iterate_nth_root_scale c hc_pos hc_lt m₂ n₂ n₁ hn₂ hm₂ hn₁'
-  -- Rewrite LHS using these scalings
   rw [h1, h2]
-  -- Now both use nth_root with denominator n₂ * n₁ and n₁ * n₂ respectively
-  -- These are equal (by commutativity of multiplication)
   have hcomm : n₂ * n₁ = n₁ * n₂ := Nat.mul_comm n₂ n₁
-  -- Use that nth_root only depends on the value, not the proof
   have h_root_eq : C.nth_root (n₂ * n₁) (le_two_i_mul_n n₂ n₁ hn₂' hn₁) c hc_pos hc_lt =
                    C.nth_root (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt := by
     simp only [hcomm]
   rw [h_root_eq]
-  -- Now both sides have nth_root (n₁ * n₂) c
-  -- Use iterate_add: F(iterate a x, iterate b x) = iterate (a + b) x
   have h_add := C.iterate_add (C.nth_root (n₁ * n₂) (le_two_i_mul_n n₁ n₂ hn₁' hn₂) c hc_pos hc_lt)
                               (n₂ * m₁) (n₁ * m₂)
   rw [h_add]
-  -- Need to show: iterate ((n₂ * m₁) + (n₁ * m₂)) (...) = iterate (m₁ * n₂ + m₂ * n₁) (...)
-  -- (n₂ * m₁) + (n₁ * m₂) = m₁ * n₂ + m₂ * n₁ by ring
   simp only [Nat.mul_comm n₂ m₁, Nat.mul_comm n₁ m₂]
 
 /-- Key lemma: g* approaches 1 for small positive rationals.
-This is essential for proving continuity. When m/n → 0+, g*(m/n) → 1.
-
-**Proof Strategy** (Ling 1965, Section 4):
-For m/n < 1/N with N large:
-- m/n < 1/N implies n > mN ≥ N (since m ≥ 1)
-- For n ≥ N, nth_root_n(c) is close to 1 (by nth_root_tendsto_one)
-- g*(m/n) = iterate_m(nth_root_n(c)) is close to 1 because:
-  - iterate_m is continuous at 1 with iterate_m(1) = 1
-  - For r close to 1, iterate_m(r) is close to 1
-
-The subtlety is that the continuity modulus of iterate_m depends on m. However,
-since m < n/N and nth_root_n(c) → 1 uniformly as n → ∞, the composition
-iterate_m(nth_root_n(c)) → 1 as m/n → 0.
-
-This is a classical real analysis result using uniform continuity of F on
-compact sets and the telescoping sum: 1 - iterate_m(r) = Σᵢ [iterate_i(r) - iterate_{i+1}(r)]. -/
+This is essential for proving continuity. When m/n → 0+, g*(m/n) → 1. -/
 lemma g_star_tendsto_one (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     ∀ ε > 0, ∃ N : ℕ, N ≥ 2 ∧ ∀ m n : ℕ, (hm : 1 ≤ m) → (hn : 2 ≤ n) →
     (m : ℚ) / n < 1 / N →
     |C.g_star c hc_pos hc_lt m n hm hn - 1| < ε := by
   intro ε hε
-  -- It suffices to control the special values `g*(1/N) = nth_root N c`, then use antitonicity.
   have hroot := C.nth_root_tendsto_one c hc_pos hc_lt
   rw [Metric.tendsto_atTop] at hroot
   obtain ⟨N0, hN0⟩ := hroot ε hε
@@ -1075,32 +677,24 @@ lemma g_star_tendsto_one (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
   intro m n hm hn hmn
   have hN_ge_2 : 2 ≤ N := le_max_left 2 N0
   have hN_ge_N0 : N0 ≤ N := le_max_right 2 N0
-  -- `g*(1/N) = nth_root N c` is close to 1.
   have hN_close : |C.nth_root N hN_ge_2 c hc_pos hc_lt - 1| < ε := by
     have := hN0 N hN_ge_N0
-    -- unfold the `if` in `nth_root_tendsto_one` at `N ≥ 2`
     simpa [N, hN_ge_2, Real.dist_eq] using this
-  -- `g* (1/N) ≤ g*(m/n)` whenever `m/n < 1/N` (antitonicity).
   have hg_lower : C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2
       ≤ C.g_star c hc_pos hc_lt m n hm hn := by
     have hle : (m : ℚ) / n ≤ 1 / N := le_of_lt hmn
-    -- Apply `g_star_antitone` with `(m₁,n₁)=(m,n)` and `(m₂,n₂)=(1,N)`.
     simpa using
       (C.g_star_antitone c hc_pos hc_lt m n 1 N hm hn (by decide : 1 ≤ (1:ℕ)) hN_ge_2 hle)
-  -- Both `g*(m/n)` and `g*(1/N)` lie in (0,1], so `|g - 1| = 1 - g`.
   have hg_m_le_one : C.g_star c hc_pos hc_lt m n hm hn ≤ 1 := by
-    -- `nth_root n c < 1`, so iterates stay ≤ 1.
     have hr_spec := C.nth_root_spec n hn c hc_pos hc_lt
     exact (C.iterate_mem_Ioc _ hr_spec.1 hr_spec.2.1 m).2
   have hg_N_le_one : C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2 ≤ 1 := by
     unfold g_star
-    -- `iterate 1` is the identity, so this is just `nth_root N c < 1`.
     have hr_spec := C.nth_root_spec N hN_ge_2 c hc_pos hc_lt
     simpa [C.iterate_one] using (le_of_lt hr_spec.2.1)
   have hg_N_eq_root :
       C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2 = C.nth_root N hN_ge_2 c hc_pos hc_lt := by
     simp [g_star, C.iterate_one]
-  -- Finish by bounding `1 - g*(m/n)` by `1 - g*(1/N)`.
   have h_sub : 1 - C.g_star c hc_pos hc_lt m n hm hn
       ≤ 1 - C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2 := by
     linarith
@@ -1122,11 +716,9 @@ lemma g_star_tendsto_one (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
           = -(C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2 - 1) :=
             abs_of_nonpos hnonpos
       _ = 1 - C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2 := by ring
-  -- Convert the bound `hN_close` to the corresponding `g*` form.
   have hN_close' :
       |C.g_star c hc_pos hc_lt 1 N (by decide : 1 ≤ (1:ℕ)) hN_ge_2 - 1| < ε := by
     simpa [hg_N_eq_root] using hN_close
-  -- Combine.
   calc
     |C.g_star c hc_pos hc_lt m n hm hn - 1|
         = 1 - C.g_star c hc_pos hc_lt m n hm hn := h_abs_m
@@ -1135,41 +727,23 @@ lemma g_star_tendsto_one (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
           symm; exact h_abs_N
     _ < ε := hN_close'
 
-/-- g* is continuous. Ling's Proposition (4).
-
-**Proof Strategy**: The continuity of g* follows from:
-1. g* is monotone (antitone) - proven in `g_star_antitone`
-2. g* satisfies the functional equation g*(r+s) = F(g*(r), g*(s)) - proven in `g_star_additive`
-3. A monotone function satisfying a functional equation cannot have jump discontinuities
-4. Therefore g* is continuous
-
-The detailed argument: suppose g* has a jump at some rational r. Then there exist
-rationals p < r < q arbitrarily close to r such that g*(p) - g*(q) ≥ some ε > 0.
-But by additivity, g*(q) = F(g*(p), g*(q-p)), and as q-p → 0, F(g*(p), g*(q-p)) → F(g*(p), 1) = g*(p).
-This contradicts the assumption of a jump.
-
-For the formal proof, we use that iterate and nth_root are both continuous (iterate by
-induction on continuity of F, nth_root by IVT and the implicit function theorem style argument).
-Since g*(m/n) = iterate m (nth_root n c), and both components vary continuously in their
-parameters, g* is continuous. -/
+/-- g* is continuous. Ling's Proposition (4). -/
 lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     ∀ ε > 0, ∃ δ > 0, ∀ m₁ n₁ m₂ n₂ : ℕ, (hm₁ : 1 ≤ m₁) → (hn₁ : 2 ≤ n₁) →
     (hm₂ : 1 ≤ m₂) → (hn₂ : 2 ≤ n₂) →
     |((m₁ : ℚ) / n₁) - ((m₂ : ℚ) / n₂)| < δ →
     |C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁ - C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂| < ε := by
   intro ε hε
-  -- Uniform continuity of `F` on the compact square `[0,1]×[0,1]`.
   let f : ℝ × ℝ → ℝ := fun p => C.F p.1 p.2
   let K : Set (ℝ × ℝ) := (Set.Icc (0 : ℝ) 1) ×ˢ (Set.Icc (0 : ℝ) 1)
   have hf_uc : UniformContinuousOn f K := by
     have hK : IsCompact K := (isCompact_Icc.prod isCompact_Icc)
     exact hK.uniformContinuousOn_of_continuous (C.F_continuous.continuousOn)
   rcases Metric.uniformContinuousOn_iff.1 hf_uc ε hε with ⟨δF, hδF_pos, hδF⟩
-  -- If a positive rational `r` is small, then `g*(r)` is close to `1` (Lemma `g_star_tendsto_one`).
   obtain ⟨N, hN_ge2, hN_small⟩ :=
     C.g_star_tendsto_one c hc_pos hc_lt (δF / 2) (by linarith)
   refine ⟨(1 : ℚ) / N, ?_, ?_⟩
-  · -- positivity of δ
+  ·
     have hN_pos : (0 : ℚ) < N := by
       have : (0 : ℕ) < N := lt_of_lt_of_le (by decide : (0 : ℕ) < 2) hN_ge2
       exact_mod_cast this
@@ -1177,7 +751,6 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
   intro m₁ n₁ m₂ n₂ hm₁ hn₁ hm₂ hn₂ hdist
   set r₁ : ℚ := (m₁ : ℚ) / n₁
   set r₂ : ℚ := (m₂ : ℚ) / n₂
-  -- If the rationals coincide, the values coincide by antitonicity, hence the difference is 0.
   by_cases hEq : r₁ = r₂
   · have hle : r₁ ≤ r₂ := le_of_eq hEq
     have hge : r₂ ≤ r₁ := le_of_eq hEq.symm
@@ -1191,7 +764,6 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
         C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁ = C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ :=
       le_antisymm h21 h12
     simpa [hg_eq] using hε
-  -- Otherwise, compare after scaling to a common denominator and apply uniform continuity of `F`.
   have h_main :
       ∀ {m₁ n₁ m₂ n₂ : ℕ} (hm₁ : 1 ≤ m₁) (hn₁ : 2 ≤ n₁) (hm₂ : 1 ≤ m₂) (hn₂ : 2 ≤ n₂),
         let r₁ : ℚ := (m₁ : ℚ) / n₁
@@ -1200,17 +772,14 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
         |r₁ - r₂| < (1 : ℚ) / N →
         |C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁ - C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂| < ε := by
     intro m₁ n₁ m₂ n₂ hm₁ hn₁ hm₂ hn₂ r₁ r₂ hlt hdist
-    -- Common denominator D = n₁*n₂, with scaled numerators.
     set D : ℕ := n₁ * n₂
     set M₁ : ℕ := m₁ * n₂
     set M₂ : ℕ := m₂ * n₁
     have hD_ge2 : 2 ≤ D := prod_ge_two n₁ n₂ hn₁ hn₂
     have hn₁' : 1 ≤ n₁ := Nat.one_le_of_lt hn₁
     have hn₂' : 1 ≤ n₂ := Nat.one_le_of_lt hn₂
-    -- Scale g*(m₁/n₁) and g*(m₂/n₂) to the common denominator.
     have hscale₁ := C.iterate_nth_root_scale c hc_pos hc_lt m₁ n₁ n₂ hn₁ hm₁ hn₂'
     have hscale₂ := C.iterate_nth_root_scale c hc_pos hc_lt m₂ n₂ n₁ hn₂ hm₂ hn₁'
-    -- Rewrite both at denominator D = n₁*n₂.
     have hcomm : n₂ * n₁ = n₁ * n₂ := Nat.mul_comm n₂ n₁
     have hroot_eq :
         C.nth_root (n₂ * n₁) (le_two_i_mul_n n₂ n₁ hn₂' hn₁) c hc_pos hc_lt
@@ -1223,25 +792,20 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     have hg₁ :
         C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁ = C.iterate M₁ (C.nth_root D hD_ge2 c hc_pos hc_lt) := by
       unfold g_star
-      -- `hscale₁` already gives the scaled form; just rewrite the denominator/root.
       simpa [M₁, D, Nat.mul_comm m₁ n₂, hroot_eq] using hscale₁
     have hg₂ :
         C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ = C.iterate M₂ (C.nth_root D hD_ge2 c hc_pos hc_lt) := by
       unfold g_star
       simpa [M₂, D, Nat.mul_comm m₂ n₁, hroot_eq'] using hscale₂
-    -- Difference in the scaled exponents.
     have hM : M₁ < M₂ := by
-      -- From r₁ < r₂, cross-multiply.
       have hn₁_pos : (0 : ℚ) < n₁ := by positivity
       have hn₂_pos : (0 : ℚ) < n₂ := by positivity
       have hcross := (div_lt_div_iff₀ hn₁_pos hn₂_pos).1 (by simpa [r₁, r₂] using hlt)
-      -- hcross : (m₁ : ℚ) * n₂ < m₂ * n₁
       exact_mod_cast hcross
     set d : ℕ := M₂ - M₁
     have hd_pos : 1 ≤ d := by
       have : 0 < d := Nat.sub_pos_of_lt hM
       exact Nat.succ_le_iff.2 this
-    -- `d/D = r₂ - r₁`, hence `d/D < 1/N` from the δ-assumption.
     have hdiff_lt : (d : ℚ) / D < 1 / N := by
       have h_abs : |r₁ - r₂| = r₂ - r₁ := by
         have hnonpos : r₁ - r₂ ≤ 0 := sub_nonpos.2 (le_of_lt hlt)
@@ -1251,37 +815,21 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
       have h_sub : r₂ - r₁ < 1 / N := by
         have := hdist
         simpa [h_abs] using this
-      -- Rewrite r₂ - r₁ with common denominator D.
       have hn₁0 : (n₁ : ℚ) ≠ 0 := by positivity
       have hn₂0 : (n₂ : ℚ) ≠ 0 := by positivity
       have hsub' : r₂ - r₁ = (d : ℚ) / D := by
-        -- Expand and clear denominators.
         have hM1_le_M2 : M₁ ≤ M₂ := Nat.le_of_lt hM
-        -- Cast `Nat.sub` to `ℚ`.
         have hd_cast : (d : ℚ) = (M₂ : ℚ) - M₁ := by
           simpa [d] using (Nat.cast_sub hM1_le_M2 : ((M₂ - M₁ : ℕ) : ℚ) = (M₂ : ℚ) - M₁)
-        -- Now compute.
-        -- r₂ - r₁ = m₂/n₂ - m₁/n₁ = (m₂*n₁ - m₁*n₂) / (n₁*n₂) = (M₂ - M₁)/D = d/D.
-        -- We stay in `ℚ` and use `field_simp`.
         have : r₂ - r₁ = ((M₂ : ℚ) - M₁) / D := by
-          -- Expand r₁,r₂ and clear denominators.
-          -- `field_simp` needs nonzero denominators.
-          -- Note: `D = n₁*n₂ ≠ 0`.
           have hD0 : (D : ℚ) ≠ 0 := by
             have : (0 : ℕ) < D := lt_of_lt_of_le (by decide : (0:ℕ) < 2) hD_ge2
             exact_mod_cast (Nat.ne_of_gt this)
-          -- Use the definitions of r₁,r₂ and of D,M₁,M₂.
-          -- `ring`/`field_simp` can handle the arithmetic in `ℚ`.
           have : (m₂ : ℚ) / n₂ - (m₁ : ℚ) / n₁ = ((m₂ : ℚ) * n₁ - (m₁ : ℚ) * n₂) / ((n₂ : ℚ) * n₁) := by
             field_simp [hn₁0, hn₂0]
-          -- Align with `D = n₁*n₂` and `M₁,M₂`.
-          -- Note `n₂*n₁ = D` in `ℚ` by commutativity.
           simpa [r₁, r₂, D, M₁, M₂, Nat.cast_mul, mul_comm, mul_left_comm, mul_assoc] using this
-        -- Substitute `d`.
         simpa [hd_cast, div_eq_mul_inv] using this
-      -- Finish.
       simpa [hsub'] using h_sub
-    -- Now `g*(d/D)` is close to 1 (within δF/2).
     have hd_small_real :
         |C.g_star c hc_pos hc_lt d D hd_pos hD_ge2 - 1| < δF / 2 := by
       exact hN_small d D hd_pos hD_ge2 hdiff_lt
@@ -1289,7 +837,6 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
       have : dist (C.g_star c hc_pos hc_lt d D hd_pos hD_ge2) 1 < δF / 2 := by
         simpa [Real.dist_eq] using hd_small_real
       exact lt_of_lt_of_le this (by linarith)
-    -- Apply uniform continuity of `F` to `(a,x)` and `(1,x)`, where `a = g*(d/D)`.
     set a : ℝ := C.g_star c hc_pos hc_lt d D hd_pos hD_ge2
     set x : ℝ := C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁
     have ha_mem : a ∈ Set.Icc (0 : ℝ) 1 := by
@@ -1311,7 +858,6 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
       simpa [Prod.dist_eq] using hmax
     have hF_close : dist (f (a, x)) (f (1, x)) < ε :=
       hδF (a, x) hax_mem (1, x) h1x_mem hdist_pair
-    -- Identify the two `g*` values with the `F`-expressions.
     have hx_eq : x = C.iterate M₁ (C.nth_root D hD_ge2 c hc_pos hc_lt) := by
       simp [x, hg₁]
     have ha_eq : a = C.iterate d (C.nth_root D hD_ge2 c hc_pos hc_lt) := by
@@ -1319,49 +865,30 @@ lemma g_star_continuous (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     have hg₂_eq :
         C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ =
           C.F a x := by
-      -- Rewrite both sides to the common-denominator iterates.
-      -- First rewrite `x` and `a` to the common-denominator iterates.
       rw [hg₂, ha_eq]
-      -- Replace `x` using `hg₁`.
-      -- (`x` was defined as `g*(m₁/n₁)`.)
       simp [x, hg₁]
-      -- Goal: iterate M₂ r = F (iterate d r) (iterate M₁ r)
       have hM1_le_M2 : M₁ ≤ M₂ := Nat.le_of_lt hM
       have hDM : d + M₁ = M₂ := by
         simp [d, Nat.sub_add_cancel hM1_le_M2]
-      -- `iterate_add` gives `F (iterate d r) (iterate M₁ r) = iterate (d+M₁) r`.
       have hiter :
           C.F (C.iterate d (C.nth_root D hD_ge2 c hc_pos hc_lt))
               (C.iterate M₁ (C.nth_root D hD_ge2 c hc_pos hc_lt))
             = C.iterate M₂ (C.nth_root D hD_ge2 c hc_pos hc_lt) := by
         simp [C.iterate_add, hDM]
       exact hiter.symm
-    -- Conclude.
     have : |C.F a x - C.F 1 x| < ε := by
       simpa [f, Real.dist_eq] using hF_close
-    -- Rewrite back to the original `g*` values.
     simpa [hg₂_eq, x, C.F_one_left, abs_sub_comm] using this
   have hlt_or_gt : r₁ < r₂ ∨ r₂ < r₁ := lt_or_gt_of_ne hEq
   cases hlt_or_gt with
   | inl hlt =>
     exact h_main hm₁ hn₁ hm₂ hn₂ (by simpa [r₁, r₂] using hlt) (by simpa [r₁, r₂] using hdist)
   | inr hgt =>
-    -- Swap and use symmetry of `abs (· - ·)`.
     have hdist' : |r₂ - r₁| < (1 : ℚ) / N := by simpa [abs_sub_comm, r₁, r₂] using hdist
     have h' :
         |C.g_star c hc_pos hc_lt m₂ n₂ hm₂ hn₂ - C.g_star c hc_pos hc_lt m₁ n₁ hm₁ hn₁| < ε :=
       h_main hm₂ hn₂ hm₁ hn₁ (by simpa [r₁, r₂] using hgt) hdist'
     simpa [abs_sub_comm] using h'
-
-/-!
-### Aczél's Theorem - Full Proof via Extension
-
-With g* defined and its properties established, we extend to all of (0,1]
-by density of rationals, constructing the additive representation Θ.
-
-**Key Insight**: g* is a decreasing function from ℚ⁺ to (0,1] satisfying F(g*(r), g*(s)) = g*(r+s).
-We construct Θ as the (generalized) inverse of g*, giving Θ(F(x,y)) = Θ(x) + Θ(y).
--/
 
 /-- The set of positive rationals m/n (with m ≥ 1, n ≥ 2) such that g*(m,n) ≤ x.
 This set is used to define Θ(x) as the infimum of rationals r where g*(r) ≤ x.
@@ -1372,23 +899,7 @@ def g_star_lower_set (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) (x : ℝ) : Set 
   { r : ℝ | ∃ (m n : ℕ) (hm : 1 ≤ m) (hn : 2 ≤ n),
       r = (m : ℝ) / n ∧ C.g_star c hc_pos hc_lt m n hm hn ≤ x }
 
-/-- The additive representation Θ, defined as the negated generalized inverse of g*.
-
-For x ∈ (0,1], we define:
-  Θ(x) = - inf { r ∈ ℚ⁺ : g*(r) ≤ x }
-
-**Key insight**: g* is antitone (decreasing), so the naive inverse Θ₀(x) = inf{r : g*(r) ≤ x}
-would also be decreasing. Since we need Θ to be *increasing* (StrictMonoOn), we negate:
-Θ(x) = -Θ₀(x).
-
-**Intuition**: g* maps positive rationals to (0,1] such that F(g*(r), g*(s)) = g*(r+s).
-If we define Θ₀ as the inverse of g*, then Θ₀(F(g*(r), g*(s))) = r+s = Θ₀(g*(r)) + Θ₀(g*(s)).
-Negating preserves additivity: Θ(F(x,y)) = -Θ₀(F(x,y)) = -(Θ₀(x) + Θ₀(y)) = Θ(x) + Θ(y).
-
-**Example**: For F(x,y) = x·y with g*(r) = c^r, we get Θ(x) = -log_c(x) = log(x)/(-log c) = log(x),
-which is the standard additive representation.
-
-**Definition**: For x ∈ (0,1], Θ(x) = - sInf { r = m/n : g*(m,n) ≤ x } -/
+/-- The additive representation Θ, defined as the negated generalized inverse of g*. -/
 noncomputable def Theta_extension (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) (x : ℝ) : ℝ :=
   if 0 < x ∧ x ≤ 1 then
     - sInf (C.g_star_lower_set c hc_pos hc_lt x)
@@ -1401,13 +912,10 @@ no negative rationals (g* is only defined for m ≥ 1, n ≥ 2, so r ≥ 1/2). -
 lemma g_star_lower_set_bddBelow (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) (x : ℝ)
     (_hx_pos : 0 < x) (_hx_le : x ≤ 1) :
     BddBelow (C.g_star_lower_set c hc_pos hc_lt x) := by
-  -- All elements of g_star_lower_set are of the form m/n with m ≥ 1, n ≥ 2
-  -- Therefore they are all ≥ 0, so the set is bounded below by 0
   use 0
   intro r hr
   unfold g_star_lower_set at hr
   obtain ⟨m, n, hm, hn, rfl, _⟩ := hr
-  -- r = m / n with m ≥ 1, n ≥ 2
   have hm_pos : 0 < (m : ℝ) := by positivity
   have hn_pos : 0 < (n : ℝ) := by positivity
   exact div_nonneg (le_of_lt hm_pos) (le_of_lt hn_pos)
@@ -1419,23 +927,18 @@ rational r with g*(r) < x, hence g*(r) ≤ x. -/
 lemma g_star_lower_set_nonempty (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) (x : ℝ)
     (hx_pos : 0 < x) (_hx_le : x ≤ 1) :
     (C.g_star_lower_set c hc_pos hc_lt x).Nonempty := by
-  -- Fix n = 2 and use that iterate m (nth_root 2 c) → 0 as m → ∞
   have hn : (2 : ℕ) ≤ 2 := le_refl 2
   set r := C.nth_root 2 hn c hc_pos hc_lt with hr_def
   have hr_spec := C.nth_root_spec 2 hn c hc_pos hc_lt
-  -- iterate m r → 0 as m → ∞
   have h_conv := C.iterate_tendsto_zero r hr_spec.1 hr_spec.2.1
-  -- So there exists m such that iterate m r < x
   rw [Metric.tendsto_atTop] at h_conv
   have hx_pos' := hx_pos
   obtain ⟨N, hN⟩ := h_conv x hx_pos'
-  -- For m = N+1, we have iterate m r < x
   have hm : 1 ≤ N + 1 := Nat.le_add_left 1 N
   have hdist := hN (N + 1) (Nat.le_succ N)
   simp at hdist
   have hiter_pos := (C.iterate_mem_Ioc r hr_spec.1 hr_spec.2.1 (N + 1)).1
   rw [abs_of_pos hiter_pos] at hdist
-  -- Now (N+1)/2 is in the lower set
   use (N + 1 : ℝ) / 2
   unfold g_star_lower_set
   use N + 1, 2, hm, hn
@@ -1444,24 +947,12 @@ lemma g_star_lower_set_nonempty (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) (x : 
   · unfold g_star
     exact le_of_lt hdist
 
-/-- Θ is strictly monotone on (0,1): if x < y then Θ(x) < Θ(y).
-
-**Proof Strategy**: Θ(x) = - inf { r : g*(r) ≤ x }. Since g* is antitone (decreasing):
-- For x < y, we have { r : g*(r) ≤ x } ⊆ { r : g*(r) ≤ y }
-- Subset inclusion means inf{...x...} ≥ inf{...y...}
-- Negating flips the inequality: -inf{...x...} ≤ -inf{...y...}
-- Wait, that gives Θ(x) ≤ Θ(y), but we need strict inequality
-
-Actually, we need to use that g* has dense range (or at least that for x < y, there exists
-a rational r with g*(r) strictly between x and y). This gives us inf{...x...} > inf{...y...},
-hence Θ(x) < Θ(y). -/
+/-- Θ is strictly monotone on (0,1): if x < y then Θ(x) < Θ(y). -/
 lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     StrictMonoOn (C.Theta_extension c hc_pos hc_lt) (Set.Ioc 0 1) := by
   intro x hx y hy hxy
   unfold Theta_extension
   simp only [hx.1, hx.2, hy.1, hy.2, and_self, ite_true]
-  -- Goal: - sInf {...x...} < - sInf {...y...}
-  -- Equivalently: sInf {...y...} < sInf {...x...}
   classical
   set Sx : Set ℝ := C.g_star_lower_set c hc_pos hc_lt x
   set Sy : Set ℝ := C.g_star_lower_set c hc_pos hc_lt y
@@ -1478,17 +969,11 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     intro r hr
     rcases hr with ⟨m, n, hm, hn, rfl, hgm_le⟩
     exact ⟨m, n, hm, hn, rfl, le_trans hgm_le (le_of_lt hxy)⟩
-
-  -- Non-strict inequality comes from set inclusion.
   have hle_csInf : sInf Sy ≤ sInf Sx :=
     csInf_le_csInf (s := Sx) (t := Sy) hSy_bdd hSx_ne hsub
-
-  -- We now show strictness by stepping just below `sInf Sx` while keeping `g*` within `y`.
   have hx_lt_one : x < 1 := lt_of_lt_of_le hxy hy.2
   have hεpos : 0 < y - x := sub_pos.mpr hxy
   obtain ⟨δ, hδpos, hδ⟩ := C.g_star_continuous c hc_pos hc_lt (y - x) hεpos
-
-  -- A positive lower bound on `sInf Sx`, obtained from `g* r → 1` as `r → 0+`.
   have hε0pos : 0 < (1 - x) / 2 := by nlinarith
   obtain ⟨N0, hN0_ge2, hN0_small⟩ := C.g_star_tendsto_one c hc_pos hc_lt ((1 - x) / 2) hε0pos
   have h_oneDivN0_le_csInf : (1 : ℝ) / N0 ≤ sInf Sx := by
@@ -1519,8 +1004,6 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     have hle_rat' : ((1 : ℚ) / N0 : ℝ) ≤ ((m : ℚ) / n : ℝ) := by
       exact_mod_cast hle_rat
     simpa using hle_rat'
-
-  -- Choose `N` large enough so that `1/N < δ` and also `1/N < 1/N0`.
   obtain ⟨nδ, hnδ⟩ := exists_nat_one_div_lt hδpos
   let Nδ : ℕ := nδ + 1
   have h_oneDivNδ_lt_δ : (1 : ℚ) / Nδ < δ := by simpa [Nδ] using hnδ
@@ -1541,28 +1024,23 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     exact one_div_lt_one_div_of_lt hN0_pos hN0_lt_N
   have h_oneDivN_lt_csInf : (1 : ℝ) / N < sInf Sx :=
     lt_of_lt_of_le h_oneDivN_lt_oneDivN0 h_oneDivN0_le_csInf
-
-  -- Pick an element of `Sx` within `1/N` of `sInf Sx`, then step down by `1/N`.
   have hcsInf_lt : sInf Sx < sInf Sx + (1 : ℝ) / N :=
     lt_add_of_pos_right _ (one_div_pos.mpr (by exact_mod_cast hN_pos_nat))
   rcases exists_lt_of_csInf_lt hSx_ne hcsInf_lt with ⟨r₂, hr₂_mem, hr₂_lt⟩
   have hcsInf_le_r₂ : sInf Sx ≤ r₂ := csInf_le hSx_bdd hr₂_mem
   rcases hr₂_mem with ⟨m₂, n₂, hm₂, hn₂, hr₂_eq, hg₂_le_x⟩
-  -- Define the stepped-down rational.
   let m₁ : ℕ := m₂ * N - n₂
   let n₁ : ℕ := n₂ * N
   have hn₂_posQ : (0 : ℚ) < n₂ := by positivity
   have hN_posQ : (0 : ℚ) < N := by exact_mod_cast hN_pos_nat
   have hrat_oneDiv_lt : (1 : ℚ) / N < (m₂ : ℚ) / n₂ := by
     have hreal_oneDiv_lt : (1 : ℝ) / N < (m₂ : ℝ) / n₂ := by
-      -- `1/N < sInf Sx ≤ r₂ = m₂/n₂`
       have h1 : (1 : ℝ) / N < r₂ := lt_of_lt_of_le h_oneDivN_lt_csInf hcsInf_le_r₂
       simpa [hr₂_eq] using h1
     refine (Rat.cast_lt (K := ℝ)).1 ?_
     simpa [Rat.cast_div] using hreal_oneDiv_lt
   have hmul_lt : (n₂ : ℚ) < (m₂ : ℚ) * N := by
     have := (div_lt_div_iff₀ hN_posQ hn₂_posQ).1 hrat_oneDiv_lt
-    -- `1 * n₂ < m₂ * N`
     simpa [one_mul, mul_assoc, mul_comm, mul_left_comm] using this
   have hmul_lt_nat : n₂ < m₂ * N := by exact_mod_cast hmul_lt
   have hm₁_pos : 1 ≤ m₁ := by
@@ -1574,25 +1052,19 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     simpa [n₁] using le_trans hn₂ hmul
 
   have hr₁_def : ((m₁ : ℝ) / n₁) = r₂ - (1 : ℝ) / N := by
-    -- Compute in ℝ: (m₂*N - n₂)/(n₂*N) = m₂/n₂ - 1/N
     have hn₂_pos : 0 < n₂ := lt_of_lt_of_le (by decide : (0 : ℕ) < 2) hn₂
     have hn₂0 : (n₂ : ℝ) ≠ 0 := by exact_mod_cast (ne_of_gt hn₂_pos)
     have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hN_pos_nat)
-    -- `r₂ = m₂/n₂`
     subst hr₂_eq
     have hmul_le_nat : n₂ ≤ m₂ * N := le_of_lt hmul_lt_nat
     simp [m₁, n₁, Nat.cast_sub hmul_le_nat] at *
     field_simp [hn₂0, hN0]
 
   have hr₁_lt_csInf : (m₁ : ℝ) / n₁ < sInf Sx := by
-    -- from `r₂ < sInf Sx + 1/N`
     have : r₂ - (1 : ℝ) / N < sInf Sx :=
       (sub_lt_iff_lt_add).2 (by simpa using hr₂_lt)
     simpa [hr₁_def] using this
-
-  -- Show `m₁/n₁ ∈ Sy` using continuity of `g*` and the slack `y-x`.
   have hdist_rat : |((m₁ : ℚ) / n₁) - ((m₂ : ℚ) / n₂)| < δ := by
-    -- The difference is exactly `1/N`.
     have hn₂0Q : (n₂ : ℚ) ≠ 0 := by positivity
     have hN0Q : (N : ℚ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hN_pos_nat)
     have hcalc :
@@ -1610,7 +1082,6 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
         _ = |(1 : ℚ) / N| := by
           simp [neg_div]
         _ = (1 : ℚ) / N := habs_pos
-    -- Use `1/N < δ`.
     simpa [habs] using h_oneDivN_lt_δ
   have hdiff_g :
       |C.g_star c hc_pos hc_lt m₁ n₁ hm₁_pos hn₁_ge2 -
@@ -1634,13 +1105,9 @@ lemma Theta_extension_strictMono (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
 
   have hr₁_mem_Sy : ((m₁ : ℝ) / n₁) ∈ Sy := by
     refine ⟨m₁, n₁, hm₁_pos, hn₁_ge2, rfl, hg₁_le_y⟩
-
-  -- Thus `sInf Sy < sInf Sx`.
   have hlt_csInf : sInf Sy < sInf Sx := by
     have : ∃ r ∈ Sy, r < sInf Sx := ⟨(m₁ : ℝ) / n₁, hr₁_mem_Sy, hr₁_lt_csInf⟩
     exact (csInf_lt_iff hSy_bdd hSy_ne).2 this
-
-  -- Negation flips the inequality back to the desired strict monotonicity statement.
   exact neg_lt_neg hlt_csInf
 
 /-- Θ is nonpositive on (0,1]. -/
@@ -1868,16 +1335,7 @@ lemma Theta_extension_one (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
   have hEq : sInf S = 0 := le_antisymm hS_le hS_ge
   simp [S, hEq]
 
-/-- Θ satisfies the additive property: Θ(F(x,y)) = Θ(x) + Θ(y).
-
-**Proof Strategy**:
-1. By density, approximate x, y by rational sequences r_n → x, s_n → y where g*(r_n) → x, g*(s_n) → y
-2. By definition of Θ as inverse of g*: Θ(g*(r_n)) = r_n and Θ(g*(s_n)) = s_n
-3. By g_star_additive: F(g*(r_n), g*(s_n)) = g*(r_n + s_n)
-4. By continuity of F: F(g*(r_n), g*(s_n)) → F(x,y)
-5. By continuity of Θ: Θ(F(g*(r_n), g*(s_n))) → Θ(F(x,y))
-6. But Θ(F(g*(r_n), g*(s_n))) = Θ(g*(r_n + s_n)) = r_n + s_n → Θ(x) + Θ(y)
-7. Therefore: Θ(F(x,y)) = Θ(x) + Θ(y) -/
+/-- Θ satisfies the additive property: Θ(F(x,y)) = Θ(x) + Θ(y). -/
 lemma Theta_extension_additive (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     ∀ x y, 0 < x → x ≤ 1 → 0 < y → y ≤ 1 →
     C.Theta_extension c hc_pos hc_lt (C.F x y) =
@@ -2113,45 +1571,19 @@ lemma Theta_extension_additive (c : ℝ) (hc_pos : 0 < c) (hc_lt : c < 1) :
     linarith [hθ_lt', hsum_gt]
   exact le_antisymm h_upper h_lower
 
-/-- **Aczél's Theorem** (Now Proven): For Cox axioms, there exists an additive representation.
-
-This is the fundamental representation theorem that enables the entire Cox derivation.
-
-**Mathematical Statement** (Aczél 1966, Chapter 6):
-Given F : (0,1] × (0,1] → (0,1] satisfying:
-- Associativity: F(F(x,y),z) = F(x,F(y,z))
-- Strict monotonicity in each argument
-- Continuity
-- Identity: F(x,1) = x, F(1,y) = y
-
-There exists a continuous, strictly monotone Θ : (0,1] → ℝ such that:
-  Θ(F(x,y)) = Θ(x) + Θ(y)
-
-**Our Proof Strategy**:
-1. Construct g* on positive rationals via iteration and nth roots: g*(m/n) = iterate m (nth_root n c)
-2. Prove g* satisfies: F(g*(r), g*(s)) = g*(r+s) [g_star_additive]
-3. Prove g* is antitone (decreasing) [g_star_antitone]
-4. Define Θ as the inverse of g*: Θ(x) = inf { r : g*(r) ≤ x }
-5. Prove Θ is strictly increasing [Theta_extension_strictMono]
-6. Prove Θ is continuous [Theta_extension_continuousOn]
-7. Prove Θ is additive [Theta_extension_additive]
-
-**Reference**: Aczél, J. "Lectures on Functional Equations and Their Applications" (1966),
-Chapter 6, Section 2; Ling, C.H. "Representation of associative functions" (1965). -/
+/-- A continuous additive generator for the supplied Cox conjunction on `(0,1]`. -/
 theorem aczel_representation_theorem :
   ∀ (C : CoxFullAxioms), ∃ Θ : ℝ → ℝ,
     StrictMonoOn Θ (Set.Ioc 0 1) ∧
     ContinuousOn Θ (Set.Ioc 0 1) ∧
     (∀ x y, 0 < x → x ≤ 1 → 0 < y → y ≤ 1 → Θ (C.F x y) = Θ x + Θ y) := by
   intro C
-  -- Fix a base point c ∈ (0,1)
   have ⟨c, hc_pos, hc_lt⟩ : ∃ c : ℝ, 0 < c ∧ c < 1 := ⟨(1:ℝ)/2, by norm_num, by norm_num⟩
-  -- Use the Theta_extension constructed from g*
   use C.Theta_extension c hc_pos hc_lt
   refine ⟨C.Theta_extension_strictMono c hc_pos hc_lt, ?_, ?_⟩
-  · -- Continuity on (0,1]
+  ·
     exact C.Theta_extension_continuousOn c hc_pos hc_lt
-  · -- Additivity
+  ·
     intro x y hx_pos hx_le hy_pos hy_le
     exact C.Theta_extension_additive c hc_pos hc_lt x y hx_pos hx_le hy_pos hy_le
 
@@ -2161,16 +1593,6 @@ noncomputable def aczel_theorem (C : CoxFullAxioms) : AdditiveRepresentation C :
    (Classical.choose_spec (aczel_representation_theorem C)).1,
    (Classical.choose_spec (aczel_representation_theorem C)).2.1,
    (Classical.choose_spec (aczel_representation_theorem C)).2.2⟩
-
-/-!
-## §4: From Additive to Multiplicative Representation
-
-Given an additive representation Θ, we construct a multiplicative representation
-g = exp ∘ Θ. This gives:
-
-  g(F(x,y)) = g(x) · g(y)
-
--/
 
 /-- The multiplicative representation form.
 
@@ -2197,66 +1619,79 @@ noncomputable def multiplicativeRep_of_additiveRep (C : CoxFullAxioms)
   g_strictMonoOn := fun x hx y hy hxy =>
     Real.exp_lt_exp.mpr (hΘ.Θ_strictMonoOn hx hy hxy)
   g_continuousOn := by
-    -- exp ∘ Θ is continuous on (0, ∞)
-    -- exp is continuous everywhere, so exp ∘ Θ is continuous where Θ is continuous
     have hexp : Continuous Real.exp := Real.continuous_exp
     exact hexp.comp_continuousOn hΘ.Θ_continuousOn
   g_multiplicative := fun x y hx_pos hx_le hy_pos hy_le => by
     rw [hΘ.Θ_additive x y hx_pos hx_le hy_pos hy_le, Real.exp_add]
-
-/-!
-## §5: Multiplicative Representation Implies Product Rule
-
-From the multiplicative representation g(F(x,y)) = g(x)·g(y), we derive
-that F must be the product rule (up to reparametrization).
-
-The key insight: if we define p(x) = g(x)/g(1), then:
-- p(1) = 1 (normalized)
-- p(F(x,y)) = p(x)·p(y)
-
-So in the "p-scale", F IS multiplication!
--/
 
 /-- The normalized multiplicative representation satisfies p(1) = 1. -/
 noncomputable def normalizedMultRep (C : CoxFullAxioms) (hM : MultiplicativeRepresentation C) :
     ℝ → ℝ :=
   fun x => hM.g x / hM.g 1
 
+/-- From the identity property F(x,1) = x and multiplicativity, g(1) = 1. -/
+theorem g_one_eq_one (C : CoxFullAxioms) (hM : MultiplicativeRepresentation C) : hM.g 1 = 1 := by
+  have h := hM.g_multiplicative 1 1 one_pos le_rfl one_pos le_rfl
+  rw [C.F_one_right] at h
+  exact (mul_left_cancel₀ (ne_of_gt (hM.g_pos 1 one_pos le_rfl))
+    (by simpa only [mul_one] using h.symm) : hM.g 1 = 1)
+
+/-- This normalization leaves every supplied stage value unchanged. -/
+theorem normalizedMultRep_eq (C : CoxFullAxioms) (hM : MultiplicativeRepresentation C) :
+    normalizedMultRep C hM = hM.g := by
+  funext x
+  simp only [normalizedMultRep, g_one_eq_one C hM, div_one]
+
 /-- The normalized representation satisfies p(1) = 1. -/
 theorem normalizedMultRep_one (C : CoxFullAxioms) (hM : MultiplicativeRepresentation C) :
     normalizedMultRep C hM 1 = 1 := by
-  simp only [normalizedMultRep]
-  have h1 : hM.g 1 ≠ 0 := ne_of_gt (hM.g_pos 1 one_pos le_rfl)
-  field_simp
-
-/-- From the identity property F(x,1) = x and multiplicativity, g(1) = 1. -/
-theorem g_one_eq_one (C : CoxFullAxioms) (hM : MultiplicativeRepresentation C) : hM.g 1 = 1 := by
-  -- F(1,1) = 1 (identity property)
-  have h1 : C.F 1 1 = 1 := C.F_one_right 1
-  -- g(F(1,1)) = g(1) * g(1) (multiplicativity)
-  have h2 : hM.g (C.F 1 1) = hM.g 1 * hM.g 1 := hM.g_multiplicative 1 1 one_pos le_rfl one_pos le_rfl
-  -- So g(1) = g(1) * g(1)
-  rw [h1] at h2
-  -- g(1) * g(1) = g(1) means g(1) = 1 (since g(1) > 0)
-  have h3 : hM.g 1 > 0 := hM.g_pos 1 one_pos le_rfl
-  have h4 : hM.g 1 * hM.g 1 = hM.g 1 := h2.symm
-  -- From g(1)² = g(1), we get g(1)(g(1) - 1) = 0
-  -- Since g(1) > 0, we have g(1) ≠ 0, so g(1) - 1 = 0
-  have h5 : hM.g 1 - 1 = 0 := by
-    have : hM.g 1 ≠ 0 := ne_of_gt h3
-    field_simp at h4
-    linarith
-  linarith
+  rw [normalizedMultRep_eq, g_one_eq_one]
 
 /-- The normalized representation still satisfies the multiplicative property for x, y ∈ (0,1]. -/
 theorem normalizedMultRep_mul (C : CoxFullAxioms) (hM : MultiplicativeRepresentation C)
     (x y : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) (hy_pos : 0 < y) (hy_le : y ≤ 1) :
     normalizedMultRep C hM (C.F x y) = normalizedMultRep C hM x * normalizedMultRep C hM y := by
-  unfold normalizedMultRep
-  have h1 : hM.g 1 ≠ 0 := ne_of_gt (hM.g_pos 1 one_pos le_rfl)
-  have h2 : hM.g 1 = 1 := g_one_eq_one C hM
-  rw [hM.g_multiplicative x y hx_pos hx_le hy_pos hy_le, h2]
-  ring
+  simpa only [normalizedMultRep_eq] using hM.g_multiplicative x y hx_pos hx_le hy_pos hy_le
+
+/-- The valid probability interval is invariant under the supplied conjunction. -/
+def validValues (C : CoxFullAxioms) : Submonoid (Conjunction C) where
+  carrier := fun x => x.val ∈ Set.Ioc (0 : ℝ) 1
+  one_mem' := ⟨zero_lt_one, le_rfl⟩
+  mul_mem' {x y} hx hy := C.F_range x.val y.val hx.1 hx.2 hy.1 hy.2
+
+/-- Projection interprets a typed fold as the independently defined real conjunction fold. -/
+theorem val_fold (C : CoxFullAxioms) (s : C.validValues) (xs : List C.validValues) :
+    (xs.foldl (· * ·) s).val.val =
+      (xs.map (fun x => x.val.val)).foldl C.F s.val.val := by
+  induction xs generalizing s with
+  | nil => rfl
+  | cons x xs ih => exact ih (s * x)
+
+namespace MultiplicativeRepresentation
+variable {C : CoxFullAxioms}
+
+/-- The supplied probability observation carries the multiplicative law on its valid domain. -/
+noncomputable def observation (g : MultiplicativeRepresentation C) : C.validValues →* ℝ where
+  toFun x := g.g x.val.val
+  map_one' := g_one_eq_one C g
+  map_mul' x y := g.g_multiplicative _ _ x.2.1 x.2.2 y.2.1 y.2.2
+
+theorem observation_injective (g : MultiplicativeRepresentation C) :
+    Function.Injective g.observation := by
+  intro x y h
+  apply Subtype.ext
+  apply Conjunction.ext
+  exact g.g_strictMonoOn.injOn x.2 y.2 h
+
+/-- Ordered input occurrences execute under F; their readout is a product. -/
+theorem observe_fold (g : MultiplicativeRepresentation C) (s : C.validValues)
+    (xs : List C.validValues) :
+    g.g ((xs.map (fun x => x.val.val)).foldl C.F s.val.val) =
+      g.g s.val.val * (xs.map (fun x => g.g x.val.val)).prod := by
+  rw [← val_fold]
+  exact KnuthSkilling.Multiplicative.observe_foldl g.observation s xs
+
+end MultiplicativeRepresentation
 
 /-- **Cox's Product Rule Theorem**: In the normalized scale p, the conjunction F
 becomes multiplication: p(F(x,y)) = p(x) · p(y) for x, y ∈ (0,1].
@@ -2268,16 +1703,6 @@ theorem productRule_in_normalized_scale (C : CoxFullAxioms) (hM : Multiplicative
     (x y : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) (hy_pos : 0 < y) (hy_le : y ≤ 1) :
     normalizedMultRep C hM (C.F x y) = normalizedMultRep C hM x * normalizedMultRep C hM y :=
   normalizedMultRep_mul C hM x y hx_pos hx_le hy_pos hy_le
-
-/-!
-## §6: The Standard Product Rule
-
-If F is already in "standard form" (i.e., no reparametrization needed), then
-F(x,y) = x·y directly.
-
-Cox shows that by choosing the right parametrization of plausibility, we can
-always achieve this standard form.
--/
 
 /-- A conjunction rule is in standard form if it equals multiplication. -/
 def IsStandardProductRule (F : ℝ → ℝ → ℝ) : Prop :=
@@ -2322,65 +1747,30 @@ noncomputable def standard_productRule_additiveRep : AdditiveRepresentation stan
     simp only [standard_productRule_satisfies_cox]
     exact Real.log_mul (ne_of_gt hx_pos) (ne_of_gt hy_pos)
 
+/-- A positive shifted readout fails the multiplicative observation law on valid inputs. -/
+theorem shifted_readout_fails :
+    standard_productRule_satisfies_cox.F (1 / 2) (1 / 2) + 1 ≠
+      ((1 / 2 : ℝ) + 1) * ((1 / 2 : ℝ) + 1) := by
+  norm_num [standard_productRule_satisfies_cox]
+
+/-- Equal endpoints do not identify the ordered occurrences that produced them. -/
+theorem endpoint_does_not_recover_history :
+    ([1 / 2, 1 / 4] : List ℝ) ≠ [1 / 4, 1 / 2] ∧
+      [1 / 2, 1 / 4].foldl standard_productRule_satisfies_cox.F 1 =
+        [1 / 4, 1 / 2].foldl standard_productRule_satisfies_cox.F 1 := by
+  constructor
+  · intro h; norm_num at h
+  · norm_num [List.foldl, standard_productRule_satisfies_cox]
+
 end CoxFullAxioms
 
-/-!
-## §7: Main Theorem - Cox's Derivation of the Product Rule
-
-We now state the complete Cox theorem: any conjunction function satisfying
-Cox's axioms is equivalent to the standard product rule.
--/
-
-/-- **Cox's Theorem (Product Rule)**:
-
-Any conjunction function F satisfying:
-1. Associativity: F(F(x,y),z) = F(x,F(y,z))
-2. Identity: F(1,y) = y, F(x,1) = x
-3. Monotonicity: F is strictly increasing in each argument
-4. Continuity: F is continuous
-
-admits a reparametrization p such that p(F(x,y)) = p(x)·p(y) for x, y ∈ (0,1].
-
-In other words, F IS multiplication in the right coordinate system.
-
-This is the foundational result that justifies using multiplication
-for combining probabilities. -/
+/-- **Cox's Theorem (Product Rule)**: -/
 theorem cox_productRule (C : CoxFullAxioms) :
     ∃ p : ℝ → ℝ, StrictMonoOn p (Set.Ioc 0 1) ∧ ContinuousOn p (Set.Ioc 0 1) ∧
       (∀ x y, 0 < x → x ≤ 1 → 0 < y → y ≤ 1 → p (C.F x y) = p x * p y) ∧ p 1 = 1 := by
-  -- Get the additive representation from Aczél's theorem
-  let hΘ := CoxFullAxioms.aczel_theorem C
-  -- Convert to multiplicative representation via exp
-  let hM := CoxFullAxioms.multiplicativeRep_of_additiveRep C hΘ
-  -- Use the normalized multiplicative representation
-  use CoxFullAxioms.normalizedMultRep C hM
-  refine ⟨?_, ?_, ?_, ?_⟩
-  · -- StrictMonoOn (0,1]
-    intro x hx y hy hxy
-    unfold CoxFullAxioms.normalizedMultRep
-    have h1 : 0 < hM.g 1 := hM.g_pos 1 one_pos le_rfl
-    exact div_lt_div_of_pos_right (hM.g_strictMonoOn hx hy hxy) h1
-  · -- ContinuousOn (0,1]
-    unfold CoxFullAxioms.normalizedMultRep
-    have h1 : hM.g 1 ≠ 0 := ne_of_gt (hM.g_pos 1 one_pos le_rfl)
-    exact hM.g_continuousOn.div_const (hM.g 1)
-  · -- Multiplicative property for x, y ∈ (0,1]
-    exact fun x y hx_pos hx_le hy_pos hy_le =>
-      CoxFullAxioms.normalizedMultRep_mul C hM x y hx_pos hx_le hy_pos hy_le
-  · -- p(1) = 1
-    exact CoxFullAxioms.normalizedMultRep_one C hM
-
-/-!
-## §8: Commutativity is Derived
-
-A key insight: commutativity F(x,y) = F(y,x) is NOT assumed but DERIVED!
-
-This follows from the multiplicative representation: since multiplication
-on ℝ is commutative, and p is injective, F must be commutative.
-
-Note: The same associativity functional equation appears in Knuth-Skilling's
-work on ordered semigroups. Both derive commutativity as a theorem.
--/
+  let hM := CoxFullAxioms.multiplicativeRep_of_additiveRep C (CoxFullAxioms.aczel_theorem C)
+  exact ⟨hM.g, hM.g_strictMonoOn, hM.g_continuousOn, hM.g_multiplicative,
+    CoxFullAxioms.g_one_eq_one C hM⟩
 
 /-- Cox's commutativity theorem: F(x,y) = F(y,x) is DERIVED from the axioms for x, y ∈ (0,1].
 
@@ -2391,7 +1781,6 @@ theorem cox_commutativity (C : CoxFullAxioms)
     (x y : ℝ) (hx_pos : 0 < x) (hx_le : x ≤ 1) (hy_pos : 0 < y) (hy_le : y ≤ 1) :
     C.F x y = C.F y x := by
   obtain ⟨p, hp_mono, _, hp_mul, _⟩ := cox_productRule C
-  -- F(x,y) and F(y,x) are in (0,1]
   have hFxy := C.F_range x y hx_pos hx_le hy_pos hy_le
   have hFyx := C.F_range y x hy_pos hy_le hx_pos hx_le
   have h1 : p (C.F x y) = p x * p y := hp_mul x y hx_pos hx_le hy_pos hy_le
@@ -2399,29 +1788,6 @@ theorem cox_commutativity (C : CoxFullAxioms)
   have h3 : p x * p y = p y * p x := mul_comm (p x) (p y)
   have h4 : p (C.F x y) = p (C.F y x) := by rw [h1, h3, ← h2]
   exact hp_mono.injOn ⟨hFxy.1, hFxy.2⟩ ⟨hFyx.1, hFyx.2⟩ h4
-
-/-!
-## §9: The Negation Rule Derivation
-
-Cox also derives the negation rule G(x) = 1 - x from similar functional equation
-analysis. The key equation is:
-
-  G(G(x)) = x (involution)
-  F(x, G(x)) + x·1 = x (when conditioning on certainty)
-
-Combined with continuity and monotonicity, this forces G(x) = 1 - x.
--/
-
-/-!
-## §8: Cox's Negation Functional Equation
-
-Following Cox (1961) Eq. (4.4), the product/negation interaction yields the
-functional equation:
-
-  z * G(G y / z) = y * G(G z / y)
-
-for y, z > 0 (after regrading to the product-rule scale).
--/
 
 /-- Cox's negation functional equation (Eq. 4.4). -/
 def CoxNegationEquation (G : ℝ → ℝ) : Prop :=
@@ -2436,19 +1802,7 @@ lemma standard_negationRule_eq_4_4 (y z : ℝ) (hy : 0 < y) (hz : 0 < z) :
   field_simp [hy0, hz0]
   ring
 
-/-- Cox's negation axioms.
-
-**Important**: The standalone involution axioms (G(G(x)) = x, strict anti-monotonicity, boundary
-conditions) do NOT uniquely determine G(x) = 1 - x. For example, G(x) = √(1-x²) also satisfies
-all those properties.
-
-Cox's actual derivation uses the **interaction** between the product rule and negation rule, which
-reduces to the functional equation Eq. (4.4) below. Under differentiability assumptions, Cox shows
-that this forces the 1-parameter family:
-
-  G(x) = (1 - x^r)^(1/r),   r > 0
-
-and then a regraduation by x ↦ x^r yields the standard negation rule. -/
+/-- Cox's negation axioms. -/
 structure CoxNegationAxioms where
   /-- The negation function G(x) = p(¬A|B) when p(A|B) = x -/
   G : ℝ → ℝ
@@ -2478,7 +1832,6 @@ def standard_negationRule_satisfies_cox : CoxNegationAxioms where
   G_strictAnti := fun _ _ h => by linarith
   G_continuous := continuous_const.sub continuous_id
   G_contDiff := by
-    -- Smoothness on (0,∞) is inherited from global smoothness.
     simpa using (contDiff_const.sub contDiff_id).contDiffOn
   G_zero := by norm_num
   G_one := by norm_num
@@ -2486,12 +1839,11 @@ def standard_negationRule_satisfies_cox : CoxNegationAxioms where
   G_eq_4_4 := fun y z hy hz => standard_negationRule_eq_4_4 y z hy hz
   G_deriv_ne_zero := by
     intro x hx
-    -- deriv (1 - x) = -1 ≠ 0
     have h : deriv (fun x : ℝ => 1 - x) x = (-1 : ℝ) := by
-      simpa using (deriv_const_sub (f := fun x : ℝ => x) (c := (1 : ℝ)) (x := x))
+      simp
     have hne : (deriv (fun x : ℝ => 1 - x) x) ≠ 0 := by
       simp [h]
-    simpa using hne
+    simp
 
 namespace CoxNegationAxioms
 
@@ -2513,21 +1865,17 @@ theorem g_one : N.G 1 - 1 = -1 := by simp [N.G_one]
 
 /-- G has exactly one fixed point in (0,1), by IVT + strict anti-monotonicity. -/
 theorem exists_unique_fixed_point : ∃! p, p ∈ Set.Ioo (0 : ℝ) 1 ∧ N.G p = p := by
-  -- Existence: g(0) = 1 > 0, g(1) = -1 < 0, g continuous, so ∃ p with g(p) = 0
   have hg_cont : ContinuousOn (fun x => N.G x - x) (Set.Icc 0 1) :=
     N.g_continuous.continuousOn
   have hab : (0 : ℝ) ≤ 1 := by norm_num
-  -- 0 ∈ Ioo (g 1) (g 0) = Ioo (-1) 1
   have h0_in : (0 : ℝ) ∈ Set.Ioo (N.G 1 - 1) (N.G 0 - 0) := by
     simp only [N.g_zero, N.g_one, Set.mem_Ioo]
     constructor <;> norm_num
-  -- intermediate_value_Ioo' gives us a point in Ioo 0 1 mapping to 0
   have hivt := intermediate_value_Ioo' hab hg_cont
   obtain ⟨p, hp_mem, hp_eq⟩ := hivt h0_in
   use p
   constructor
   · exact ⟨hp_mem, sub_eq_zero.mp hp_eq⟩
-  -- Uniqueness: if G(q) = q and q ≠ p, then g(q) = 0 = g(p), contradicting strict anti
   intro q ⟨hq_mem, hq_fix⟩
   by_contra hne
   have hgp : N.G p - p = 0 := hp_eq
@@ -2719,7 +2067,6 @@ theorem deriv_eq4_4_y {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ S
         simp [f, hderiv_comp, deriv_const_mul_field]
       _ = G' (G y / z) * G' y := by
         field_simp [hz0, mul_comm, mul_left_comm, mul_assoc]
-  -- derivative of g
   have hdiff_inner' : DifferentiableAt ℝ (fun y => G z / y) y := by
     have hdiff_const : DifferentiableAt ℝ (fun y => G z) y := differentiableAt_const _
     have hdiff_id : DifferentiableAt ℝ (fun y => y) y := differentiableAt_id
@@ -2728,7 +2075,7 @@ theorem deriv_eq4_4_y {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ S
     have hdiff_const : DifferentiableAt ℝ (fun y => G z) y := differentiableAt_const _
     have hdiff_id : DifferentiableAt ℝ (fun y => y) y := differentiableAt_id
     have hy0 : y ≠ 0 := ne_of_gt hypos
-    simpa using (deriv_fun_div (hc := hdiff_const) (hd := hdiff_id) hy0)
+    simp
   have hdiff_outer' : DifferentiableAt ℝ G (G z / y) := by
     have hpos : 0 < G z / y := div_pos hGzpos hypos
     exact N.G_differentiableAt hpos
@@ -2751,7 +2098,6 @@ theorem deriv_eq4_4_y {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ S
           field_simp [hy0, mul_comm, mul_left_comm, mul_assoc]
         simp [hmul']
       _ = G (G z / y) - (G z / y) * G' (G z / y) := by ring
-  -- conclude
   simpa [hderiv_f_simp, hderiv_g] using hderiv
 
 /-- Second derivative consequence of Eq. (4.4). -/
@@ -2772,7 +2118,6 @@ theorem deriv_eq4_4_yz {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ 
   have hzpos : 0 < z := hz.1
   have hGypos : 0 < G y := N.G_pos_of_mem_Ioo hy
   have hGzpos : 0 < G z := N.G_pos_of_mem_Ioo hz
-  -- compute deriv f
   have hdiff_inner : DifferentiableAt ℝ (fun z => G y / z) z := by
     have hdiff_const : DifferentiableAt ℝ (fun z => G y) z := differentiableAt_const _
     have hdiff_id : DifferentiableAt ℝ (fun z => z) z := differentiableAt_id
@@ -2784,7 +2129,7 @@ theorem deriv_eq4_4_yz {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ 
     have hdiff_const : DifferentiableAt ℝ (fun z => G y) z := differentiableAt_const _
     have hdiff_id : DifferentiableAt ℝ (fun z => z) z := differentiableAt_id
     have hz0 : z ≠ 0 := ne_of_gt hzpos
-    simpa using (deriv_fun_div (hc := hdiff_const) (hd := hdiff_id) hz0)
+    simp
   have hderiv_comp : deriv (fun z => G' (G y / z)) z =
       G'' (G y / z) * (-(G y) / z ^ 2) := by
     simpa [Function.comp_def, hderiv_inner] using (deriv_comp z hdiff_outer hdiff_inner)
@@ -2795,7 +2140,6 @@ theorem deriv_eq4_4_yz {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ 
         simp [f, hderiv_comp, mul_comm]
       _ = -(G y / z) * G'' (G y / z) * (G' y / z) := by
         field_simp [hz0, mul_comm, mul_left_comm, mul_assoc]
-  -- compute deriv g
   have hdiff_inner' : DifferentiableAt ℝ (fun z => G z / y) z :=
     (N.G_differentiableAt hzpos).div_const y
   have hdiff_outer' : DifferentiableAt ℝ G (G z / y) := by
@@ -2834,7 +2178,6 @@ theorem deriv_eq4_4_yz {y z : ℝ} (hy : y ∈ Set.Ioo (0 : ℝ) 1) (hz : z ∈ 
           (G' (G z / y) * (G' z / y)) -
             ((G' z / y) * G' (G z / y) + (G z / y) * (G'' (G z / y) * (G' z / y))) := hderiv_g'
       _ = -(G z / y) * G'' (G z / y) * (G' z / y) := by ring
-  -- conclude
   simpa [hderiv_f_simp, hderiv_g_simp] using hderiv
 
 /-- The key functional equation implies a constant Φ on (0,1). -/
@@ -2842,7 +2185,6 @@ theorem phi_const :
     ∃ c : ℝ, ∀ x ∈ Set.Ioo (0 : ℝ) 1,
       (x * G'' x * G x) / (G' x * (G x - x * G' x)) = c := by
   classical
-  -- Use the realizability lemma to show Φ(u) = Φ(v) for all u,v ∈ (0,1).
   have hphi_eq : ∀ u ∈ Set.Ioo (0 : ℝ) 1, ∀ v ∈ Set.Ioo (0 : ℝ) 1,
       (u * G'' u * G u) / (G' u * (G u - u * G' u)) =
         (v * G'' v * G v) / (G' v * (G v - v * G' v)) := by
@@ -2851,18 +2193,12 @@ theorem phi_const :
     have h1 := N.deriv_eq4_4_y hy hz
     have h2 := N.deriv_eq4_4_y (y := z) (z := y) hz hy
     have h3 := N.deriv_eq4_4_yz hy hz
-    -- Expand definitions
     have hypos : 0 < y := hy.1
     have hzpos : 0 < z := hz.1
     have hu0 : u ≠ 0 := ne_of_gt hu.1
     have hv0 : v ≠ 0 := ne_of_gt hv.1
-    -- Define u = G y / z and v = G z / y
-    -- Use Eq. (4.4) to eliminate y and z and obtain Φ(u)=Φ(v)
     have hEq : (u * G'' u * G u) / (G' u * (G u - u * G' u)) =
         (v * G'' v * G v) / (G' v * (G v - v * G' v)) := by
-      -- Rewrite u and v and simplify
-      -- This is algebraic manipulation of h1, h2, h3 together with z * G u = y * G v.
-      -- We use `field_simp` to clear denominators.
       have hdenu : G' u * (G u - u * G' u) ≠ 0 := by
         have h1' : G' u ≠ 0 := N.G_deriv_ne_zero u hu.1
         have h2' : 0 < G u - u * G' u := N.G_sub_x_deriv_pos hu
@@ -2871,9 +2207,7 @@ theorem phi_const :
         have h1' : G' v ≠ 0 := N.G_deriv_ne_zero v hv.1
         have h2' : 0 < G v - v * G' v := N.G_sub_x_deriv_pos hv
         exact mul_ne_zero h1' (ne_of_gt h2')
-      -- Start from the second-derivative equation
       have h4 : (u * G'' u * G' y) / z = (v * G'' v * G' z) / y := by
-        -- rewrite h3 using u,v
         simpa [huEq, hvEq, mul_comm, mul_left_comm, mul_assoc, div_eq_mul_inv] using h3
       have h1' : G' u * G' y = G v - v * G' v := by
         simpa [huEq, hvEq] using h1
@@ -2893,25 +2227,20 @@ theorem phi_const :
         calc
           G' z = (G' z * G' v) / G' v := by field_simp [hG'v]
           _ = (G u - u * G' u) / G' v := by simp [h2'']
-      -- Use Eq. (4.4) to relate y and z.
       have h4' : u * G'' u * (G v - v * G' v) / (G' u * z) =
           v * G'' v * (G u - u * G' u) / (G' v * y) := by
-        -- substitute h5 and h6 into h4
         have hy0 : y ≠ 0 := ne_of_gt hypos
         have hz0 : z ≠ 0 := ne_of_gt hzpos
         have h4'' :
             u * G'' u * ((G v - v * G' v) / G' u) / z =
               v * G'' v * ((G u - u * G' u) / G' v) / y := by
           simpa [h5, h6] using h4
-        -- clear denominators
         have h4''' := h4''
         field_simp [hG'u, hG'v, hy0, hz0] at h4'''
         field_simp [hG'u, hG'v, hy0, hz0]
         exact h4'''
       have hzy : z / y = G v / G u := by
-        -- from Eq. (4.4)
         have h0 := N.G_eq_4_4 y z hypos hzpos
-        -- rewrite u,v
         have h0' : z * G u = y * G v := by simpa [huEq, hvEq] using h0
         have hy0 : y ≠ 0 := ne_of_gt hypos
         have hGu0 : G u ≠ 0 := N.G_ne_zero_of_mem_Ioo hu
@@ -2919,10 +2248,8 @@ theorem phi_const :
           z / y = (z * G u) / (y * G u) := by field_simp [hy0, hGu0]
           _ = (y * G v) / (y * G u) := by simp [h0']
           _ = G v / G u := by field_simp [hy0, hGu0]
-      -- Finish the algebra
       have hfin : u * G'' u * G u / (G' u * (G u - u * G' u)) =
           v * G'' v * G v / (G' v * (G v - v * G' v)) := by
-        -- eliminate y and z using hzy and rearrange
         have hy0 : y ≠ 0 := ne_of_gt hypos
         have hGu0 : G u ≠ 0 := N.G_ne_zero_of_mem_Ioo hu
         have hGv0 : G v ≠ 0 := N.G_ne_zero_of_mem_Ioo hv
@@ -2935,15 +2262,12 @@ theorem phi_const :
         have h4'' : u * G'' u * (G v - v * G' v) / (G' u * (y * G v / G u)) =
             v * G'' v * (G u - u * G' u) / (G' v * y) := by
           simpa [hzy'] using h4'
-        -- clear denominators and rearrange
         have h4''' := h4''
         field_simp [hdenu, hdenv, hy0, hGu0, hGv0] at h4'''
-        -- use cross-multiplication form
         apply (div_eq_div_iff hdenu hdenv).2
         simpa [mul_comm, mul_left_comm, mul_assoc] using h4'''
       exact hfin
     simpa [huEq, hvEq] using hEq
-  -- Choose c at x = 1/2
   refine ⟨( ( ( (1/2 : ℝ) * G'' (1/2) * G (1/2) ) / (G' (1/2) * (G (1/2) - (1/2) * G' (1/2))) ) ), ?_⟩
   intro x hx
   have hx0 : (1 / 2 : ℝ) ∈ Set.Ioo (0 : ℝ) 1 := by norm_num
@@ -2957,7 +2281,6 @@ theorem negation_power_family :
   obtain ⟨c, hc⟩ := N.phi_const
   let r : ℝ := c + 1
   let H : ℝ → ℝ := fun x => (G x) ^ (r - 1) * G' x
-  -- Rewrite the φ-constant equation.
   have hphi :
       ∀ x ∈ Set.Ioo (0 : ℝ) 1,
         x * G'' x * G x = (r - 1) * G' x * (G x - x * G' x) := by
@@ -2971,7 +2294,6 @@ theorem negation_power_family :
       exact (div_eq_iff hden).1 h
     have hr : r - 1 = c := by simp [r]
     simpa [hr, mul_comm, mul_left_comm, mul_assoc] using h'
-  -- Differential equation for H.
   have hderiv_H : ∀ x ∈ Set.Ioo (0 : ℝ) 1, deriv H x = (r - 1) * H x / x := by
     intro x hx
     have hxpos : 0 < x := hx.1
@@ -3020,7 +2342,6 @@ theorem negation_power_family :
         _ = (r - 1) * H x := by simp [H, mul_comm]
     apply (eq_div_iff hxne).2
     simpa [mul_comm] using hmul
-  -- H(x) * x^(1-r) is constant on (0,1).
   have hH_const : ∃ k, ∀ x ∈ Set.Ioo (0 : ℝ) 1, H x * x ^ (1 - r) = k := by
     let K : ℝ → ℝ := fun x => H x * x ^ (1 - r)
     have hdiffK : DifferentiableOn ℝ K (Set.Ioo 0 1) := by
@@ -3090,7 +2411,6 @@ theorem negation_power_family :
       H x = H x * (x ^ (1 - r) * x ^ (r - 1)) := by simp [hxpow]
       _ = (H x * x ^ (1 - r)) * x ^ (r - 1) := by ring
       _ = k * x ^ (r - 1) := by simp [hk x hx]
-  -- Express G' using k.
   have hG'_formula : ∀ x ∈ Set.Ioo (0 : ℝ) 1, G' x = k * x ^ (r - 1) / (G x) ^ (r - 1) := by
     intro x hx
     have hGpow_ne : (G x) ^ (r - 1) ≠ 0 := by
@@ -3099,7 +2419,6 @@ theorem negation_power_family :
     apply (eq_div_iff hGpow_ne).2
     have hH := hH_eq x hx
     simpa [H, mul_comm, mul_left_comm, mul_assoc] using hH
-  -- Differentiate involution to get k² = 1.
   have hderiv_invol : ∀ x ∈ Set.Ioo (0 : ℝ) 1, G' (G x) * G' x = 1 := by
     intro x hx
     have hxpos : 0 < x := hx.1
@@ -3153,7 +2472,6 @@ theorem negation_power_family :
       simpa [mul_div_assoc] using hform
     have hG'neg' : k * ((1 / 2 : ℝ) ^ (r - 1) / (G (1 / 2)) ^ (r - 1)) < 0 := by
       have hG'neg' := hG'neg
-      -- rewrite the derivative using the closed form
       rw [hform'] at hG'neg'
       exact hG'neg'
     have h' : ((1 / 2 : ℝ) ^ (r - 1) / (G (1 / 2)) ^ (r - 1)) * k <
@@ -3166,7 +2484,6 @@ theorem negation_power_family :
     cases hk_or with
     | inl hk1 => exact (False.elim (by linarith [hkneg]))
     | inr hk1 => exact hk1
-  -- F(x) = G(x)^r + x^r is constant on (0,1).
   let F : ℝ → ℝ := fun x => (G x) ^ r + x ^ r
   have hderiv_F_zero : ∀ x ∈ Set.Ioo (0 : ℝ) 1, deriv F x = 0 := by
     intro x hx
@@ -3220,7 +2537,6 @@ theorem negation_power_family :
     have hGpow : 0 < (G (1 / 2)) ^ r := Real.rpow_pos_of_pos hGpos _
     have hxpow : 0 < (1 / 2 : ℝ) ^ r := Real.rpow_pos_of_pos hxpos _
     linarith [hCeq, hGpow, hxpow]
-  -- Exclude r = 0.
   have hr_ne : r ≠ 0 := by
     intro hr
     have hG'_r0 : ∀ x ∈ Set.Ioo (0 : ℝ) 1, G' x = - G x / x := by
@@ -3297,12 +2613,11 @@ theorem negation_power_family :
       have hGpos : 0 < G (1 / 2) := N.G_pos_of_mem_Ioo (by norm_num)
       exact mul_pos hxpos hGpos
     exact (ne_of_gt this) hcontra
-  -- Show r > 0 using the constant C.
   have hr_pos : 0 < r := by
     by_contra hle
     have hrle : r ≤ 0 := le_of_not_gt hle
     rcases lt_or_eq_of_le hrle with hrneg | hreq
-    · -- r < 0 leads to contradiction: choose x with x^r > C.
+    ·
       have hrne : r ≠ 0 := ne_of_lt hrneg
       let x : ℝ := (C + 1) ^ (r⁻¹)
       have hxpos : 0 < x := by
@@ -3329,9 +2644,8 @@ theorem negation_power_family :
         linarith [hCeq, hxpow]
       have hne : (G x) ^ r ≠ -1 := by linarith [hGpos]
       exact (hne hcontra)
-    · -- r = 0 contradicts G_one (handled above).
+    ·
       exact (hr_ne hreq)
-  -- With r > 0, the constant must be 1 (using boundary at x = 1).
   have hC_eq : C = 1 := by
     have hF_cont : Continuous F := by
       have hG_cont : Continuous G := N.G_continuous
@@ -3359,7 +2673,6 @@ theorem negation_power_family :
       have hrne : r ≠ 0 := ne_of_gt hr_pos
       simp [F, N.G_one, Real.zero_rpow hrne, Real.one_rpow]
     exact by simpa [hF1] using hF1'
-  -- Final result.
   refine ⟨r, hr_pos, ?_⟩
   intro x hx
   have h := hC x hx

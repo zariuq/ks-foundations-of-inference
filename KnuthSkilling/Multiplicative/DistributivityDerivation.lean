@@ -1,148 +1,129 @@
 import KnuthSkilling.Probability.ProbabilityDerivation
 import KnuthSkilling.Multiplicative.DirectProduct
+import Mathlib.Data.Set.Card
 
 /-!
-# Deriving Scalar Distributivity from Lattice Structure
+# Distributivity at attained event values
 
-This module shows that `DistributesOverAdd` for the tensor operation
-is **DERIVED** (not assumed!) from:
-1. Lattice-level `prod_sup_left` (DirectProduct structure)
-2. Disjoint additivity of valuations (CoxConsistency.sum_rule)
-3. The bridge predicate `RectTensorCompatible`
-
-## Main Result
-
-`distributes_over_add_from_lattice` proves:
-  Given lattice distributivity `prod (a₁ ⊔ a₂) b = prod a₁ b ⊔ prod a₂ b`
-  and valuation additivity `v(a ⊔ b) = v(a) + v(b)` for disjoint elements,
-  the scalar tensor operation satisfies `tensor(x+y, t) = tensor(x,t) + tensor(y,t)`.
-
-## K&S Paper Correspondence
-
-| K&S Paper | Lean Code | Domain |
-|-----------|-----------|--------|
-| `×` | `prod` | Events (lattice) |
-| `⊗` | `tensor` | Scalars (ℝ⁺) |
-| `m(·)` | `v.val` | Event → ℝ |
-
-Connection: `m(x × t) = m(x) ⊗ m(t)` (paper) = `RectTensorCompatible` (Lean)
+Normalized valuations are bounded by one. Global preimages of every positive
+real are therefore impossible. Actual disjoint events and rectangle-compatible
+valuations instead give a distributivity equation at their attained values.
+The finite example uses distinct masses one third and two thirds and a half-mass
+right event; it does not extrapolate this equation to all positive scalars.
 -/
 
 namespace KnuthSkilling.Multiplicative
-
 open KnuthSkilling
 
-/-! ## Hypotheses for the Derivation -/
-
-/-- A lattice is "rich enough" if we can find disjoint preimages with any prescribed
-positive valuations. This holds in natural models:
-- **Set model**: Take disjoint subsets with prescribed measures
-- **K&S algebra after representation**: Density ensures this -/
+/-- A global preimage condition, incompatible with a normalized valuation. -/
 def HasDisjointPreimages {α : Type*} [PlausibilitySpace α] (v : Valuation α) : Prop :=
   ∀ x y : PosReal, ∃ a₁ a₂ : α,
-    Disjoint a₁ a₂ ∧
-    v.val a₁ = (x : ℝ) ∧
-    v.val a₂ = (y : ℝ) ∧
-    0 < v.val a₁ ∧
-    0 < v.val a₂
+    Disjoint a₁ a₂ ∧ v.val a₁ = (x : ℝ) ∧ v.val a₂ = (y : ℝ) ∧
+      0 < v.val a₁ ∧ 0 < v.val a₂
 
-/-- A valuation hits all positive real values (surjectivity onto (0,∞)). -/
+/-- Surjectivity onto every positive real is a boundary condition, not a probability model. -/
 def ValuationSurjective {α : Type*} [PlausibilitySpace α] (v : Valuation α) : Prop :=
   ∀ t : PosReal, ∃ a : α, v.val a = (t : ℝ) ∧ 0 < v.val a
 
-/-! ## The Main Derivation -/
+/-- Both historical global-preimage conditions fail already at the value two. -/
+theorem normalized_global_preimages_impossible {α : Type*} [PlausibilitySpace α]
+    (v : Valuation α) : ¬ValuationSurjective v ∧ ¬HasDisjointPreimages v := by
+  constructor
+  · intro h
+    obtain ⟨a, ha, _⟩ := h ⟨2, by norm_num⟩
+    have := v.le_one a
+    norm_num at ha
+    linarith
+  · intro h
+    obtain ⟨a, _, _, ha, _, _, _⟩ := h ⟨2, by norm_num⟩ ⟨1, by norm_num⟩
+    have := v.le_one a
+    norm_num at ha
+    linarith
 
-/-- **Main Theorem**: Scalar distributivity is DERIVED from lattice structure.
-
-Given:
-- `DirectProduct` with `prod_sup_left` (lattice-level distributivity)
-- `CoxConsistency` for α and γ valuations (disjoint additivity)
-- `RectTensorCompatible` (bridge: `v(prod a b) = tensor(v(a), v(b))`)
-- Rich enough lattices (can construct disjoint preimages)
-
-Then: `tensor` satisfies `DistributesOverAdd`.
-
-This is the key bridge from "Symmetry 3" (lattice level) to "Axiom 3" (scalar level)! -/
+/-- Actual preimages transport disjoint event additivity to one scalar equation. -/
 theorem distributes_over_add_from_lattice
-    {α β γ : Type*}
-    [PlausibilitySpace α] [ComplementedLattice α]
-    [PlausibilitySpace β] [ComplementedLattice β]
-    [PlausibilitySpace γ] [ComplementedLattice γ]
-    (P : DirectProduct α β γ)
-    (vα : Valuation α) (vβ : Valuation β) (vγ : Valuation γ)
-    (hCα : KnuthSkilling.Probability.CoxConsistency α vα)
-    (hCγ : KnuthSkilling.Probability.CoxConsistency γ vγ)
+    {α β γ : Type*} [PlausibilitySpace α] [PlausibilitySpace β] [PlausibilitySpace γ]
+    (P : DirectProduct α β γ) (vα : Valuation α) (vβ : Valuation β) (vγ : Valuation γ)
+    (hAddα : ∀ {a b}, Disjoint a b → vα.val (a ⊔ b) = vα.val a + vα.val b)
+    (hAddγ : ∀ {a b}, Disjoint a b → vγ.val (a ⊔ b) = vγ.val a + vγ.val b)
     {tensor : PosReal → PosReal → PosReal}
-    (hCompat : KnuthSkilling.Probability.AppendixB.RectTensorCompatible
-      P vα vβ vγ tensor)
-    (hDisjoint : HasDisjointPreimages vα)
-    (hSurj_β : ValuationSurjective vβ) :
-    DistributesOverAdd tensor := by
-  -- DistributesOverAdd: ∀ x y t, tensor (addPos x y) t = addPos (tensor x t) (tensor y t)
-  intro x y t
-  -- Step 1: Get disjoint preimages a₁, a₂ with v(a₁)=x, v(a₂)=y
-  obtain ⟨a₁, a₂, hDisj, ha₁_eq, ha₂_eq, ha₁_pos, ha₂_pos⟩ := hDisjoint x y
-  -- Step 2: Get preimage b with v(b)=t
-  obtain ⟨b, hb_eq, hb_pos⟩ := hSurj_β t
-  -- Step 3: v(a₁ ⊔ a₂) = v(a₁) + v(a₂) by sum_rule
-  have hsum_α : vα.val (a₁ ⊔ a₂) = vα.val a₁ + vα.val a₂ :=
-    KnuthSkilling.Probability.sum_rule vα hCα hDisj
-  -- Step 4: prod (a₁ ⊔ a₂) b = prod a₁ b ⊔ prod a₂ b by prod_sup_left
-  have hprod : P.prod (a₁ ⊔ a₂) b = P.prod a₁ b ⊔ P.prod a₂ b := P.prod_sup_left a₁ a₂ b
-  -- Step 5: disjoint_prod_left preserves disjointness
-  have hDisj_γ : Disjoint (P.prod a₁ b) (P.prod a₂ b) := P.disjoint_prod_left hDisj
-  -- Step 6: sum_rule on γ: v(prod a₁ b ⊔ prod a₂ b) = v(prod a₁ b) + v(prod a₂ b)
-  have hsum_γ : vγ.val (P.prod a₁ b ⊔ P.prod a₂ b) =
-      vγ.val (P.prod a₁ b) + vγ.val (P.prod a₂ b) :=
-    KnuthSkilling.Probability.sum_rule vγ hCγ hDisj_γ
-  -- Step 7: RectTensorCompatible for each term
-  have h1 : vγ.val (P.prod a₁ b) = ((tensor ⟨vα.val a₁, ha₁_pos⟩ ⟨vβ.val b, hb_pos⟩ : PosReal) : ℝ) :=
-    hCompat a₁ b ha₁_pos hb_pos
-  have h2 : vγ.val (P.prod a₂ b) = ((tensor ⟨vα.val a₂, ha₂_pos⟩ ⟨vβ.val b, hb_pos⟩ : PosReal) : ℝ) :=
-    hCompat a₂ b ha₂_pos hb_pos
-  -- Step 8: Positivity of v(a₁ ⊔ a₂) to use RectTensorCompatible on LHS
-  have ha_sup_pos : 0 < vα.val (a₁ ⊔ a₂) := by
-    rw [hsum_α]; linarith [ha₁_pos, ha₂_pos]
-  have h3 : vγ.val (P.prod (a₁ ⊔ a₂) b) =
-      ((tensor ⟨vα.val (a₁ ⊔ a₂), ha_sup_pos⟩ ⟨vβ.val b, hb_pos⟩ : PosReal) : ℝ) :=
-    hCompat (a₁ ⊔ a₂) b ha_sup_pos hb_pos
-  -- Now combine everything using the chain:
-  -- LHS: tensor(addPos x y, t) = tensor(⟨v(a₁⊔a₂), _⟩, ⟨v(b), _⟩)  [since v(a₁⊔a₂)=x+y]
-  --                            = v(prod(a₁⊔a₂, b))                  [by RectTensorCompatible]
-  --                            = v(prod a₁ b ⊔ prod a₂ b)          [by prod_sup_left]
-  --                            = v(prod a₁ b) + v(prod a₂ b)       [by sum_rule]
-  --                            = tensor(x,t) + tensor(y,t)         [by RectTensorCompatible]
-  -- RHS: addPos (tensor x t) (tensor y t) = tensor x t + tensor y t
-
-  -- To prove equality of PosReal, we use Subtype.ext
+    (hCompat : KnuthSkilling.Probability.AppendixB.RectTensorCompatible P vα vβ vγ tensor)
+    (x y t : PosReal)
+    (hDisjoint : ∃ a₁ a₂, Disjoint a₁ a₂ ∧ vα.val a₁ = (x : ℝ) ∧ vα.val a₂ = (y : ℝ))
+    (hAttained : ∃ b, vβ.val b = (t : ℝ)) :
+    tensor (addPos x y) t = addPos (tensor x t) (tensor y t) := by
+  obtain ⟨a₁, a₂, hd, hx, hy⟩ := hDisjoint
+  obtain ⟨b, ht⟩ := hAttained
+  have ha₁ : 0 < vα.val a₁ := hx.symm ▸ x.2
+  have ha₂ : 0 < vα.val a₂ := hy.symm ▸ y.2
+  have hb : 0 < vβ.val b := ht.symm ▸ t.2
+  have hs := hAddα hd
+  have hsup : 0 < vα.val (a₁ ⊔ a₂) := by rw [hs]; exact add_pos ha₁ ha₂
+  have xeq : (⟨vα.val a₁, ha₁⟩ : PosReal) = x := Subtype.ext hx
+  have yeq : (⟨vα.val a₂, ha₂⟩ : PosReal) = y := Subtype.ext hy
+  have teq : (⟨vβ.val b, hb⟩ : PosReal) = t := Subtype.ext ht
+  have sum_eq : (⟨vα.val (a₁ ⊔ a₂), hsup⟩ : PosReal) = addPos x y :=
+    Subtype.ext (by simpa only [coe_addPos, hx, hy] using hs)
   apply Subtype.ext
-  -- Now we prove equality of the underlying reals
+  change (tensor (addPos x y) t : ℝ) = (tensor x t : ℝ) + (tensor y t : ℝ)
+  calc
+    _ = vγ.val (P.prod (a₁ ⊔ a₂) b) := by
+      simpa only [sum_eq, teq] using (hCompat (a₁ ⊔ a₂) b hsup hb).symm
+    _ = vγ.val (P.prod a₁ b) + vγ.val (P.prod a₂ b) := by
+      rw [P.prod_sup_left, hAddγ (P.disjoint_prod_left hd)]
+    _ = _ := by rw [hCompat a₁ b ha₁ hb, hCompat a₂ b ha₂ hb, xeq, yeq, teq]
 
-  -- Key: addPos x y has value x+y, and by hsum_α we know v(a₁⊔a₂) = x + y
-  have key_x : x = ⟨vα.val a₁, ha₁_pos⟩ := by ext; exact ha₁_eq.symm
-  have key_y : y = ⟨vα.val a₂, ha₂_pos⟩ := by ext; exact ha₂_eq.symm
-  have key_t : t = ⟨vβ.val b, hb_pos⟩ := by ext; exact hb_eq.symm
+private noncomputable def uniformValuation (Ω : Type*) [Fintype Ω] [Nonempty Ω] :
+    Valuation (Set Ω) where
+  val A := (A.ncard : ℝ) / Fintype.card Ω
+  monotone := by
+    intro A B h
+    exact div_le_div_of_nonneg_right (by exact_mod_cast Set.ncard_mono h) (Nat.cast_nonneg _)
+  val_bot := by simp
+  val_top := by simp [Nat.card_eq_fintype_card, Fintype.card_ne_zero]
 
-  -- LHS simplification
-  have lhs_eq : (addPos x y : ℝ) = vα.val (a₁ ⊔ a₂) := by
-    simp only [addPos, Subtype.coe_mk]
-    rw [← ha₁_eq, ← ha₂_eq]
-    exact hsum_α.symm
+private theorem uniform_add {Ω : Type*} [Fintype Ω] [Nonempty Ω] {A B : Set Ω}
+    (h : Disjoint A B) :
+    (uniformValuation Ω).val (A ⊔ B) =
+      (uniformValuation Ω).val A + (uniformValuation Ω).val B := by
+  change ((A ∪ B).ncard : ℝ) / _ = _
+  rw [Set.ncard_union_eq h, Nat.cast_add, add_div]
+  rfl
 
-  -- addPos x y = ⟨v(a₁⊔a₂), ha_sup_pos⟩ as PosReal
-  have addPos_eq : addPos x y = ⟨vα.val (a₁ ⊔ a₂), ha_sup_pos⟩ := by
-    ext; exact lhs_eq
+private theorem uniform_rect (Ω Λ : Type*) [Fintype Ω] [Nonempty Ω]
+    [Fintype Λ] [Nonempty Λ] :
+    KnuthSkilling.Probability.AppendixB.RectTensorCompatible (SetModel.setDirectProduct Ω Λ)
+      (uniformValuation Ω) (uniformValuation Λ) (uniformValuation (Ω × Λ)) mulPos := by
+  intro A B hA hB
+  change ((A ×ˢ B).ncard : ℝ) / Fintype.card (Ω × Λ) =
+    ((A.ncard : ℝ) / Fintype.card Ω) * ((B.ncard : ℝ) / Fintype.card Λ)
+  rw [Set.ncard_prod, Fintype.card_prod, Nat.cast_mul, Nat.cast_mul]
+  exact (div_mul_div_comm _ _ _ _).symm
 
-  -- Now the calculation at the real level
-  calc (tensor (addPos x y) t : ℝ)
-      _ = (tensor ⟨vα.val (a₁ ⊔ a₂), ha_sup_pos⟩ ⟨vβ.val b, hb_pos⟩ : ℝ) := by
-            rw [addPos_eq, key_t]
-      _ = vγ.val (P.prod (a₁ ⊔ a₂) b) := by rw [h3]
-      _ = vγ.val (P.prod a₁ b ⊔ P.prod a₂ b) := by rw [hprod]
-      _ = vγ.val (P.prod a₁ b) + vγ.val (P.prod a₂ b) := hsum_γ
-      _ = (tensor ⟨vα.val a₁, ha₁_pos⟩ ⟨vβ.val b, hb_pos⟩ : ℝ) +
-          (tensor ⟨vα.val a₂, ha₂_pos⟩ ⟨vβ.val b, hb_pos⟩ : ℝ) := by rw [h1, h2]
-      _ = (tensor x t : ℝ) + (tensor y t : ℝ) := by rw [key_x, key_y, key_t]
-      _ = (addPos (tensor x t) (tensor y t) : ℝ) := rfl
+namespace FiniteExample
+private def A : Set (Fin 3) := {0}
+private def B : Set (Fin 3) := {1, 2}
+private def T : Set Bool := {true}
+private noncomputable def left := uniformValuation (Fin 3)
+private noncomputable def right := uniformValuation Bool
 
+/-- Independent finite counting gives the three attained values used below. -/
+theorem attained_values : left.val A = 1 / 3 ∧ left.val B = 2 / 3 ∧ right.val T = 1 / 2 ∧
+    left.val A ≠ left.val B := by
+  have hA : A.ncard = 1 := by simp [A]
+  have hB : B.ncard = 2 := by simp [B, show (1 : Fin 3) ≠ 2 by decide]
+  have hT : T.ncard = 1 := by simp [T]
+  norm_num [left, right, uniformValuation, hA, hB, hT]
+
+/-- The finite event model instantiates the attained-value bridge. -/
+theorem distributivity :
+    mulPos (addPos ⟨1 / 3, by norm_num⟩ ⟨2 / 3, by norm_num⟩) ⟨1 / 2, by norm_num⟩ =
+      addPos (mulPos ⟨1 / 3, by norm_num⟩ ⟨1 / 2, by norm_num⟩)
+        (mulPos ⟨2 / 3, by norm_num⟩ ⟨1 / 2, by norm_num⟩) := by
+  apply distributes_over_add_from_lattice (SetModel.setDirectProduct (Fin 3) Bool)
+    left right (uniformValuation (Fin 3 × Bool)) uniform_add uniform_add (uniform_rect _ _)
+  · refine ⟨A, B, ?_, attained_values.1, attained_values.2.1⟩
+    simp [A, B]
+  · exact ⟨T, attained_values.2.2.1⟩
+end FiniteExample
 end KnuthSkilling.Multiplicative

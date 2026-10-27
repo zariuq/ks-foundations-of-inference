@@ -19,7 +19,7 @@ Like `AdditiveOrderIsoRep` for Appendix A, this file provides:
 - `sumRule`: P(A ∨ B) = P(A) + P(B) for disjoint A, B
 - `productRule`: P(A ∧ B) = P(A|B) · P(B)
 - `bayesTheorem`: P(A|B) · P(B) = P(B|A) · P(A)
-- `complementRule`: P(Aᶜ ∧ t) = 1 - P(A) (in context t)
+- `complementRule`: P(B) = 1 - P(A) for complementary events
 
 ## Usage
 
@@ -111,10 +111,9 @@ end ProbabilityCalculusClass
 
 /-- `CoxConsistency` provides `ProbabilityCalculusClass`.
 
-This takes the `CoxConsistency` witness as an explicit (non-inferable) argument, so it
-is a `def` rather than an `instance`: it builds the class from a supplied witness rather
-than being synthesized. -/
-def instProbabilityCalculusOfCoxConsistency
+The consistency witness is supplied explicitly; the proof is not installed as a
+global typeclass instance. -/
+theorem instProbabilityCalculusOfCoxConsistency
     {α : Type*} [PlausibilitySpace α] [ComplementedLattice α]
     {v : Valuation α} (hC : KnuthSkilling.Probability.CoxConsistency α v) :
     ProbabilityCalculusClass α v where

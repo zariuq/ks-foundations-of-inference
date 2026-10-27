@@ -49,7 +49,7 @@ instance holder_hasRepresentationTheorem
 
 /-- Cuts proof path: Dedekind cuts on the `KSSeparationStrict` grid. -/
 instance cuts_hasRepresentationTheorem
-    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparation α] [KSSeparationStrict α] :
+    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparationStrict α] :
     HasRepresentationTheorem α where
   exists_representation := by
     obtain ⟨Θ, hΘ_order, _hΘ_ident, hΘ_add⟩ :=
@@ -60,17 +60,7 @@ instance cuts_hasRepresentationTheorem
 theorem op_comm_of_hasRepresentationTheorem
     (α : Type*) [KSSemigroupBase α] [HasRepresentationTheorem α] :
     ∀ x y : α, op x y = op y x := by
-  obtain ⟨Θ, hΘ_order, hΘ_add⟩ := HasRepresentationTheorem.exists_representation (α := α)
-  intro x y
-  have h1 : Θ (op x y) = Θ x + Θ y := hΘ_add x y
-  have h2 : Θ (op y x) = Θ y + Θ x := hΘ_add y x
-  have h3 : Θ x + Θ y = Θ y + Θ x := add_comm (Θ x) (Θ y)
-  have h4 : Θ (op x y) = Θ (op y x) := by rw [h1, h2, h3]
-  have hΘ_inj : Function.Injective Θ := by
-    intro a b hab
-    have ha : a ≤ b := (hΘ_order a b).mpr (le_of_eq hab)
-    have hb : b ≤ a := (hΘ_order b a).mpr (le_of_eq hab.symm)
-    exact le_antisymm ha hb
-  exact hΘ_inj h4
+  obtain ⟨Θ, ho, ha⟩ := HasRepresentationTheorem.exists_representation (α := α)
+  exact (RepresentationResult.mk Θ ho ha).op_comm
 
 end KnuthSkilling.Additive

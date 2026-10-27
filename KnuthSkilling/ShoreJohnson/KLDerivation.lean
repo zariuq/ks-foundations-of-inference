@@ -5,42 +5,16 @@ import KnuthSkilling.ShoreJohnson.Bridge
 import KnuthSkilling.ShoreJohnson.AppendixTheoremI
 
 /-!
-# Shore--Johnson -> KL (Derivation Glue)
+# Separable inference profiles and the conditional KL conclusion
 
-This file packages a **clean, explicit assumption bundle** for the Shore--Johnson -> KL path.
-It does **not** attempt to re-prove Shore–Johnson's Appendix theorem; instead it makes every
-extra hypothesis explicit and then composes the already formalized functional-equation lemmas.
+This composition theorem assumes a separable stationarity bridge, ratio form,
+Cauchy equation and measurability. It does not derive those premises from the
+operator axioms. The conclusion is restricted to positive priors and candidates;
+constraints may still admit boundary competitors. There is no global positivity
+requirement on inferred posteriors.
 
-The intended story is:
-
-1. SJ1–SJ3 + regularity + expected-value constraint language ⇒ objective is equivalent to
-   a separable sum of atom terms (Shore–Johnson Theorem I/II).
-   In Lean this is captured by `AppendixTheoremI.SJAppendixAssumptions`, which
-   makes the Appendix regularity/richness hypotheses explicit and derives the sum-form
-   equivalence `ObjEquivEV F (ofAtom d)`.
-2. SJ4 (system independence) + regularity ⇒ logarithmic functional equation on the ratio
-   kernel (Shore–Johnson Theorem III).
-3. Hence the objective is KL up to scale.
-
-Relation to Appendix C:
-- The multiplicative Cauchy/log step here is the same analytic gate used in the
-  variational path. See `KnuthSkilling/Variational/Main.lean`.
-  For the explicit bridge file, see
-  `KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean`.
-
-Steps (1) and (2) are not fully formalized here; the point is to **keep them explicit** as
-assumptions while still providing a rigorously composable KL conclusion.
-
-Concrete discharge note:
-- The Appendix-style regularity axiom "`StationaryEV g p q cs ↔ IsMinimizer (ofAtom d) p cs q`"
-  is *not* vacuous: for the KL atom `d := klAtom` and kernel `g := gKL` (i.e. `log (w/u)`),
-  see `KnuthSkilling.ShoreJohnson.AppendixKL.stationaryEV_iff_isMinimizer_ofAtom_klAtom`.
-
-What we *do* provide (in addition to the atom-level `log` / `klAtom` identities) is an
-**inference-level** corollary: once an inference operator `I` is realized by some objective `F`
-and `F` is objective-equivalent to an atom-sum objective `ofAtom d`, then the atom-level KL
-identity implies that `I` is realized (for **positive priors**) by minimizing a constant multiple
-of the KL atom objective.
+The scale obtained from Cauchy rigidity is a real constant. Identifying its
+minimizers with ordinary KL additionally requires a positive scale.
 -/
 
 namespace KnuthSkilling.ShoreJohnson.KLDerivation
@@ -57,26 +31,18 @@ open KnuthSkilling.ShoreJohnson.Proof
 
 /-! ## Explicit assumption bundle -/
 
-structure ShoreJohnsonToKLAssumptions where
-  /-- Inference operator (SJ1–SJ4 live here). -/
+structure SeparableKLProfile where
+  /-- Inference relation; no operator axioms are hidden in this field. -/
   I : Inference.InferenceMethod
   /-- Objective functional realizing inference on expected-value constraint sets. -/
   F : ObjectiveFunctional
   /-- Atom divergence used for the sum-form objective `ofAtom d`. -/
   d : ℝ → ℝ → ℝ
-  /-- Bridge hypothesis: inference is realized by `F` (restricted to expected-value constraints). -/
-  realizesEV : RealizesEV I F
-  /-- Appendix-style regularity/richness assumptions yielding the sum-form equivalence. -/
+  /-- Objective realization on expected-value constraints with positive priors. -/
+  realizesEV : RealizesEVPositive I F
+  /-- Supplied stationarity certificates comparing the objective with the atom sum. -/
   appendix : SJAppendixAssumptions F d
-  /-- Interior regime hypothesis: inferred posteriors (for the EV constraint language) lie in the
-  positive simplex, so the Appendix-style stationarity conditions are meaningful. -/
-  inferPos :
-    ∀ {n : ℕ} (p : ProbDist n) (cs : Constraints.EVConstraintSet n) (q : ProbDist n),
-      I.Infer p (Constraints.toConstraintSet cs) q → ∀ i, 0 < q.p i
-  /-- Regularity: `d(0, x) = 0` for all `x`.
-  NOTE: Previously this was bundled with system independence via `SJSystemIndependenceAtom`.
-  We now separate regularity from the (too strong) universal additivity requirement, since
-  `klAtom` only satisfies the positivity-restricted version `SJSystemIndependenceAtomPos`. -/
+  /-- Zero-source regularity, separate from product additivity. -/
   regularAtom : RegularAtom d
   /-- Ratio-form hypothesis: `d(w,u)=w*g(w/u)` for `w,u>0`. -/
   ratio : Theorem.RatioForm d
@@ -123,14 +89,14 @@ theorem d_one_cauchy_of_ratioForm_mulCauchyOnPos (d : ℝ → ℝ → ℝ) (rati
 
 /-! ## KL conclusion under explicit assumptions -/
 
-theorem log_on_probabilities (h : ShoreJohnsonToKLAssumptions) :
+theorem log_on_probabilities (h : SeparableKLProfile) :
     ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → h.d 1 q = C * Real.log q := by
   -- Derive Cauchy equation for d(1, ·) from ratio form + MulCauchyOnPos
   have hCauchy := d_one_cauchy_of_ratioForm_mulCauchyOnPos h.d h.ratio h.gMul
   -- Apply the general Cauchy → log theorem
   exact mul_cauchy_Ioc_eq_const_mul_log (h.d 1) hCauchy h.d1Meas
 
-theorem d_eq_const_mul_klAtom (h : ShoreJohnsonToKLAssumptions) :
+theorem d_eq_const_mul_klAtom (h : SeparableKLProfile) :
     ∃ C : ℝ, ∀ w u : ℝ, 0 < w → 0 < u → h.d w u = C * klAtom w u := by
   exact ratioForm_eq_const_mul_klAtom_of_measurable h.d h.ratio h.gMul h.gMeas
 
@@ -194,19 +160,17 @@ theorem isMinimizer_ofAtom_iff_ofAtom_const_mul_klAtom_of_posPrior {n : ℕ}
 
 /-! ## Inference-level conclusion (for positive priors) -/
 
-theorem infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : ShoreJohnsonToKLAssumptions) :
-    ∃ C : ℝ, ∀ {n : ℕ} (p : ProbDist n) (cs : Constraints.EVConstraintSet n)
-      (q : ProbDist n), (∀ i, 0 < p.p i) →
+theorem infer_iff_scaledKL_of_identity (h : SeparableKLProfile) (C : ℝ)
+    (hC : ∀ w u : ℝ, 0 < w → 0 < u → h.d w u = C * klAtom w u) :
+    ∀ {n : ℕ} (p : ProbDist n) (cs : Constraints.EVConstraintSet n)
+      (q : ProbDist n), (∀ i, 0 < p.p i) → (∀ i, 0 < q.p i) →
       (h.I.Infer p (Constraints.toConstraintSet cs) q ↔
-        (∀ i, 0 < q.p i) ∧
-          IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q) := by
-  rcases d_eq_const_mul_klAtom h with ⟨C, hC⟩
-  refine ⟨C, ?_⟩
-  intro n p cs q hp
+        IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q) := by
+  intro n p cs q hp hqPos
   have hInferF :
       h.I.Infer p (Constraints.toConstraintSet cs) q ↔
         IsMinimizer h.F p (Constraints.toConstraintSet cs) q :=
-    h.realizesEV.infer_iff_minimizer_ev p cs q
+    h.realizesEV.infer_iff_minimizer_ev p cs q hp
   have hKl :
       IsMinimizer (ofAtom h.d) p (Constraints.toConstraintSet cs) q ↔
         IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q :=
@@ -214,15 +178,14 @@ theorem infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : ShoreJohn
       h.d C hC h.regularAtom p hp (Constraints.toConstraintSet cs) q
   constructor
   · intro hInfer
-    have hqPos : ∀ i, 0 < q.p i := h.inferPos p cs q hInfer
     have hMinF : IsMinimizer h.F p (Constraints.toConstraintSet cs) q := hInferF.1 hInfer
     have hq_mem : q ∈ Constraints.toConstraintSet cs := hMinF.1
     have hMinD : IsMinimizer (ofAtom h.d) p (Constraints.toConstraintSet cs) q :=
       (isMinimizer_iff_isMinimizer_ofAtom_of_pos h.appendix p hp cs q hq_mem hqPos).1 hMinF
     have hMinKl : IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p
         (Constraints.toConstraintSet cs) q := (hKl.1 hMinD)
-    exact ⟨hqPos, hMinKl⟩
-  · rintro ⟨hqPos, hMinKl⟩
+    exact hMinKl
+  · intro hMinKl
     have hq_mem : q ∈ Constraints.toConstraintSet cs := hMinKl.1
     have hMinD : IsMinimizer (ofAtom h.d) p (Constraints.toConstraintSet cs) q :=
       (hKl.2 hMinKl)
@@ -230,14 +193,14 @@ theorem infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : ShoreJohn
       (isMinimizer_iff_isMinimizer_ofAtom_of_pos h.appendix p hp cs q hq_mem hqPos).2 hMinD
     exact (hInferF.2 hMinF)
 
-/-! ### Specialized statement for expected-value constraint sets -/
 
-theorem infer_ev_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior (h : ShoreJohnsonToKLAssumptions) :
+theorem infer_iff_scaledKL_of_positive (h : SeparableKLProfile) :
     ∃ C : ℝ, ∀ {n : ℕ} (p : ProbDist n) (cs : Constraints.EVConstraintSet n)
-      (q : ProbDist n), (∀ i, 0 < p.p i) →
+      (q : ProbDist n), (∀ i, 0 < p.p i) → (∀ i, 0 < q.p i) →
       (h.I.Infer p (Constraints.toConstraintSet cs) q ↔
-        (∀ i, 0 < q.p i) ∧
-          IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q) := by
-  exact infer_iff_isMinimizer_ofAtom_const_mul_klAtom_of_posPrior h
+        IsMinimizer (ofAtom (fun w u => C * klAtom w u)) p (Constraints.toConstraintSet cs) q) := by
+  obtain ⟨C, hC⟩ := d_eq_const_mul_klAtom h
+  exact ⟨C, infer_iff_scaledKL_of_identity h C hC⟩
+
 
 end KnuthSkilling.ShoreJohnson.KLDerivation

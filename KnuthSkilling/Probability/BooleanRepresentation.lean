@@ -27,11 +27,11 @@ namespace KnuthSkilling.Probability.BooleanRepresentation
 /-!
 ## §1: K&S Representation Structure
 
-We work with the event-level output of the representation theorem: an additive
-order embedding `Θ`.
+The records below supply monotone weights. Modularity is an additional field
+of the Boolean profile; injectivity is not required.
 -/
 
-/-- The K&S representation: an additive order-preserving map to `ℝ`. -/
+/-- Supplied nonnegative monotone event weights. -/
 structure KSRepresentation (α : Type*) [LE α] where
   Θ : α → ℝ
   Θ_nonneg : ∀ a, 0 ≤ Θ a
@@ -41,6 +41,33 @@ structure KSRepresentation (α : Type*) [LE α] where
 structure KSBooleanRepresentation (α : Type*) [BooleanAlgebra α] extends KSRepresentation α where
   Θ_modular : ∀ a b, Θ (a ⊔ b) + Θ (a ⊓ b) = Θ a + Θ b
   Θ_bot : Θ ⊥ = 0
+
+/-- Finite disjoint joins are observed as sums by any disjoint-additive readout. -/
+theorem sum_eq_finset_sup_of_disjoint {ι L : Type*} [DistribLattice L] [OrderBot L]
+    (v : L → ℝ) (hbot : v ⊥ = 0)
+    (hadd : ∀ a b, Disjoint a b → v (a ⊔ b) = v a + v b)
+    (events : ι → L) (hdisj : Pairwise (fun i j => Disjoint (events i) (events j)))
+    (s : Finset ι) : (∑ i ∈ s, v (events i)) = v (s.sup events) := by
+  classical
+  induction s using Finset.induction_on with
+  | empty => simp [hbot]
+  | @insert i s hi ih =>
+    rw [Finset.sum_insert hi, Finset.sup_insert,
+      hadd _ _ (Finset.disjoint_sup_right.mpr
+        (fun _ hj => hdisj (ne_of_mem_of_not_mem hj hi).symm)), ih]
+
+/-- Disjoint additivity determines modularity on a complemented distributive lattice. -/
+theorem modular_of_disjoint_add {L : Type*} [DistribLattice L] [BoundedOrder L]
+    [ComplementedLattice L] (v : L → ℝ)
+    (hadd : ∀ a b, Disjoint a b → v (a ⊔ b) = v a + v b) (a b : L) :
+    v (a ⊔ b) + v (a ⊓ b) = v a + v b := by
+  obtain ⟨ac, hac⟩ := exists_isCompl a
+  have ha := hadd a (b ⊓ ac) (hac.disjoint.mono_right inf_le_right)
+  have hb := hadd (b ⊓ a) (b ⊓ ac) (hac.disjoint.mono inf_le_right inf_le_right)
+  rw [sup_inf_left, hac.sup_eq_top, inf_top_eq] at ha
+  rw [← inf_sup_left, hac.sup_eq_top, inf_top_eq] at hb
+  rw [inf_comm b a] at hb
+  linarith
 
 namespace KSBooleanRepresentation
 

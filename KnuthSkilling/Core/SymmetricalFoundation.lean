@@ -1,49 +1,17 @@
 /-
-# The Symmetrical Foundation of Measure, Probability, and Quantum Theories
+# Algebraic components of the symmetrical-foundation proposal
 
-Formalization of Skilling & Knuth (2018) "The Symmetrical Foundation of Measure,
-Probability and Quantum Theories", Annalen der Physik.
+The additive representation gives a sum rule. Exponential differences telescope
+for any supplied function; without event semantics and bounds they are positive
+ratios, not automatically conditional probabilities.
 
-## Relationship to FOI
+The pair algebra has three discriminant classes. Conjugate norms multiply in
+all classes; positivity with a definite zero selects the complex class. The
+chosen norm-square readout satisfies interference and mean-phase identities.
+These identities do not prove uniqueness among all alternative readouts.
+`quantumAmplitude` is an explicit choice, not a derived physical postulate.
 
-This paper BUILDS ON the Foundations of Inference (FOI) paper. Specifically:
-- Sections 1-3 (Measures, Probability) use FOI's Appendix A representation theorem
-- Section 4 (Quantum Theory) EXTENDS the scalar representation to pairs (complex numbers)
-
-The paper explicitly cites FOI Appendix A:
-  "In accordance with practical feasibility, the rule is demonstrated by construction
-   [appendix A, Knuth+Skilling:2012]"
-
-## What this file formalizes
-
-1. **Probability interpretation**: The FOI representation Θ : α → ℝ, when normalized,
-   gives probability as proportion (Section 3).
-
-2. **Pair Postulate**: Interactions are represented by pairs of real numbers (Section 4).
-
-3. **Product Rule Classification**: Associativity restricts bilinear products to three
-   classes (Eq. 19a,b,c), corresponding to complex, dual, and split-complex numbers.
-
-4. **Born Rule**: The uniform phase prior + additivity of mean rates forces p(x) = |x|²
-   (Eq. 28).
-
-## Key Results
-
-- Sum rule from FOI (sumRule_from_FOI)
-- Product rule for proportions (productRule)
-- Associativity of all three product types
-- Born rule properties (multiplicativity, unit phases)
-- Feynman sum rule / interference formula
-- Integral of cos over [0, 2π] = 0 (mean_cos_zero)
-- Selection: μ < 0 required for positive-definite norm (selection_complex_over_dual_split)
-- Norm multiplicativity for all μ (norm_multiplicative_all_mu)
-- Classification: GeneralBilinearAlgebra(a,b) ≃+* MuAlgebra(a+b²/4) (classification_bilinear_isomorphic)
-
-## References
-
-- Skilling & Knuth (2018). The symmetrical foundation of Measure, Probability and
-  Quantum theories. Annalen der Physik, 1800057.
-- Knuth & Skilling (2012). Foundations of Inference. Axioms 1(1), 38-73.
+Reference: Skilling and Knuth (2018), Annalen der Physik, 1800057.
 -/
 
 import KnuthSkilling.Additive.Main
@@ -56,24 +24,6 @@ namespace KnuthSkilling.SymmetricalFoundation
 
 open Complex Real MeasureTheory
 open KnuthSkilling.Additive
-
-/-!
-## Section 3: Probability from FOI
-
-The representation theorem (FOI Appendix A) gives Θ : α → ℝ with:
-- Order preservation: a ≤ b ↔ Θ(a) ≤ Θ(b)
-- Additivity: Θ(a ⊕ b) = Θ(a) + Θ(b)
-
-If an identity exists, we can **normalize** by requiring Θ(ident) = 0.
-
-For probability, we interpret:
-- The "root" O of the partition tree has Θ(O) = log(total_mass)
-- Relative probabilities are ratios: p(A|O) = Θ(A) / Θ(O) (in multiplicative form)
-
-Actually, the paper uses the multiplicative form p = exp(Θ), so:
-- p(A ⊕ B) = p(A) · p(B) becomes log-additive
-- For probability, we normalize: P(A|O) = p(A) / p(O)
--/
 
 section Probability
 
@@ -111,18 +61,6 @@ theorem productRule (α : Type*) [KSSemigroupBase α]
 
 end Probability
 
-/-!
-## Section 4: Quantum Theory - The Pair Postulate
-
-The genuinely new content: interactions are represented by PAIRS of real numbers,
-which intertwine according to associative bilinear rules.
-
-Key insight from Section 4.1-4.2:
-- Associativity of the bilinear product restricts to 3 classes (Eq. 19a,b,c)
-- The uniform phase prior selects the first class (complex numbers)
-- The modulus-squared observable (Born rule) follows from additivity of rates
--/
-
 section PairPostulate
 
 /-- The three product rules from Equation (19).
@@ -135,9 +73,9 @@ Associativity of the bilinear product ⊙ on ℝ² forces one of three forms:
 where μ is the discriminant parameter.
 -/
 inductive PairProduct
-  | complex  -- Discriminant μ = -1 (standard complex numbers)
-  | dual     -- Discriminant μ = 0 (dual numbers, nilpotent ε with ε² = 0)
-  | split    -- Discriminant μ = +1 (split-complex/hyperbolic numbers)
+  | complex
+  | dual
+  | split
   deriving DecidableEq, Repr
 
 /-- The general bilinear product with discriminant μ.
@@ -200,15 +138,14 @@ Via completing the square (change of basis e' = e - b/2), we get:
 So any such algebra is ISOMORPHIC to bilinearProduct(μ) for μ = a + b²/4.
 
 NOTE: The original theorem statement (claiming EQUALITY) was incorrect.
-The correct result is ISOMORPHISM - see TwoDimClassification.completingSquareIso.
+The correct result is ISOMORPHISM - see TwoDimClassification.completingSquareAlgEquiv.
 -/
 theorem classification_bilinear_isomorphic :
-    -- Any 2D bilinear algebra with parameters (a, b) is isomorphic to MuAlgebra(a + b²/4)
     ∀ (a b : ℝ),
       Nonempty (Algebra.TwoDimClassification.GeneralBilinearAlgebra a b ≃+*
                 Algebra.TwoDimClassification.MuAlgebra (a + b^2/4)) := by
   intro a b
-  exact Algebra.TwoDimClassification.classification_to_muAlgebra a b
+  exact ⟨(Algebra.TwoDimClassification.completingSquareAlgEquiv a b).toRingEquiv⟩
 
 /-- A bilinear product on ℝ² with identity (1,0) is determined by (0,1)*(0,1) = (a, b).
     The resulting algebra is isomorphic to MuAlgebra(a + b²/4).
@@ -218,33 +155,19 @@ theorem classification_bilinear_isomorphic :
     2. The structure constants (a, b) classify the algebra up to isomorphism
     3. The isomorphism class depends only on μ = a + b²/4 -/
 theorem classification_by_structure_constants (a b : ℝ) :
-    -- If (0,1) * (0,1) = (a, b), then the algebra is isomorphic to MuAlgebra(a + b²/4)
     let μ := a + b^2/4
     Nonempty (Algebra.TwoDimClassification.GeneralBilinearAlgebra a b ≃+*
               Algebra.TwoDimClassification.MuAlgebra μ) :=
-  Algebra.TwoDimClassification.classification_to_muAlgebra a b
+  ⟨(Algebra.TwoDimClassification.completingSquareAlgEquiv a b).toRingEquiv⟩
 
 end PairPostulate
-
-/-!
-## Section 4.2-4.3: Selection of Complex Numbers and the Born Rule
-
-The key argument:
-1. Observables (mean rates) must be additive
-2. The phase is uniformly distributed (no preferred direction)
-3. Only complex numbers have bounded periodic phase
-4. The exponent α in p(x) = |x|^α is determined by:
-   ⟨|e^{iθ} + e^{iφ}|^α⟩_{θ,φ} = 2 (sum of two unit inputs)
-5. Solution: α = 2, giving the Born rule p(x) = |x|²
--/
 
 section BornRule
 
 /-- The Born rule: probability/rate is modulus-squared.
 This is Equation (28): p(x) = |x|²
 
-The derivation in the paper shows that the exponent α = 2 is the unique value
-satisfying the constraint that the mean of combined unit inputs equals their sum.
+This file verifies its algebraic and mean-phase properties.
 -/
 def bornRule (z : ℂ) : ℝ := Complex.normSq z
 
@@ -298,14 +221,12 @@ For independent uniform phases θ, φ ∈ [0, 2π):
 The mean over uniform phases is:
   ⟨|e^{iθ} + e^{iφ}|²⟩ = 2 + 2⟨cos(θ - φ)⟩ = 2 + 0 = 2
 
-This is the constraint that determines α = 2 in p(x) = |x|^α.
+This verifies the mean-rate constraint for the chosen squared-norm readout.
 -/
 theorem mean_bornRule_sum_unit_phases :
-    -- For any θ, we have: ∫ φ in [0, 2π], |e^{iθ} + e^{iφ}|² dφ / (2π) = 2
     ∀ θ : ℝ, (1 / (2 * π)) * ∫ φ in (0 : ℝ)..(2 * π),
       bornRule (Complex.exp (θ * I) + Complex.exp ((φ : ℝ) * I)) = 2 := by
   intro θ
-  -- Expand using feynmanSumRule
   have h1 : ∀ φ : ℝ, bornRule (Complex.exp (θ * I) + Complex.exp (φ * I)) =
       2 + 2 * Real.cos (θ - φ) := by
     intro φ
@@ -315,20 +236,14 @@ theorem mean_bornRule_sum_unit_phases :
     simp only at this
     linarith [this]
   simp_rw [h1]
-  -- Now integrate 2 + 2cos(θ - φ) over φ
   rw [intervalIntegral.integral_add]
   · rw [intervalIntegral.integral_const]
     simp only [sub_zero, smul_eq_mul]
-    -- ∫ cos(θ - φ) dφ = 0 because the period is 2π
     have hcos : ∫ φ in (0 : ℝ)..(2 * π), Real.cos (θ - φ) = 0 := by
-      -- ∫_{0}^{2π} cos(θ - φ) dφ = ∫_{θ-2π}^{θ} cos(u) du = sin(θ) - sin(θ-2π) = 0
       have h := integral_cos (a := θ - 2 * π) (b := θ)
       simp only [Real.sin_sub_two_pi, sub_self] at h
-      -- integral_comp_sub_left: ∫ a..b f(c-x) = ∫ (c-a)..(c-b) f(x)
-      -- But mathlib's version may flip the limits. Let's compute directly.
       rw [intervalIntegral.integral_comp_sub_left (fun x => Real.cos x) θ]
       simp only [sub_zero]
-      -- After this, goal is ∫ in (θ-2π)..θ, which is exactly h
       exact h
     rw [intervalIntegral.integral_const_mul, hcos]
     simp only [mul_zero, add_zero]
@@ -349,7 +264,6 @@ Note: All μ < 0 are isomorphic (via rescaling), so μ = -1 is just the canonica
 representative. The physical content is μ < 0, not specifically μ = -1.
 -/
 theorem selection_complex_over_dual_split :
-    -- μ < 0 is necessary and sufficient for positive-definite conjugate norm
     ∀ μ : ℝ, μ < 0 ↔
       (∀ z : Algebra.TwoDimClassification.MuAlgebra μ,
         0 ≤ z.conjNorm ∧ (z.conjNorm = 0 → z = 0)) := by
@@ -365,21 +279,6 @@ theorem norm_multiplicative_all_mu (μ : ℝ) (u v : ℝ × ℝ) :
   ring
 
 end BornRule
-
-/-!
-## Connection Back to FOI
-
-The Symmetrical Foundation paper unifies:
-1. **Measures** (Section 2): FOI's sum rule for additive quantities
-2. **Probability** (Section 3): FOI's product rule for proportions/ratios
-3. **Quantum** (Section 4): FOI extended to pairs → complex Feynman rules + Born rule
-
-The crucial insight: the SAME symmetries (closure, commutativity, associativity, limitless)
-apply at all three levels. The only difference is:
-- Measures: scalar representation
-- Probability: scalar representation + normalization
-- Quantum: pair representation (complex) + Born rule
--/
 
 section UnifiedView
 

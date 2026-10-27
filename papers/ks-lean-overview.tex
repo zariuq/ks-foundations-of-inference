@@ -149,8 +149,8 @@ Extension & $\sigma$-additivity bridge & \href{https://github.com/zariuq/ks-foun
 \subsection{Key Files}
 
 All paths below are relative to \href{https://github.com/zariuq/ks-foundations-of-inference/tree/main/KnuthSkilling/}{\texttt{KnuthSkilling/}}.
-Line numbers and line anchors refer to the \texttt{main} branch at the revision current when this document was
-built (September 2026); they may drift as the files evolve.
+Core references use stable paths and declaration names. Other line anchors refer
+to the September 2026 revision and may drift.
 
 \begin{description}
 \item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling.lean}{\texttt{KnuthSkilling.lean}}] Main entrypoint (FOI core + extra K\&S modules)
@@ -161,7 +161,7 @@ built (September 2026); they may drift as the files evolve.
       \texttt{KnuthSkillingAlgebraBase}
 \item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean}{\texttt{Core/Algebra.lean}}] \texttt{iterate\_op}, separation axioms (\texttt{KSSeparation*})
 \item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{\texttt{Core/ScaleCompleteness.lean}}] $\sigma$-completeness axioms and $\sigma$-additivity theorem
-\item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/SymmetricalFoundation.lean}{\texttt{Core/SymmetricalFoundation.lean}}] Section 4 quantum derivation
+\item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/SymmetricalFoundation.lean}{\texttt{Core/SymmetricalFoundation.lean}}] Section 4 pair algebra and chosen squared-norm observations
 
 \medskip
 \item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Main.lean}{\texttt{Additive/Main.lean}}] Appendix A entrypoint (typeclass interface + instances)
@@ -173,7 +173,7 @@ built (September 2026); they may drift as the files evolve.
 
 \medskip
 \item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}}] Appendix B pipeline (product $\Rightarrow$ exponential $\Rightarrow$ scaled mult)
-\item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Proofs/Direct/DirectProof.lean}{\texttt{Multiplicative/Proofs/Direct/DirectProof.lean}}] Appendix B direct algebraic proof path
+\item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/DistributiveTensor.lean}{\texttt{Multiplicative/DistributiveTensor.lean}}] Appendix B direct algebraic proof path
 \item[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/ScaledMultRep.lean}{\texttt{Multiplicative/ScaledMultRep.lean}}] Appendix B common interface for both proof paths
 
 \medskip
@@ -186,6 +186,35 @@ built (September 2026); they may drift as the files evolve.
 \medskip
 \item[{\footnotesize\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{Probability/ConditionalProbability/Basic.lean}}}] Section 7 conditional probability (lattice path)
 \end{description}
+
+\subsection{Valuations and retained observations}
+\texttt{Core} keeps the public records separate while sharing their laws.
+\texttt{ModularValuation.toSumRuleValuation} preserves the supplied values;
+\texttt{ProbabilityFunction.toAdditiveValuation} exposes disjoint additivity.
+For a modular Heyting valuation $\nu$, let
+\[
+ I_\nu(a)=[\nu(a),1-\nu(\neg a)].
+\]
+\texttt{IntervalValuation.ofHeyting} constructs normalized monotone intervals
+and supplies a compatible valuation. Their width is
+$1-\nu(a\vee\neg a)$: zero observes top-valued excluded middle;
+reflecting that observation to $a\vee\neg a=\top$ needs top-reflection.
+A three-chain valuation shows why the latter premise matters.
+
+Negation refines the reflected interval:
+$I_\nu(\neg a)\subseteq\{1-x:x\in I_\nu(a)\}$.
+Equality holds exactly when $\nu(\neg\neg a)=\nu(a)$.
+H5 has a regular element with exact reflection and positive width.
+Dense-Top is equivalent to excluded middle for every element, rather than only
+for regular elements. The sharp two-thirds theorem counts elements uniformly;
+it does not bound errors for arbitrary weighted observations.
+
+Given any compatible modular valuation and a positive lower evidence bound,
+\texttt{conditionalBounds\_sound} contains its conditional ratio in the lower
+ratio and the upper ratio clipped at one. An arbitrary interval record does not
+assert that such a compatible valuation exists. Positive evidence is essential.
+The sum, complement and interval laws describe retained observations without
+postulating a new execution or serialization language.
 
 %==============================================================================
 \section{Combination and Valuation Axioms (K\&S Sections 3--4)}
@@ -205,8 +234,8 @@ Symmetries 0--2 constrain how valuations relate to lattice structure:
 
 The \textbf{direct product} symmetries (3--4) are formalized separately in \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}} (see Section~\ref{sec:product}).
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L179}{\texttt{KSSemigroupBase}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L179-L187}{Lines 179--187, Core/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{\texttt{KSSemigroupBase}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{Core/Basic.lean}}
 
 Identity-free core structure containing only Symmetries 0--2.
 \end{definition}
@@ -219,8 +248,8 @@ class KSSemigroupBase (alpha : Type*) extends LinearOrder alpha where
   op_strictMono_right : forall x : alpha, StrictMono (fun y => op x y)  -- Sym 0+1
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L236}{\texttt{KnuthSkillingMonoidBase}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L236-L243}{Lines 236--243, Core/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{\texttt{KnuthSkillingMonoidBase}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{Core/Basic.lean}}
 
 Adds an identity element (\texttt{ident}) without assuming it is the order minimum.
 \end{definition}
@@ -232,8 +261,8 @@ class KnuthSkillingMonoidBase (alpha : Type*) extends KSSemigroupBase alpha wher
   op_ident_left : forall x : alpha, op ident x = x
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L245}{\texttt{KnuthSkillingAlgebraBase}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L245-L247}{Lines 245--247, Core/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{\texttt{KnuthSkillingAlgebraBase}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{Core/Basic.lean}}
 
 The probability-theory convenience layer: assumes the identity is the order minimum (\texttt{ident\_le}).
 \end{definition}
@@ -245,14 +274,15 @@ class KnuthSkillingAlgebraBase (alpha : Type*) extends KnuthSkillingMonoidBase a
 
 \begin{remark}[Implicit Linear Order]
 K\&S never explicitly state that elements are totally ordered, but their proofs rely on trichotomy.
-We make this explicit via \texttt{LinearOrder}. This is \textbf{necessary}, not cosmetic:
-\texttt{no\_pointRepresentation\_with\_incomparables} proves that any partial order with
-incomparable elements admits no faithful $\Theta : \alpha \to \mathbb{R}$.
-Dropping totality yields interval-valued representations (Walley's imprecise probability);
+We make this explicit via \texttt{LinearOrder}.
+\texttt{no\_orderReflectingPointRepresentation\_with\_incomparables} rules out an
+order-reflecting scalar representation on incomparable elements. One-way fidelity
+can still admit scalar valuations. A chosen interval representation has additional
+coherence obligations; partial order alone does not construct imprecise probability;
 see \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/TotalityImprecision.lean}{\texttt{Core/TotalityImprecision.lean}}.
 \end{remark}
 
-\begin{remark}[Identity Element---Essential for Positivity]
+\begin{remark}[Identity, Minimum and Sign Conditions]
 \textbf{Important}: The identity element (\texttt{ident}) is \textbf{not} among K\&S's numbered symmetries.
 K\&S explicitly state that the bottom element $\bot$ is \textbf{optional}:
 \begin{quote}
@@ -260,12 +290,12 @@ K\&S explicitly state that the bottom element $\bot$ is \textbf{optional}:
 ``Some mathematicians opt to include the bottom element on aesthetic grounds, whereas others opt to exclude it'' (K\&S lines 340--341)
 \end{quote}
 
-\textbf{However}, our formalization \textbf{disproves} K\&S's claim that fidelity alone ensures positivity.
+Under the base ordered-semigroup profile, fidelity and associativity alone do not fix signs.
 The $\mathbb{Z}$ counterexample (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Counterexamples/NegativeWithoutIdentity.lean}{\texttt{Additive/Counterexamples/NegativeWithoutIdentity.lean}}) shows:
 \begin{itemize}
-\item $(\mathbb{Z}, +, \leq)$ satisfies K\&S Axioms 1--2 but has no identity
+\item $(\mathbb{Z}, +, \leq)$ has an additive identity, but it is not a least element
 \item The representation theorem applies, giving $\Theta : \mathbb{Z} \to \mathbb{R}$
-\item But $\Theta(-1) = -1 < 0$---\textbf{negative values appear}
+\item But $\Theta(-1)=-\Theta(1)<0$---\textbf{negative values appear}
 \end{itemize}
 
 \textbf{Corrected understanding}:
@@ -274,7 +304,7 @@ The $\mathbb{Z}$ counterexample (\href{https://github.com/zariuq/ks-foundations-
 \item \textbf{Without identity}: Representation works but positivity is \textbf{not guaranteed}
 \end{itemize}
 
-Identity with \texttt{ident\_le} (i.e., $\bot \leq x$ for all $x$) is \textbf{essential} for positivity, not ``aesthetic.''
+A minimum identity guarantees nonnegativity. Positive-real addition supplies positivity without an identity or minimum.''
 
 \begin{lstlisting}[caption={$\mathbb{Z}$ counterexample: representation works but positivity fails}]
 -- Z is a valid KSSemigroupBase (satisfies Axioms 1-2)
@@ -298,7 +328,7 @@ theorem Int.holder_embedding_has_negatives :
 \end{remark}
 
 \begin{remark}[Unbundled Axiom Predicates]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L142-L164}{Lines 142--164, Core/Basic.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{Core/Basic.lean}}
 
 In addition to the bundled typeclasses, we provide \textbf{unbundled predicates} for each axiom.
 This enables flexible hypothesis tracking---use individual predicates when you need minimal assumptions,
@@ -306,12 +336,12 @@ or bundled classes when you want ergonomic access to multiple axioms.
 
 \textbf{Combination predicates} (Core/Basic.lean):
 \begin{itemize}
-  \item \texttt{OpAssoc op} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L142}{line 142}): $\forall x\, y\, z,\; \text{op}(\text{op}(x, y), z) = \text{op}(x, \text{op}(y, z))$
-  \item \texttt{OpStrictMonoLeft op} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L146}{line 146}): $\forall y,\; \text{StrictMono}(\lambda x.\, \text{op}(x, y))$
-  \item \texttt{OpStrictMonoRight op} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L150}{line 150}): $\forall x,\; \text{StrictMono}(\lambda y.\, \text{op}(x, y))$
-  \item \texttt{OpIdentLeft op e} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L154}{line 154}): $\forall x,\; \text{op}(e, x) = x$
-  \item \texttt{OpIdentRight op e} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L158}{line 158}): $\forall x,\; \text{op}(x, e) = x$
-  \item \texttt{IdentIsMin e} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L162}{line 162}): $\forall x,\; e \leq x$
+  \item \texttt{OpAssoc op} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{source}): $\forall x\, y\, z,\; \text{op}(\text{op}(x, y), z) = \text{op}(x, \text{op}(y, z))$
+  \item \texttt{OpStrictMonoLeft op} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{source}): $\forall y,\; \text{StrictMono}(\lambda x.\, \text{op}(x, y))$
+  \item \texttt{OpStrictMonoRight op} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{source}): $\forall x,\; \text{StrictMono}(\lambda y.\, \text{op}(x, y))$
+  \item \texttt{OpIdentLeft op e} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{source}): $\forall x,\; \text{op}(e, x) = x$
+  \item \texttt{OpIdentRight op e} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{source}): $\forall x,\; \text{op}(x, e) = x$
+  \item \texttt{IdentIsMin e} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{source}): $\forall x,\; e \leq x$
 \end{itemize}
 
 \textbf{Connection theorems}: The \texttt{KSSemigroupBase} and \texttt{KnuthSkillingAlgebraBase} namespaces
@@ -322,8 +352,8 @@ provide lemmas like \texttt{KSSemigroupBase.opAssoc} that extract the unbundled 
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean}{\texttt{KnuthSkilling/Core/Algebra.lean}}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean\#L23}{\texttt{iterate\_op}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean\#L23-L25}{Lines 23--25, Algebra.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean}{\texttt{iterate\_op}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean}{Algebra.lean}}
 
 \textbf{K\&S Paper Reference}: This corresponds to K\&S's use of ``$n$ copies of $x$'' in their proofs,
 written as $x^n$ or $nx$ depending on context (see K\&S equations around line 370--380 in the TeX source).
@@ -342,8 +372,8 @@ This builds the sequence: $\text{ident}, x, x \oplus x, x \oplus (x \oplus x), \
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{\texttt{KnuthSkilling/Core/Basic.lean}}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L374}{\texttt{iterate\_op\_pnat}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean\#L374-L375}{Lines 374--375, Core/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{\texttt{iterate\_op\_pnat}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Basic.lean}{Core/Basic.lean}}
 
 For identity-free reasoning, we define iteration using positive natural numbers ($\mathbb{N}^+$) instead of $\mathbb{N}$. This works on the weaker \texttt{KSSemigroupBase} (no identity required).
 \end{definition}
@@ -428,7 +458,7 @@ Two elements $a, b$ of an ordered semigroup form an \emph{anomalous pair} if the
 (or the symmetric condition $a^n > b^n > a^{n+1}$ for negative elements).
 \end{definition}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/AnomalousPairs.lean\#L66}{\texttt{NoAnomalousPairs}}]
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/AnomalousPairs.lean\#L40}{\texttt{NoAnomalousPairs}}]
 An ordered semigroup has \emph{no anomalous pairs} if no such pair exists.
 \end{definition}
 
@@ -476,7 +506,7 @@ The formalization extracts this implicit assumption as the \textbf{separation pr
 discovered by Claude Code during the formalization process and proposed by Ben Goertzel
 (see Appendix~\ref{app:separation-history} for the discovery timeline):
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean\#L335}{\texttt{KSSeparationSemigroup}}]
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean}{\texttt{KSSeparationSemigroup}}]
 \label{def:separation}
 For any positive elements $a, x, y$ with $x < y$, there exist exponents $(n, m) \in \mathbb{N}^+$
 such that:
@@ -539,7 +569,7 @@ Without the assumption that identity is a minimum, the scale can have both ``pos
 cones (under the additive embedding $\Theta$). In Lean we express this identity-free using
 \texttt{IsPositive}/\texttt{IsNegative}. Bilateral separation is separation on each cone:
 
-\begin{lstlisting}[caption={Bilateral separation (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean\#L415-L426}{Core/Algebra.lean:415--426})},numbers=none]
+\begin{lstlisting}[caption={Bilateral separation (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/Algebra.lean}{Core/Algebra.lean})},numbers=none]
 -- SeparationSemigroupProp: for IsPositive a, x, y and x < y, sandwich condition
 -- SeparationNegProp: for IsNegative a, x, y and x < y, sandwich condition
 def SeparationBilateralProp [KSSemigroupBase alpha] : Prop :=
@@ -549,7 +579,7 @@ def SeparationBilateralProp [KSSemigroupBase alpha] : Prop :=
 \begin{remark}[Probability setting]
 Under \texttt{IdentIsMinimum}, \texttt{IsNegative} is impossible, so the negative branch is vacuous.
 In this setting, \texttt{SeparationBilateralProp} is equivalent to \texttt{SeparationSemigroupProp}
-(see Core/Algebra.lean:436--443).
+(see Core/Algebra.lean).
 \end{remark}
 
 %------------------------------------------------------------------------------
@@ -590,7 +620,7 @@ theorem not_anomalous_arch (not_anomalous : ¬has_anomalous_pair (α := α)) :
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean}{\texttt{Additive/Axioms/SandwichSeparation.lean}}
 
-\begin{lstlisting}[caption={Separation $\Rightarrow$ Commutativity (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean\#L404}{SandwichSeparation.lean:404})},numbers=none]
+\begin{lstlisting}[caption={Separation $\Rightarrow$ Commutativity (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean\#L347}{SandwichSeparation.lean:404})},numbers=none]
 theorem ksSeparation_implies_comm [KSSeparation α]
     (x y : α) (hx : ident < x) (hy : ident < y) :
     op x y = op y x := by
@@ -599,7 +629,7 @@ theorem ksSeparation_implies_comm [KSSeparation α]
   ...
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Separation $\Rightarrow$ Archimedean (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean\#L132-L144}{SandwichSeparation.lean:132--144})},numbers=none]
+\begin{lstlisting}[caption={Separation $\Rightarrow$ Archimedean (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean\#L100-L112}{SandwichSeparation.lean:132--144})},numbers=none]
 /-- The Archimedean property follows from KSSeparation. -/
 theorem op_archimedean_of_separation [KSSeparation α] (a x : α) (ha : ident < a) :
     ∃ n : ℕ, x < Nat.iterate (op a) n a := by
@@ -655,8 +685,25 @@ following K\&S's original approach.
 \item Third: Hölder/Alimov path discovered by GPT-5.2 Pro (classical connection)
 \end{itemize}
 
-All three proofs are complete. The Hölder path uses \textbf{NoAnomalousPairs only}---connecting
+All three proofs are complete. The Hölder path uses \textbf{NoAnomalousPairs on the base ordered semigroup}---connecting
 to classical ordered semigroup theory.
+
+\paragraph{Shared laws and unit calibration.}
+Each route supplies \texttt{RepresentationResult}: its actual map, order reflection
+and additivity. The common laws interpret seeded event folds as sums, derive
+commutativity, and prove uniqueness up to positive scale at a positive anchor.
+The calibrated maps agree pointwise; ordered histories and their intermediate
+observations remain separate data. An existing identity maps to zero automatically.
+\texttt{cutSet\_eq\_insert\_pnat} relates the two independently defined rational
+cuts by inserting zero. Their readouts agree on positive elements, so ordinary
+additivity and strictness reuse the positive-natural proofs with explicit identity cases.
+\paragraph{Concrete models and premise boundaries.}
+Real addition witnesses the signed profile, nonnegative-real addition the
+minimum-identity profile, and positive-real addition the positive-only profile.
+\texttt{three\_routes\_calibrated} compares the actual Hölder, Grid and cuts outputs
+on nonnegative reals. \texttt{all\_positive\_monoid\_impossible} explains why the
+positive-only adapter must use a genuine semigroup: requiring every element
+positive while retaining an identity would make its premise bundle inconsistent.
 
 \subsection{Proof Architecture 1: The Hölder Path (Recommended)}
 
@@ -665,8 +712,8 @@ to classical ordered semigroup theory.
 The Hölder path is \textbf{recommended} because it is the shortest and connects to classical
 ordered semigroup theory.
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L166}{\texttt{holder\_embedding\_of\_noAnomalousPairs}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L166-L169}{Lines 166--169, HolderEmbedding.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L140}{\texttt{holder\_embedding\_of\_noAnomalousPairs}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L140-L143}{Lines 140--143, HolderEmbedding.lean}}
 
 If a K\&S algebra has no anomalous pairs, it embeds into $\mathbb{R}$.
 \end{theorem}
@@ -678,11 +725,11 @@ theorem holder_embedding_of_noAnomalousPairs [NoAnomalousPairs alpha] :
   exact holder_not_anom h
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L274}{\texttt{representation\_semigroup}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L272-L278}{Lines 272--278, HolderEmbedding.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L214}{\texttt{representation\_semigroup}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L214-L220}{Lines 214--220, HolderEmbedding.lean}}
 
 \textbf{Identity-free representation}: NoAnomalousPairs implies additive embedding into $\mathbb{R}$.
-$\Theta$ is defined up to an additive constant (no canonical zero point).
+At a positive anchor $a$, $\Theta(x)/\Theta(a)$ fixes the unit; a nonzero additive shift violates additivity.
 \end{theorem}
 
 \begin{lstlisting}[caption={Identity-free representation theorem}]
@@ -695,8 +742,8 @@ theorem representation_semigroup [NoAnomalousPairs alpha] :
   exact <theta_preserves_order G iso, theta_additive G iso>
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L302}{\texttt{representation\_from\_noAnomalousPairs}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L300-L307}{Lines 300--307, HolderEmbedding.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L242}{\texttt{representation\_from\_noAnomalousPairs}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L242-L249}{Lines 242--249, HolderEmbedding.lean}}
 
 \textbf{With identity}: NoAnomalousPairs implies the full representation with $\Theta(\text{ident}) = 0$.
 \end{theorem}
@@ -738,6 +785,16 @@ class RepresentationGlobalization (alpha : Type*)
       forall x y : alpha, Theta (op x y) = Theta x + Theta y
 \end{lstlisting}
 
+\paragraph{Faithful local grid observations.}
+\texttt{Goertzel.lean} distinguishes an evaluator on two grid states from one on the
+whole extended grid. The former exists exactly when equality and order agree with
+\texttt{ThetaRaw}; the latter requires fibre consistency and strict comparison preservation.
+Under the supplied grid bridge and commutation laws,
+\texttt{realizesThetaRaw\_iff\_choose$\delta$\_and\_baseAdmissible} fixes the coefficient
+and characterizes full realization without a B-emptiness premise. Shifted-boundary
+power laws and common-denominator statistics are shared with \texttt{DeltaShift.lean}.
+These local induction results do not repair the separate global-anchor interface.
+
 \subsubsection{The Globalization Construction (``Triple Family Trick'')}
 
 The instance \texttt{representationGlobalization\_of\_KSSeparationStrict} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Globalization.lean\#L101-L850}{lines 101--850}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Globalization.lean}{\texttt{Globalization.lean}})
@@ -755,7 +812,7 @@ from \href{https://github.com/zariuq/ks-foundations-of-inference/tree/main/Knuth
 
 \item \textbf{Well-definedness}: Use 3-atom families $F_3 = \{a_0, a_1, x\}$ to show that $\Theta(x)$
 does not depend on the choice of reference atom. Path independence follows from
-\texttt{DeltaSpec\_unique} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Core/Induction/Construction.lean\#L751}{line 751}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Core/Induction/Construction.lean}{\texttt{Additive/Proofs/GridInduction/Core/Induction/Construction.lean}}).
+\texttt{DeltaSpec\_unique} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Core/Induction/Construction.lean}{\texttt{Additive/Proofs/GridInduction/Core/Induction/Construction.lean}}).
 
 \item \textbf{Order preservation}: For $a < b$, build $F_3 = \{a_0, a, b\}$ and use
 \texttt{MultiGridRep.strictMono} to show $\Theta(a) < \Theta(b)$.
@@ -776,12 +833,23 @@ The grid construction has \textbf{parametric versions} that could work without i
 \item \texttt{mu\_param F r base}: Grid valuation with explicit base element instead of \texttt{ident}
 \item \texttt{kGrid\_param F base}: Grid set using \texttt{mu\_param}
 \item \texttt{mu\_pnat}, \texttt{kGrid\_pnat}: Truly identity-free using $\mathbb{N}^+$ iteration (no 0 exponents)
-\item \texttt{RepresentationGlobalizationAnchor}: Class for representations normalizing to an arbitrary anchor
+\item \texttt{RepresentationResult.calibrate\_anchor}: a supplied additive embedding can be calibrated to one at a positive anchor; \texttt{zero\_anchor\_globalization\_impossible} rules out zero without identity or separation assumptions
 \end{itemize}
 
 Currently, the globalization instance uses identity:
 \\
 \texttt{representationGlobalization\_of\_KSSeparationStrict}.
+
+The local induction distinguishes multiplicity witnesses from evaluated grid points.
+\texttt{factorsThrough\_mu\_iff\_existsUnique} characterizes exactly when a witness
+observation descends to a unique readout on reachable grid points.
+\texttt{choose$\delta$\_eq\_of\_grid\_embedding} shows that preserving both the evaluated
+points and their supplied readouts preserves the chosen coefficient, including the B-empty case.
+The interpretation law \texttt{choose$\delta$\_ofRepresentation} recovers the new-atom value
+of a supplied global representation; its existence is not assumed in the local induction.
+Equality of endpoints does not imply equality of multiplicity vectors. These local laws
+do not repair the separate, inconsistent identity-anchor interface described above.
+
 An identity-free instance using the parametric infrastructure is marked as \textbf{future work} in \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Globalization.lean}{\texttt{Globalization.lean}}.
 
 For identity-free representations \textbf{today}, use the Hölder path (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean}{\texttt{HolderEmbedding.lean}})
@@ -832,9 +900,9 @@ The DirectCuts path provides \textbf{both identity-based and identity-free} vers
 \begin{itemize}
 \item \textbf{Identity-free}: Uses \texttt{Theta\_cuts\_pnat} with $\mathbb{N}^+$ iteration
   \begin{itemize}
-  \item \texttt{Theta\_cuts\_pnat} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/DirectCuts.lean\#L1433}{line 1433}): Definition via Dedekind cuts using $\mathbb{N}^+$ iteration
-  \item \texttt{Theta\_cuts\_pnat\_strictMono} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/DirectCuts.lean\#L1529}{line 1529}): Strict monotonicity (fully proven)
-  \item \texttt{Theta\_cuts\_pnat\_add} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/DirectCuts.lean\#L1635}{line 1635}): Additivity (fully proven)
+  \item \texttt{Theta\_cuts\_pnat} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/DirectCuts.lean\#L737}{line 737}): Definition via Dedekind cuts using $\mathbb{N}^+$ iteration
+  \item \texttt{Theta\_cuts\_pnat\_strictMono} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/DirectCuts.lean\#L846}{line 846}): Strict monotonicity (fully proven)
+  \item \texttt{Theta\_cuts\_pnat\_add} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/DirectCuts.lean\#L947}{line 947}): Additivity (fully proven)
   \item No reference to \texttt{ident} anywhere
   \end{itemize}
 
@@ -880,8 +948,8 @@ Instead:
 Thus $\Theta : \alpha \to \mathbb{R}$ is directly defined without requiring $\alpha$ to already embed into $\mathbb{R}$.
 \end{remark}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/Main.lean\#L85}{\texttt{associativity\_representation\_cuts}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/Main.lean\#L85-L112}{Lines 85--112, Additive/Proofs/DirectCuts/Main.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/Main.lean\#L67}{\texttt{associativity\_representation\_cuts}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/DirectCuts/Main.lean\#L67-L94}{Lines 67--94, Additive/Proofs/DirectCuts/Main.lean}}
 
 The cuts-based representation theorem.
 \end{theorem}
@@ -902,12 +970,12 @@ theorem associativity_representation_cuts
 \begin{remark}[Comparison to Grid Proof]
 The cuts proof is significantly more compact:
 \begin{itemize}
-\item \textbf{Grid proof}: 6,620 lines (ThetaPrime: 3,616 + MultiGrid: 3,004 --- induction machinery, extension lemmas, path independence)
-\item \textbf{Cuts proof}: 2,076 lines (DirectCuts.lean --- direct construction, no induction)
+\item \textbf{Grid proof}: finite atom grids, cut coefficients, and an observation-preserving extension
+\item \textbf{Cuts proof}: independent rational suprema, with shared natural/positive-natural comparison
 \end{itemize}
 
 However, the grid proof more closely follows K\&S's original argument structure (A/B/C partition, $\delta$-choice),
-while the cuts proof uses the standard Hölder technique from ordered group theory.
+while the cuts proof constructs suprema of rational comparison sets.
 \end{remark}
 
 \begin{corollary}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Main.lean\#L87}{\texttt{op\_comm\_of\_associativity}}]
@@ -934,27 +1002,27 @@ theorem op_comm_of_associativity
 \textbf{Files}:
 \begin{itemize}
 \item \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}} (K\&S's Appendix B pipeline via Appendix A)
-\item \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Proofs/Direct/DirectProof.lean}{\texttt{Multiplicative/Proofs/Direct/DirectProof.lean}} (Alternative: direct algebraic path)
+\item \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/DistributiveTensor.lean}{\texttt{Multiplicative/DistributiveTensor.lean}} (Alternative: direct algebraic path)
 \item \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/ScaledMultRep.lean}{\texttt{Multiplicative/ScaledMultRep.lean}} (Common interface for both paths)
 \end{itemize}
 
 \subsection{Two Complete Proof Paths}
 
-Like Appendix A, the formalization provides \textbf{two independent proofs} of Appendix B's conclusion.
+The formalization provides two routes to Appendix B's conclusion, with distinct premises and shared elementary laws.
 Both paths arrive at the same result: the tensor operation $\otimes$ on positive reals equals
 multiplication up to a global scale constant.
 
 \subsubsection{Path 1: K\&S's Derivation}
 
-\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}} follows K\&S's paper exactly: ``apply Appendix A again to $\otimes$''.
-This path uses \texttt{AdditiveOrderIsoRep} (from Appendix A) to derive the product equation,
+\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}} consumes an additive order isomorphism onto $\mathbb{R}$.
+This stronger representation hypothesis provides the inverse used to derive the product equation,
 then solves it to show $\otimes$ is scaled multiplication.
 
 \subsubsection{Path 2: Direct Algebraic Proof}
 
-\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Proofs/Direct/DirectProof.lean}{\texttt{Multiplicative/Proofs/Direct/DirectProof.lean}} provides a direct algebraic proof:
+\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/DistributiveTensor.lean}{\texttt{Multiplicative/DistributiveTensor.lean}} provides a direct algebraic proof:
 
-\begin{lstlisting}[caption={Direct proof: Axioms 3--4 + commutativity $\Rightarrow$ scaled multiplication (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Proofs/Direct/DirectProof.lean\#L471}{DirectProof.lean:471})},numbers=none]
+\begin{lstlisting}[caption={Direct proof: Axioms 3--4 + commutativity $\Rightarrow$ scaled multiplication (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/DistributiveTensor.lean}{DistributiveTensor.lean})},numbers=none]
 /-- If tensor satisfies Axioms 3-4 and is commutative, then it is scaled multiplication. -/
 theorem tensor_coe_eq_mul_div_const_of_assoc_of_distrib_of_comm
     (hAssoc : forall u v w, tensor (tensor u v) w = tensor u (tensor v w))
@@ -967,7 +1035,7 @@ theorem tensor_coe_eq_mul_div_const_of_assoc_of_distrib_of_comm
 \begin{remark}[Why Two Paths?]\leavevmode
 \begin{itemize}
 \item \textbf{Path 1 (K\&S)}: Uses \texttt{AdditiveOrderIsoRep} for the tensor (``apply Appendix A again'')
-\item \textbf{Path 2 (Direct)}: Derives result directly from distributivity + associativity + commutativity
+\item \textbf{Path 2 (Direct)}: Distributivity, associativity and injectivity of $t\mapsto1\otimes t$ suffice; commutativity is one sufficient way to obtain injectivity.
 \item Both arrive at the same conclusion: $\otimes$ is scaled multiplication
 \end{itemize}
 \end{remark}
@@ -976,7 +1044,7 @@ theorem tensor_coe_eq_mul_div_const_of_assoc_of_distrib_of_comm
 
 Both paths provide the \texttt{ScaledMultRep} interface, which captures the OUTPUT of Appendix B:
 
-\begin{lstlisting}[caption={ScaledMultRep interface (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/ScaledMultRep.lean\#L44}{Multiplicative/ScaledMultRep.lean:44})},numbers=none]
+\begin{lstlisting}[caption={ScaledMultRep interface (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/ScaledMultRep.lean}{Multiplicative/ScaledMultRep.lean})},numbers=none]
 structure ScaledMultRep (tensor : PosReal -> PosReal -> PosReal) where
   C : Real                -- The scale constant C > 0
   C_pos : 0 < C
@@ -1025,11 +1093,10 @@ At the graded level, we define \texttt{DistributesOverAdd} as a property:
 \begin{itemize}
 \item \texttt{DistributesOverAdd} is a predicate that a tensor may or may not satisfy
 \item \texttt{TensorAlgebra} is the bundled class including this property
-\item The derivation of \texttt{DistributesOverAdd} from \texttt{prod\_sup\_left} is now
-\textbf{fully formalized} in \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/DistributivityDerivation.lean}{\texttt{DistributivityDerivation.lean}}
+\item At attained values, disjoint event additivity and rectangle compatibility imply a scalar distributivity equation. The normalized event bridge does not imply this global predicate.
 \end{itemize}
 
-\begin{lstlisting}[caption={Distributivity property (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L68}{Multiplicative/Basic.lean:68})},numbers=none]
+\begin{lstlisting}[caption={Distributivity property (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{Multiplicative/Basic.lean})},numbers=none]
 -- Defines the PROPERTY (not an axiom, just a predicate)
 def DistributesOverAdd (tensor : PosReal -> PosReal -> PosReal) : Prop :=
   forall x y t : PosReal, tensor (addPos x y) t = addPos (tensor x t) (tensor y t)
@@ -1038,47 +1105,34 @@ def DistributesOverAdd (tensor : PosReal -> PosReal -> PosReal) : Prop :=
 variable (hDistrib : DistributesOverAdd tensor)
 \end{lstlisting}
 
-\begin{remark}[Connection between lattice and graded levels]
-In K\&S's development:
-\begin{enumerate}
-\item Symmetry 3 is stated at the lattice level: $(x \times t) \sqcup (y \times t) = (x \sqcup y) \times t$
-\item After Appendix A provides the representation $\Theta$, this gives distributivity at the graded level
-\item The graded tensor satisfies \texttt{DistributesOverAdd}
-\end{enumerate}
-
-\textbf{Current state}: We have \emph{all three} levels formalized:
-\begin{itemize}
-\item Lattice level: \texttt{DirectProduct.prod\_sup\_left} (Multiplicative/DirectProduct.lean)
-\item Graded level: \texttt{DistributesOverAdd} (Multiplicative/Basic.lean)
-\item Bridge: \texttt{distributes\_over\_add\_from\_lattice} (Multiplicative/DistributivityDerivation.lean)
-\end{itemize}
-
-\textbf{Derivation}: The theorem \texttt{distributes\_over\_add\_from\_lattice} proves that
-\texttt{DistributesOverAdd} follows from:
-\begin{enumerate}
-\item \texttt{prod\_sup\_left}: Lattice-level distributivity
-\item \texttt{disjoint\_prod\_left}: Disjointness preservation
-\item \texttt{sum\_rule}: Valuation additivity on disjoint events (from \texttt{CoxConsistency})
-\item \texttt{RectTensorCompatible}: Bridge predicate $v(\text{prod}\ a\ b) = \text{tensor}(v(a), v(b))$
-\end{enumerate}
-This shows that scalar distributivity is \textbf{derived}, not assumed!
+\begin{remark}[Attainable values and the normalized-range boundary]
+\texttt{distributes\_over\_add\_from\_lattice} takes actual disjoint-event
+preimages for $x,y$ and an attained right value $t$. Disjoint additivity and
+\texttt{RectTensorCompatible} imply
+$(x+y)\otimes t=(x\otimes t)+(y\otimes t)$ for that tuple.
+No premise that normalized valuations attain every positive real is used.
+Such a premise is impossible already at the value 2, as
+\texttt{normalized\_global\_preimages\_impossible} proves.
+The finite example uses a uniform three-point space, its uniform Boolean
+product, and attained values $1/3$, $2/3$, $1/2$. These witnesses instantiate the
+bridge; they do not establish global scalar distributivity.
 \end{remark}
 
 \begin{remark}[Unbundled Tensor Predicates and TensorAlgebra]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L59-L123}{Lines 59--123, Multiplicative/Basic.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{Multiplicative/Basic.lean}}
 
 Following the unified axiom organization, tensor properties have both unbundled predicates and a bundled class:
 
 \textbf{Unbundled predicates}:
 \begin{itemize}
-\item \texttt{TensorAssoc tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L72}{line 72}): Associativity of $\otimes$
-\item \texttt{TensorPos tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L77}{line 77}): Positivity-preserving
-\item \texttt{TensorStrictMonoLeft tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L81}{line 81}): Strict monotonicity in left argument
-\item \texttt{TensorStrictMonoRight tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L85}{line 85}): Strict monotonicity in right argument
-\item \texttt{DistributesOverAdd tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L68}{line 68}): Distributivity over $+$
+\item \texttt{TensorAssoc tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}): Associativity of $\otimes$
+\item \texttt{TensorPos tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}): Positivity-preserving
+\item \texttt{TensorStrictMonoLeft tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}): Strict monotonicity in left argument
+\item \texttt{TensorStrictMonoRight tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}): Strict monotonicity in right argument
+\item \texttt{DistributesOverAdd tensor} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}): Distributivity over $+$
 \end{itemize}
 
-\textbf{Bundled class} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L103}{line 103}):
+\textbf{Bundled class} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}):
 \begin{lstlisting}
 class TensorAlgebra (tensor : PosReal -> PosReal -> PosReal) : Prop where
   distributes : DistributesOverAdd tensor
@@ -1086,19 +1140,30 @@ class TensorAlgebra (tensor : PosReal -> PosReal -> PosReal) : Prop where
   pos : TensorPos tensor
 \end{lstlisting}
 
-\textbf{Convenience theorem} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L248}{line 248}): \texttt{productEquation\_of\_tensorAlgebra} provides
+\textbf{Convenience theorem} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}): \texttt{productEquation\_of\_tensorAlgebra} provides
 an ergonomic entry point for proofs that use all the bundled axioms together.
 
 \textbf{Design principle}: Use unbundled predicates (e.g., \texttt{hDistrib : DistributesOverAdd tensor})
 when tracking minimal hypotheses. Use \texttt{[TensorAlgebra tensor]} for ergonomic access in longer proofs.
 \end{remark}
 
+\paragraph{Faithful multiplicative observations.}
+Cox's continuous conjunction generator, the global product-equation solver,
+and the direct distributive-tensor theorem have different hypotheses.
+Their supplied operations have explicit monoid interpretations and
+law-carrying multiplicative readouts. Both readouts are injective on their
+declared carriers, and transport independently defined finite left folds to
+products. A fixed tensor determines its scale uniquely; this does not remove
+Cox's positive-power freedom. Wrong-scale and shifted-readout controls fail the
+multiplicative law, while a constant-one homomorphism fails injectivity.
+Equal endpoint products still need not recover ordered input histories.
+
 \subsection{Product Equation}
 
 Appendix B shows $\otimes$ must be multiplication up to a global scale.
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L43}{\texttt{Psi\_is\_exp}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L43}{Line 43, Multiplicative/Main.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Psi\_is\_exp}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{Line 43, Multiplicative/Main.lean}}
 
 The inverse representation $\Psi = \Theta^{-1}$ is exponential:
 $\Psi(x) = C \cdot e^{Ax}$ for some constants $C > 0$ and $A$.
@@ -1123,7 +1188,7 @@ The proof delegates to:
 
 \texttt{productEquation\_solution\_of\_continuous\_strictMono}
 \\
-(\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/FunctionalEquation.lean\#L294}{line 294}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/FunctionalEquation.lean}{\texttt{Multiplicative/FunctionalEquation.lean}})
+(\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/FunctionalEquation.lean}{source}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/FunctionalEquation.lean}{\texttt{Multiplicative/FunctionalEquation.lean}})
 
 This proves a \textbf{classical result from functional equations theory}:
 
@@ -1131,20 +1196,17 @@ This proves a \textbf{classical result from functional equations theory}:
 \[ \Psi(\tau + \xi) + \Psi(\tau + \eta) = \Psi(\tau + \zeta(\xi, \eta)) \]
 for all $\tau, \xi, \eta \in \mathbb{R}$, and if $\Psi$ is positive, continuous, and strictly monotone, then $\Psi(x) = C \cdot e^{Ax}$ for some constants $C > 0$ and $A$.
 
-\textbf{Key steps} (561 lines):
-\begin{enumerate}
-\item Extract shift constant: $a := \zeta(0,0)$ gives $\Psi(x+a) = 2\Psi(x)$
-\item Extend to powers: $\Psi(x + na) = 2^n \Psi(x)$ for all $n \in \mathbb{Z}$
-\item Extend to rationals: $\Psi(x + (m/n)a) = 2^{m/n} \Psi(x)$ for all $m/n \in \mathbb{Q}$
-\item Use continuity + density: Extend to all reals
-\item Conclude: $\Psi(x) = C \cdot 2^{x/a} = C \cdot e^{(\ln 2/a) \cdot x}$
-\end{enumerate}
+\textbf{Proof components}: doubling bounds give surjectivity; transported
+translations are positive-additive maps and hence linear. Their multiplicative
+coefficients have additive logarithms, yielding the exponential form.
+The strict-monotone variant derives continuity from a dense positive range.
+
 
 The continuity and monotonicity hypotheses are \textbf{derived} (not assumed) from the order isomorphism $\Theta : \text{PosReal} \simeq_o \mathbb{R}$ established in Appendix A:
 
 \begin{itemize}
-\item \texttt{Psi\_strictMono} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L148}{line 148}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{\texttt{Multiplicative/Basic.lean}}): Since $\Psi := \Theta^{-1}$ and $\Theta$ is an order isomorphism, $\Theta^{-1}$ is strictly monotone.
-\item \texttt{Psi\_continuous} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean\#L154}{line 154}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{\texttt{Multiplicative/Basic.lean}}): Order isomorphisms $\mathbb{R} \simeq_o \mathbb{R}$ are continuous (order topology).
+\item \texttt{Psi\_strictMono} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{\texttt{Multiplicative/Basic.lean}}): Since $\Psi := \Theta^{-1}$ and $\Theta$ is an order isomorphism, $\Theta^{-1}$ is strictly monotone.
+\item \texttt{Psi\_continuous} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{source}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Basic.lean}{\texttt{Multiplicative/Basic.lean}}): Order isomorphisms $\mathbb{R} \simeq_o \mathbb{R}$ are continuous (order topology).
 \end{itemize}
 \end{remark}
 
@@ -1164,12 +1226,12 @@ x \otimes y &= \Psi(\Theta(x \otimes y)) = \Psi(\Theta(x) + \Theta(y)) \\
 &= C \cdot (x/C) \cdot (y/C) = \frac{x \cdot y}{C}
 \end{align*}
 
-\textbf{Conclusion}: $x \otimes y = (x \cdot y) / C$ \quad (Lean: \texttt{tensor\_coe\_eq\_mul\_div\_const}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L61}{line 61})
+\textbf{Conclusion}: $x \otimes y = (x \cdot y) / C$ \quad (Lean: \texttt{tensor\_coe\_eq\_mul\_div\_const}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{source})
 }}
 \end{center}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L105}{\texttt{tensor\_mul\_rule\_normalized}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L105}{Line 105, Multiplicative/Main.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{tensor\_mul\_rule\_normalized}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{Line 105, Multiplicative/Main.lean}}
 
 The tensor operation is multiplication up to a global constant:
 $(x \otimes y) / C = (x/C) \cdot (y/C)$.
@@ -1319,16 +1381,21 @@ noncomputable def entropyForm (A B C : R) : R -> R :=
 \subsection{Alternative Route: Shore--Johnson Axioms}
 \label{subsec:shore-johnson-var}
 
-Shore--Johnson (1980) derive the \emph{same} functional equation via \emph{different} axioms.
+The formalized functional-equation route is conditional: atom-level product
+additivity, ratio form and regularity are explicit premises. Product factorization
+of selected posteriors does not itself imply additivity of objective values.
 
-\textbf{Their axioms} (SJ1--SJ4): consistency requirements on inference methods, especially \textbf{system independence} (SJ4): inference on independent subsystems should factor.
+In the discrete case the four structural laws do not characterize relative-entropy
+inference. Johnson and Shore's correction adds preservation of the prior under
+null information~\cite{JohnsonShore1983}. The finite model in
+\path{KnuthSkilling/ShoreJohnson/MaximumEntropy.lean} satisfies the four structural
+laws while ignoring prior values, and fails this additional law.
 
-\textbf{Their derivation}: SJ4 applied to Dirac test distributions forces the multiplicative Cauchy equation $g(xy) = g(x) + g(y)$.
+The multiplicative Cauchy equation is the special case $\lambda=\mu=g$ of the
+variational equation. The shared measurable solver gives the logarithmic conclusion.
 
-\textbf{The connection}: This is the \emph{special case} $\lambda = \mu = g$ of the variational equation. Same Gate R (measurability) forces the same logarithmic solution.
-
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean\#L33}{\texttt{mulCauchyOnPos\_eq\_const\_mul\_log\_of\_variationalEquation\_solution\_measurable}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean\#L33-L65}{Lines 33--65, Bridges/ShoreJohnsonVariationalBridge.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}{\texttt{mulCauchyOnPos\_eq\_const\_mul\_log\_of\_variationalEquation\_solution\_measurable}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}{Lines 33--65, Bridges/ShoreJohnsonVariationalBridge.lean}}
 \end{theorem}
 
 \begin{lstlisting}[caption={Shore--Johnson as special case of Path A solver},firstnumber=33]
@@ -1337,9 +1404,9 @@ theorem mulCauchyOnPos_eq_const_mul_log_of_variationalEquation_solution_measurab
     exists C : R, forall x : R, 0 < x -> g x = C * Real.log x := by
 \end{lstlisting}
 
-\textbf{Summary}: K\&S (variational) and Shore--Johnson (axiomatic) are two routes to the same functional equation. Both require the same regularity gate; both yield the same logarithmic solution.
+\textbf{Scope}: the shared solver proves logarithmic rigidity from the supplied functional equation. The operator-to-analytic implications are separate theorem targets.
 
-See Appendix~\ref{app:shore-johnson} for the full Shore--Johnson formalization.
+See Appendix~\ref{app:shore-johnson} for the conditional analysis and finite inference models.
 
 %==============================================================================
 \section{Divergence (K\&S Section 6.1)}
@@ -1361,15 +1428,15 @@ Setting $A = u$, $B = -\log(u)$, $C = 1$ in the entropy form gives the divergenc
 
 \textbf{Key properties}:
 \begin{itemize}
-\item \textbf{Non-negative}: $\phi(w, u) \geq 0$, with equality iff $w = u$ (formalized in \texttt{atomDivergence\_nonneg}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L102-L120}{lines 102--120})
+\item \textbf{Non-negative for positive weights}: $\phi(w, u) \geq 0$, with equality iff $w = u$ (formalized in \texttt{atomDivergence\_nonneg}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{source})
 \item \textbf{Asymmetric}: $\phi(w, u) \neq \phi(u, w)$ in general (it's NOT a distance metric)
 \item \textbf{Connects variational calculus to information theory}: Bridge between Appendix C and Section 8
 \end{itemize}
 
 \textbf{Forward reference}: This atom divergence will be specialized to \textbf{probability distributions} in Section 11 (Information and Entropy), giving the Kullback-Leibler divergence formula.
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L68}{\texttt{atomDivergence}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L68-L69}{Lines 68--69, Divergence.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{\texttt{atomDivergence}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{source}}
 
 The per-atom divergence: $\phi(w, u) = u - w + w \log(w/u)$.
 \end{definition}
@@ -1379,48 +1446,40 @@ noncomputable def atomDivergence (w u : Real) : Real :=
   u - w + w * log (w / u)
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L102}{\texttt{atomDivergence\_nonneg}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L102-L120}{Lines 102--120, Divergence.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{\texttt{atomDivergence\_nonneg}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{source}}
 \end{theorem}
 
 \begin{lstlisting}[caption={Divergence non-negativity}]
 theorem atomDivergence_nonneg (w u : Real) (hw : 0 < w) (hu : 0 < u) :
     0 <= atomDivergence w u := by
-  unfold atomDivergence
-  -- Rewrite as w * (u/w - 1 - log(u/w)) and use log inequality
-  let s := u / w
-  have hs : 0 < s := div_pos hu hw
-  have hrewrite : u - w + w * log (w / u) = w * (s - 1 - log s) := by ...
-  rw [hrewrite]
-  exact mul_nonneg (le_of_lt hw) (log_ineq s hs)
+  rw [atomDivergence_eq_mul_klFun w u hw hu]
+  exact mul_nonneg hu.le (InformationTheory.klFun_nonneg (div_pos hw hu).le)
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L123}{\texttt{atomDivergence\_eq\_zero\_iff}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L123-L159}{Lines 123--159, Divergence.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{\texttt{atomDivergence\_eq\_zero\_iff}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{source}}
 
-Divergence equals zero if and only if $w = u$.
+For positive weights, divergence equals zero if and only if $w = u$.
 \end{theorem}
 
-\begin{lstlisting}[caption={Divergence equals zero iff $w = u$ (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L123}{Divergence.lean:123})},numbers=none]
+\begin{lstlisting}[caption={Divergence equals zero iff $w = u$ (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{Divergence.lean})},numbers=none]
 theorem atomDivergence_eq_zero_iff (w u : Real) (hw : 0 < w) (hu : 0 < u) :
     atomDivergence w u = 0 <-> w = u := by
-  constructor
-  . -- If phi(w,u) = 0, then w = u
-    intro h
-    let s := u / w
-    have hs : 0 < s := div_pos hu hw
-    -- phi(w,u) = w * (s - 1 - log s) = 0
-    -- w > 0 implies s - 1 - log s = 0
-    -- But s - 1 - log s > 0 for s != 1 (strict log inequality)
-    -- So s = 1, hence u = w
-    ...
-  .
-    intro heq
-    rw [heq]
-    exact atomDivergence_self u hu
+  rw [atomDivergence_eq_mul_klFun w u hw hu, mul_eq_zero]
+  simp only [hu.ne', false_or]
+  rw [InformationTheory.klFun_eq_zero_iff (div_pos hw hu).le,
+    div_eq_one_iff_eq hu.ne']
 \end{lstlisting}
 
 %==============================================================================
+\paragraph{Extended and real divergence.}
+For nonnegative summable weights, \texttt{Countable.klDiv\_toMeasure\_eq\_divergenceInfTop\_all}
+identifies the extended countable sum with Mathlib's KL without a support premise.
+A positive source atom over a zero reference atom contributes infinity.
+Supported real-series identities retain their summability hypotheses;
+absolute continuity alone does not ensure finite countable KL.
+
 \section{Conditional Probability Calculus (K\&S Section 7)}
 %==============================================================================
 
@@ -1456,7 +1515,7 @@ The Lean formalization respects the \textbf{logical dependency order}, not K\&S'
 
 \textbf{Lattice hierarchy in the code}:
 \begin{itemize}
-\item \texttt{Bivaluation} structure (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L77}{line 77}): \texttt{[Lattice $\alpha$]} - general lattice
+\item \texttt{Bivaluation} structure (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}): \texttt{[Lattice $\alpha$]} - general lattice
 \item Main theorems (chain-product, Bayes): \texttt{[DistribLattice $\alpha$]} - needs distributivity
 \item Optional theorems (\texttt{sumRule\_general}, \texttt{complementRule}): \texttt{[BooleanAlgebra $\alpha$]} - needs complements
 \end{itemize}
@@ -1466,8 +1525,8 @@ The Lean formalization respects the \textbf{logical dependency order}, not K\&S'
 
 \subsection{Bivaluation and Axiom 5}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L77}{\texttt{Bivaluation}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L77-L91}{Lines 77--91, Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{Bivaluation}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 A bivaluation $p : \alpha \to \alpha \to \mathbb{R}$ represents conditional plausibility on a lattice with:
 \begin{itemize}
@@ -1486,12 +1545,12 @@ The lattice operations ($\vee$, $\wedge$, $\bot$) describe the \emph{event algeb
 \end{remark}
 
 \begin{definition}[Axiom 5: Chaining Associativity]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L127-L142}{Lines 127--142 (ChainingOp structure), Basic.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Lines 127--142 (ChainingOp structure), Basic.lean}}
 
 The chaining operation $\odot : \mathbb{R} \to \mathbb{R} \to \mathbb{R}$ on plausibility values satisfies:
 \end{definition}
 
-\begin{lstlisting}[caption={\texttt{ChainingOp} structure (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L127}{Basic.lean:127})},numbers=none]
+\begin{lstlisting}[caption={\texttt{ChainingOp} structure (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Basic.lean})},numbers=none]
 structure ChainingOp where
   chain : Real -> Real -> Real
   chain_assoc : forall x y z, chain (chain x y) z = chain x (chain y z)
@@ -1506,12 +1565,12 @@ structure ChainingOp where
 \[ (p(a|b) \odot p(b|c)) \odot p(c|d) = p(a|b) \odot (p(b|c) \odot p(c|d)) \]
 
 \begin{definition}[Chain Rule]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L222}{Line 222, Basic.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 The chain rule connects the chaining operation to the bivaluation:
 \end{definition}
 
-\begin{lstlisting}[caption={\texttt{ChainingAssociativity} class (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L222}{Basic.lean:222})},numbers=none]
+\begin{lstlisting}[caption={\texttt{ChainingAssociativity} class (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Basic.lean})},numbers=none]
 class ChainingAssociativity (alpha : Type*) [Lattice alpha] [BoundedOrder alpha]
     (B : Bivaluation alpha) where
   chainOp : ChainingOp
@@ -1523,7 +1582,7 @@ This says: $p(a|c) = p(a|b) \odot p(b|c)$ for chains $a \leq b \leq c$.\footnote
 
 \subsection{The Product Equation Reappears}
 
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L245-L314}{Lines 245--314, Basic.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 K\&S's brilliant observation: combining chaining associativity with the sum rule gives the \textbf{exact same product equation} as Appendix B!
 
@@ -1541,14 +1600,14 @@ This is \textbf{left-distributivity over addition} - exactly the Appendix B hypo
 
 \subsection{Chain-Product Rule}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L348}{\texttt{chainProductRule}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L348}{Line 348, Basic.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{chainProductRule}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 For chains $a \leq b \leq c$ in a lattice with normalized bivaluation ($p(t|t) = 1$):
 \[ \Pr(a|c) = \Pr(a|b) \cdot \Pr(b|c) \]
 \end{theorem}
 
-\begin{lstlisting}[caption={\texttt{chainProductRule} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L348}{Basic.lean:348})},numbers=none]
+\begin{lstlisting}[caption={\texttt{chainProductRule} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Basic.lean})},numbers=none]
 theorem chainProductRule
     {alpha : Type*} [DistribLattice alpha] [BoundedOrder alpha]
     (B : Bivaluation alpha) [CA : ChainingAssociativity alpha B]
@@ -1566,14 +1625,14 @@ theorem chainProductRule
 
 \subsection{Bayes' Theorem}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L424}{\texttt{bayesTheorem}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L424}{Line 424, Basic.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{bayesTheorem}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 For $x, \theta \leq t$ in a distributive lattice:
 \[ \Pr(x|\theta) \cdot \Pr(\theta|t) = \Pr(\theta|x) \cdot \Pr(x|t) \]
 \end{theorem}
 
-\begin{lstlisting}[caption={\texttt{bayesTheorem} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L424}{Basic.lean:424})},numbers=none]
+\begin{lstlisting}[caption={\texttt{bayesTheorem} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Basic.lean})},numbers=none]
 theorem bayesTheorem
     {alpha : Type*} [DistribLattice alpha] [BoundedOrder alpha]
     (B : Bivaluation alpha) [CA : ChainingAssociativity alpha B]
@@ -1587,14 +1646,14 @@ theorem bayesTheorem
 
 \subsection{Probability as Ratio of Measures}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L714}{\texttt{prob\_eq\_measure\_ratio}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L714}{Line 714, Basic.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{prob\_eq\_measure\_ratio}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 Define the \textbf{unconditional measure} by $m(x) := p(x|\top)$. Then for any context $t \neq \bot$:
 \[ \Pr(x|t) = \frac{m(x \wedge t)}{m(t)} \]
 \end{theorem}
 
-\begin{lstlisting}[caption={\texttt{prob\_eq\_measure\_ratio} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L714}{Basic.lean:714})},numbers=none]
+\begin{lstlisting}[caption={\texttt{prob\_eq\_measure\_ratio} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Basic.lean})},numbers=none]
 theorem prob_eq_measure_ratio
     {alpha : Type*} [DistribLattice alpha] [BoundedOrder alpha]
     (B : Bivaluation alpha) [CA : ChainingAssociativity alpha B]
@@ -1606,11 +1665,11 @@ This single formula subsumes the sum rule, chain-product rule, and range $[0,1]$
 
 \subsection{baseMeasure Satisfies Measure Axioms}
 
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L559-L576}{Lines 559--576, Basic.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}}
 
 The derived \texttt{baseMeasure} satisfies the classical measure axioms:
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L559}{\texttt{baseMeasure\_satisfies\_measure\_axioms}}]
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{baseMeasure\_satisfies\_measure\_axioms}}]
 For a normalized Bivaluation ($p(t|t) = 1$ for $t > \bot$), \texttt{baseMeasure} is a probability measure:
 \begin{enumerate}
 \item $m(\bot) = 0$ (empty set has measure zero)
@@ -1620,7 +1679,7 @@ For a normalized Bivaluation ($p(t|t) = 1$ for $t > \bot$), \texttt{baseMeasure}
 \end{enumerate}
 \end{theorem}
 
-\begin{lstlisting}[caption={\texttt{baseMeasure\_satisfies\_measure\_axioms} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L559}{Basic.lean:559})},numbers=none]
+\begin{lstlisting}[caption={\texttt{baseMeasure\_satisfies\_measure\_axioms} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{Basic.lean})},numbers=none]
 theorem baseMeasure_satisfies_measure_axioms
     (hNormalized : forall t : alpha, Bot < t -> B.p t t = 1)
     (hTop : (Top : alpha) != Bot) :
@@ -1636,13 +1695,13 @@ theorem baseMeasure_satisfies_measure_axioms
 \begin{remark}[Additional Measure Properties]
 The formalization also proves:
 \begin{itemize}
-\item \textbf{Inclusion-exclusion} (\texttt{baseMeasure\_inclusion\_exclusion}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L588}{line 588}):
+\item \textbf{Inclusion-exclusion} (\texttt{baseMeasure\_inclusion\_exclusion}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}):
   \[ m(x \vee y) + m(x \wedge y) = m(x) + m(y) \]
-\item \textbf{Complement rule} (\texttt{baseMeasure\_compl\_normalized}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L640}{line 640}):
+\item \textbf{Complement rule} (\texttt{baseMeasure\_compl\_normalized}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}):
   \[ m(x^c) = 1 - m(x) \]
-\item \textbf{Subadditivity} (\texttt{baseMeasure\_subadditive}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L649}{line 649}):
+\item \textbf{Subadditivity} (\texttt{baseMeasure\_subadditive}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}):
   \[ m(x \vee y) \leq m(x) + m(y) \]
-\item \textbf{ENNReal version} (\texttt{baseMeasureENNReal}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L673}{line 673}): For Mathlib compatibility
+\item \textbf{ENNReal version} (\texttt{baseMeasureENNReal}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{source}): For Mathlib compatibility
 \end{itemize}
 \end{remark}
 
@@ -1666,8 +1725,8 @@ $\sigma$-additivity theorem for disjoint unions.
 
 \subsection{$\sigma$-Complete Events}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L144}{\texttt{SigmaCompleteEvents}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L144-L152}{Lines 144--152, Core/ScaleCompleteness.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{\texttt{SigmaCompleteEvents}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{Core/ScaleCompleteness.lean}}
 
 Extends \texttt{PlausibilitySpace} with a countable supremum operator \texttt{iSup : (Nat -> E) -> E}
 satisfying the usual upper-bound / least-upper-bound laws.
@@ -1685,8 +1744,8 @@ class SigmaCompleteEvents (E : Type*) extends PlausibilitySpace E where
 
 \subsection{Sequential Completeness of the Scale}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L81}{\texttt{KSScaleComplete}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L81-L89}{Lines 81--89, Core/ScaleCompleteness.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{\texttt{KSScaleComplete}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{Core/ScaleCompleteness.lean}}
 
 Given a representation \texttt{R : RepresentationResult S} (Appendix A output), \texttt{KSScaleComplete S R}
 states that $\Theta(S) \subseteq \mathbb{R}$ is closed under suprema of bounded increasing $\omega$-sequences.
@@ -1701,8 +1760,8 @@ class KSScaleComplete (S : Type*) [KSSemigroupBase S] (R : RepresentationResult 
 
 \subsection{Scott Continuity (Countable Directed Limits)}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L203}{\texttt{KSScottContinuous}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L203-L211}{Lines 203--211, Core/ScaleCompleteness.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{\texttt{KSScottContinuous}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{Core/ScaleCompleteness.lean}}
 
 Scott continuity (phrased via $R.\Theta$) states that for a monotone sequence of events $f : \mathbb{N} \to E$,
 \[
@@ -1722,8 +1781,8 @@ class KSScottContinuous (E S : Type*) [SigmaCompleteEvents E] [KnuthSkillingMono
 
 \subsection{Main Theorem: K\&S $\sigma$-Additivity}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L360}{\texttt{ks\_sigma\_additive}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L360-L418}{Lines 360--418, Core/ScaleCompleteness.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{\texttt{ks\_sigma\_additive}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{Core/ScaleCompleteness.lean}}
 
 Under:
 \begin{itemize}
@@ -1746,12 +1805,7 @@ theorem ks_sigma_additive
     (m : KSScottContinuous E S R.toRepresentationResult)
     (f : Nat -> E) (hd : PairwiseDisjoint' f) :
     let μ := R.Θ ∘ m.v
-    μ (SigmaCompleteEvents.iSup f) = ∑' n, μ (f n) := by
-  -- Step 1: iSup of f equals iSup of partial unions
-  -- Step 2: Apply Scott continuity
-  -- Step 3: By finite additivity, Θ(v(partialUnion f n)) = ∑ i < n, μ(f i)
-  -- Step 4: Connect iSup of partial sums to tsum (nonnegative sequences)
-  ...
+    μ (SigmaCompleteEvents.iSup f) = ∑' n, μ (f n)
 \end{lstlisting}
 
 \begin{remark}[Mathlib Bridge]
@@ -1769,7 +1823,7 @@ For a bridge to mathlib's \texttt{Measure} / \texttt{ProbabilityMeasure} APIs, s
 
 \textbf{Key point}: Shannon entropy is \textbf{derived}, not just defined. It emerges as an ``inevitable consequence of seeking a variational quantity'' (K\&S, Section 8.2).
 
-\textbf{Unified view (project-wide, optional)}: The repo also formalizes Shannon's 1948 uniqueness theorem, Faddeev's 1956 uniqueness theorem, the Shannon--Khinchin axiom interface and Faddeev bridge, plus bridges to mathlib's measure-theoretic KL divergence. The entrypoint \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/EntropyKL.lean}{\texttt{InformationTheory/EntropyKL.lean}} records the equivalences between these approaches (see Appendix: Supplementary Derivation Paths).
+\textbf{Unified view (project-wide, optional)}: The independent package contains the Faddeev and Shannon--Khinchin foundation. MeTTapedia maintains the supplementary Shannon 1948 presentation and the cross-system and measure-theoretic comparisons. The entrypoint \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/EntropyKL.lean}{\texttt{InformationTheory/EntropyKL.lean}} records the equivalences between these approaches (see Appendix: Supplementary Derivation Paths).
 
 \subsection{From Atom Divergence to KL Divergence}
 
@@ -1855,20 +1909,20 @@ structure ProbDist (n : Nat) where
 \end{lstlisting}
 
 \begin{remark}[KS-facing alias]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L66-L72}{Lines 66--72, Information/InformationEntropy.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{source}}
 
 \texttt{ProbDist} is defined in\\
 {\footnotesize\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Foundations/Distributions/ProbDist.lean}{\texttt{ProbabilityTheory/Foundations/Distributions/ProbDist.lean}}} and re-exported as a KS-facing alias
 so that Section 8 can refer to \texttt{ProbDist} without importing Foundations directly.
 \end{remark}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L279}{\texttt{klDivergence}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L279-L281}{Lines 279--281, Information/InformationEntropy.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{klDivergence}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{source}}
 
 The Kullback-Leibler divergence for probability distributions (K\&S Eq. 54).
 \end{definition}
 
-\begin{lstlisting}[caption={\texttt{klDivergence} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L279}{Information/InformationEntropy.lean:279})},numbers=none]
+\begin{lstlisting}[caption={\texttt{klDivergence} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{Information/InformationEntropy.lean})},numbers=none]
 noncomputable def klDivergence {n : Nat} (P Q : ProbDist n)
     (hQ_pos : forall i, P.p i != 0 -> 0 < Q.p i) : Real :=
   sum i, P.p i * log (P.p i / Q.p i)
@@ -1877,24 +1931,24 @@ noncomputable def klDivergence {n : Nat} (P Q : ProbDist n)
 \textbf{Note}: The positivity hypothesis \texttt{hQ\_pos} ensures $Q$ is strictly positive on the support of $P$,
 avoiding $\log(p/0)$ issues. This is the regime where K\&S's formula is meaningful.
 
-An extended version \texttt{klDivergenceTop} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L292}{line 292}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{Information/InformationEntropy.lean}}) takes values in
+An extended version \texttt{klDivergenceTop} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{source}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{Information/InformationEntropy.lean}}) takes values in
 $\mathbb{R}_{\geq 0} \cup \{\infty\}$, returning $\infty$ when this condition fails.
 
 \subsection{Shannon Entropy Definition}
 
-\textbf{Formalized in Lean} (\texttt{shannonEntropy}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L458-L459}{lines 458--459}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{Information/InformationEntropy.lean}}):
+\textbf{Formalized in Lean} (\texttt{shannonEntropy}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{source}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{Information/InformationEntropy.lean}}):
 \begin{lstlisting}[caption={Shannon entropy from the variational framework},numbers=none]
 noncomputable def shannonEntropy {n : N} (P : ProbDist n) : R :=
   sum i, entropyComponent (-1) (P.p i)
 \end{lstlisting}
 
-\textbf{Equivalence to conventional formula} (\texttt{shannonEntropy\_eq'}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L480-L493}{lines 480--493}):
+\textbf{Equivalence to conventional formula} (\texttt{shannonEntropy\_eq'}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{source}):
 \begin{lstlisting}[caption={Shannon entropy equals $-\sum p_k \log p_k$},numbers=none]
 theorem shannonEntropy_eq' {n : N} (P : ProbDist n) :
     shannonEntropy P = -sum i, P.p i * log (P.p i)
 \end{lstlisting}
 
-\textbf{The $0 \cdot \log(0) = 0$ convention} (\texttt{zero\_mul\_log\_zero}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L86}{line 86}):
+\textbf{The $0 \cdot \log(0) = 0$ convention} (\texttt{zero\_mul\_log\_zero}, \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{source}):
 \begin{lstlisting}[caption={Convention for entropy at zero probability},numbers=none]
 @[simp]
 theorem zero_mul_log_zero : (0 : R) * log 0 = 0 := zero_mul _
@@ -1918,7 +1972,7 @@ base-conversion example.
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/RegradeCounterexample.lean}{\texttt{Counterexamples/RegradeCounterexample.lean}}\\
 \textbf{Lean name}: \texttt{regrade\_preserving\_sum\_rule\_is\_continuous}
 
-\textbf{This claim is false.} Any re-grading $\Theta: \mathbb{R} \to \mathbb{R}$ that preserves:
+For the specified real profile, any re-grading $\Theta: \mathbb{R} \to \mathbb{R}$ that preserves:
 \begin{enumerate}
 \item The sum rule: $\Theta(x + y) = \Theta(x) + \Theta(y)$ (additivity)
 \item Monotonicity: $x \leq y \Rightarrow \Theta(x) \leq \Theta(y)$
@@ -1926,7 +1980,7 @@ base-conversion example.
 must be linear ($\Theta(x) = c \cdot x$ for some constant $c$), hence continuous.
 \end{theorem}
 
-\begin{lstlisting}[caption={Monotone additive functions are linear (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/RegradeCounterexample.lean\#L100}{RegradeCounterexample.lean:100})},numbers=none]
+\begin{lstlisting}[caption={Monotone additive functions are linear (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/RegradeCounterexample.lean}{RegradeCounterexample.lean})},numbers=none]
 theorem monotone_additive_is_linear {f : R -> R}
     (hadd : forall x y, f (x + y) = f x + f y)
     (hmono : Monotone f) :
@@ -1938,13 +1992,11 @@ theorem regrade_preserving_sum_rule_is_continuous {Theta : R -> R}
     Continuous Theta
 \end{lstlisting}
 
-\begin{remark}[Why K\&S's Example Fails]
-K\&S's base-conversion map is not additive: $\Theta(x + y) \neq \Theta(x) + \Theta(y)$.
-Their example could only work by changing the addition operation to some weird $\oplus$,
-which is just obfuscating notation, not demonstrating genuine discontinuity.
-
-The philosophical point (finite systems can't detect continuity) may be valid,
-but the mathematical example does not support the claim.
+\begin{remark}[Interpretation boundary]
+The theorem preserves ordinary real addition on both sides. Transporting the
+operation along a change of representation is a different construction and
+requires its own preservation law. Strict order preservation gives a positive
+scalar; monotonicity alone also permits the zero map.
 \end{remark}
 
 \subsection{Pathological Additive Functions}
@@ -1958,7 +2010,7 @@ and cannot preserve order.
 
 \subsubsection{The Construction}
 
-\textbf{Step 1: Build a Hamel basis} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean\#L35-L77}{lines 35--77}):
+\textbf{Step 1: Build a Hamel basis} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean}{lines 35--77}):
 
 We work with $\mathbb{R}$ as a vector space over $\mathbb{Q}$. First prove $\{1, \sqrt{2}\}$ is
 $\mathbb{Q}$-linearly independent (using irrationality of $\sqrt{2}$), then extend to a Hamel basis:
@@ -1972,7 +2024,7 @@ noncomputable def hamelBasis :
   Module.Basis.extend linearIndepOn_one_sqrt2
 \end{lstlisting}
 
-\textbf{Step 2: Define the weird map} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean\#L79-L86}{lines 79--86}):
+\textbf{Step 2: Define the weird map} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean}{lines 79--86}):
 
 Create a $\mathbb{Q}$-linear map that sends:
 \begin{itemize}
@@ -1989,7 +2041,7 @@ noncomputable def weirdQLinear : R ->_[Q] R :=
 noncomputable def weirdAdditive : R -> R := fun x => weirdQLinear x
 \end{lstlisting}
 
-\textbf{Step 3: Prove it's additive but not linear} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean\#L87-L127}{lines 87--127}):
+\textbf{Step 3: Prove it's additive but not linear} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean}{lines 87--127}):
 
 \begin{lstlisting}[caption={weirdAdditive satisfies Cauchy's equation but isn't linear}]
 theorem weirdAdditive_add (x y : R) :
@@ -2001,7 +2053,7 @@ theorem weirdAdditive_not_mul (A : R) :
   -- So it can't be x |-> A*x for any constant A
 \end{lstlisting}
 
-\textbf{Step 4: Convert to positive reals} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean\#L129-L165}{lines 129--165}):
+\textbf{Step 4: Convert to positive reals} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean}{lines 129--165}):
 
 Define $H'(m) := \text{weirdAdditive}(\log m)$ on positive reals:
 
@@ -2041,24 +2093,24 @@ All paths are relative to \href{https://github.com/zariuq/ks-foundations-of-infe
 \subsubsection*{Sum Rule (Appendix A)}
 \begin{itemize}
 \item \texttt{representation\_semigroup}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L274}{\texttt{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean:274}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L214}{\texttt{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean:274}}\\
       --- $\exists \Theta$ preserving order and addition (identity-free)
 \item \texttt{representation\_from\_noAnomalousPairs}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L302}{\texttt{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean:302}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean\#L242}{\texttt{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean:302}}\\
       --- Full representation with $\Theta(\text{ident}) = 0$
 \item \texttt{associativity\_representation}\\
       \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Proofs/GridInduction/Main.lean\#L54}{\texttt{Additive/Proofs/GridInduction/Main.lean:54}}\\
       --- K\&S-style (grid/induction) public API
 \item \texttt{op\_archimedean\_of\_separation}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean\#L133}{\texttt{Additive/Axioms/SandwichSeparation.lean:133}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Axioms/SandwichSeparation.lean\#L100}{\texttt{Additive/Axioms/SandwichSeparation.lean:133}}\\
       --- Archimedean is derivable from \texttt{KSSeparation}
 \end{itemize}
 
 \subsubsection*{Product Theorem (Appendix B)}
 \begin{itemize}
-\item \texttt{Psi\_is\_exp} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L43}{\texttt{Multiplicative/Main.lean:43}}) --- $\Psi = \Theta^{-1}$ is exponential under the product equation regularity
-\item \texttt{tensor\_coe\_eq\_mul\_div\_const} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean\#L61}{\texttt{Multiplicative/Main.lean:61}}) --- $x \otimes y = (x \cdot y)/C$
-\item \texttt{ScaledMultRep} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/ScaledMultRep.lean\#L44}{\texttt{Multiplicative/ScaledMultRep.lean:44}}) --- Common interface for both proof paths
+\item \texttt{Psi\_is\_exp} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}}) --- $\Psi = \Theta^{-1}$ is exponential under the product equation regularity
+\item \texttt{tensor\_coe\_eq\_mul\_div\_const} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/Main.lean}{\texttt{Multiplicative/Main.lean}}) --- $x \otimes y = (x \cdot y)/C$
+\item \texttt{ScaledMultRep} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Multiplicative/ScaledMultRep.lean}{\texttt{Multiplicative/ScaledMultRep.lean}}) --- Common interface for both proof paths
 \end{itemize}
 
 \subsubsection*{Variational (Appendix C)}
@@ -2071,79 +2123,87 @@ All paths are relative to \href{https://github.com/zariuq/ks-foundations-of-infe
 \subsubsection*{Probability Calculus (FOI Mainline)}
 \begin{itemize}
 \item \texttt{sum\_rule}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean\#L856}{\texttt{Probability/ProbabilityDerivation.lean:856}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean}{\texttt{Probability/ProbabilityDerivation.lean}}\\
       --- $P(A \vee B) = P(A) + P(B)$ for disjoint events
 \item \texttt{product\_rule\_ks}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean\#L938}{\texttt{Probability/ProbabilityDerivation.lean:938}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean}{\texttt{Probability/ProbabilityDerivation.lean}}\\
       --- $P(A \wedge B) = P(A|B)\,P(B)$
 \item \texttt{bayes\_theorem\_ks}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean\#L957}{\texttt{Probability/ProbabilityDerivation.lean:957}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean}{\texttt{Probability/ProbabilityDerivation.lean}}\\
       --- Bayes' theorem
 \item \texttt{complement\_rule}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean\#L969}{\texttt{Probability/ProbabilityDerivation.lean:969}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ProbabilityDerivation.lean}{\texttt{Probability/ProbabilityDerivation.lean}}\\
       --- $P(B)=1-P(A)$ for complements
 \end{itemize}
+
+\paragraph{Common probability calibration.}
+A monotone map $f:[0,1]\to\mathbb{R}$ fixing zero and one is the identity
+if it preserves both multiplication and ordinary complement. The theorem
+\texttt{mul\_complement\_calibration} in
+\path{KnuthSkilling/Probability/Regraduation.lean} derives partial additivity
+and reuses rational calibration. Squaring preserves multiplication and certainty
+but fails the complement law; this is uniqueness of a supplied common scale,
+not an existence theorem for arbitrary separate Cox regraduations.
 
 \subsubsection*{Conditional Probability (Section 7)}
 \begin{itemize}
 \item \texttt{chainProductRule}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L348}{\texttt{Probability/ConditionalProbability/Basic.lean:348}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{Probability/ConditionalProbability/Basic.lean}}\\
       --- $p(xy|z) = p(x|z) \cdot p(y|xz)$
 \item \texttt{bayesTheorem}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L424}{\texttt{Probability/ConditionalProbability/Basic.lean:424}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{Probability/ConditionalProbability/Basic.lean}}\\
       --- $p(x|yz) \cdot p(y|z) = p(y|xz) \cdot p(x|z)$
 \item \texttt{prob\_eq\_measure\_ratio}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L714}{\texttt{Probability/ConditionalProbability/Basic.lean:714}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{Probability/ConditionalProbability/Basic.lean}}\\
       --- $p(x|y) = m(x \wedge y) / m(y)$
 \item \texttt{baseMeasure\_satisfies\_measure\_axioms}\\
-      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean\#L559}{\texttt{Probability/ConditionalProbability/Basic.lean:559}}\\
+      \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Probability/ConditionalProbability/Basic.lean}{\texttt{Probability/ConditionalProbability/Basic.lean}}\\
       --- $m$ is a probability measure
 \end{itemize}
 
 \subsubsection*{$\sigma$-Additivity Bridge (Extension)}
 \begin{itemize}
-\item \texttt{ks\_sigma\_additive} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean\#L360}{\texttt{Core/ScaleCompleteness.lean:360}}) --- $\mu(\sup f)=\sum_n \mu(f_n)$ for disjoint countable families
+\item \texttt{ks\_sigma\_additive} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/ScaleCompleteness.lean}{\texttt{Core/ScaleCompleteness.lean}}) --- $\mu(\sup f)=\sum_n \mu(f_n)$ for disjoint countable families
 \end{itemize}
 
 \subsubsection*{Divergence \& Entropy (Sections 6, 8)}
 \begin{itemize}
-\item \texttt{atomDivergence\_nonneg} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L102}{\texttt{Information/Divergence.lean:102}}) --- $D(w \| u) \geq 0$
-\item \texttt{atomDivergence\_eq\_zero\_iff} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean\#L123}{\texttt{Information/Divergence.lean:123}}) --- $D(w \| u) = 0 \Leftrightarrow w = u$
-\item \texttt{klDivergence} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L279}{\texttt{Information/InformationEntropy.lean:279}}) --- KL divergence
-\item \texttt{shannonEntropy} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean\#L458}{\texttt{Information/InformationEntropy.lean:458}}) --- $H = -\sum p \log p$
+\item \texttt{atomDivergence\_nonneg} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{\texttt{Information/Divergence.lean}}) --- $D(w \| u) \geq 0$
+\item \texttt{atomDivergence\_eq\_zero\_iff} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/Divergence.lean}{\texttt{Information/Divergence.lean}}) --- $D(w \| u) = 0 \Leftrightarrow w = u$
+\item \texttt{klDivergence} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{Information/InformationEntropy.lean}}) --- KL divergence
+\item \texttt{shannonEntropy} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Information/InformationEntropy.lean}{\texttt{Information/InformationEntropy.lean}}) --- $H = -\sum p \log p$
 \end{itemize}
 
 \subsubsection*{Quantum Theory Classification (Section 4)}
 \begin{itemize}
-\item \texttt{selection\_theorem} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/Algebra/TwoDimClassification.lean\#L427}{\texttt{Algebra/TwoDimClassification.lean:427}}) --- $\mu < 0$ gives QM Born rule
-\item \texttt{mean\_bornRule\_sum\_unit\_phases} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/SymmetricalFoundation.lean\#L303}{\texttt{Core/SymmetricalFoundation.lean:303}}) --- Born rule from averaging
+\item \texttt{selection\_theorem} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/Algebra/TwoDimClassification.lean\#L427}{\texttt{Algebra/TwoDimClassification.lean:427}}) --- $\mu < 0$ characterizes a positive-definite conjugate norm
+\item \texttt{mean\_bornRule\_sum\_unit\_phases} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/SymmetricalFoundation.lean}{\texttt{Core/SymmetricalFoundation.lean}}) --- mean-rate identity for the chosen Born readout
 \item \texttt{classification\_trichotomy} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/Algebra/TwoDimClassification.lean\#L293}{\texttt{Algebra/TwoDimClassification.lean:293}}) --- Exactly 3 algebra classes
 \end{itemize}
 
 \subsubsection*{Counterexamples \& Clarifications}
 \begin{itemize}
-\item \texttt{monotone\_additive\_is\_linear} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/RegradeCounterexample.lean\#L100}{\texttt{Counterexamples/RegradeCounterexample.lean:100}}) --- Discontinuous re-grading impossible
-\item \texttt{weirdAdditive\_add} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean\#L88}{\texttt{Counterexamples/CauchyPathology.lean:88}}) --- Pathological additive functions exist
-\item \texttt{Hprime\_not\_B\_add\_C\_log} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean\#L144}{\texttt{Counterexamples/CauchyPathology.lean:144}}) --- But they violate regularity
+\item \texttt{monotone\_additive\_is\_linear} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/RegradeCounterexample.lean}{\texttt{Counterexamples/RegradeCounterexample.lean}}) --- Discontinuous re-grading impossible
+\item \texttt{weirdAdditive\_add} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean}{\texttt{Counterexamples/CauchyPathology.lean}}) --- Pathological additive functions exist
+\item \texttt{Hprime\_not\_B\_add\_C\_log} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Counterexamples/CauchyPathology.lean}{\texttt{Counterexamples/CauchyPathology.lean}}) --- But they violate regularity
 \end{itemize}
 
 \subsection{Key Discoveries from Formalization}
 
 \begin{enumerate}
 \item \textbf{Linear order is necessary}: K\&S proofs assume trichotomy without stating it.
-We prove this is essential: \texttt{no\_pointRepresentation\_with\_incomparables} shows
-partial orders with incomparable elements admit no faithful $\Theta : \alpha \to \mathbb{R}$
+We prove this is essential: \texttt{no\_orderReflectingPointRepresentation\_with\_incomparables} shows
+partial orders with incomparable elements admit no order-reflecting $\Theta : \alpha \to \mathbb{R}$
 (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Core/TotalityImprecision.lean}{\texttt{Core/TotalityImprecision.lean}}).
 
-\item \textbf{Identity is essential for positivity}: K\&S say the bottom element is ``optional'' (lines 320, 340--341),
-claiming ``fidelity ensures that other elements are quantified by positive values.''
-Our formalization \textbf{proves this claim is FALSE} for unbounded structures.
+\item \textbf{Sign conditions require separate hypotheses}: minimum identity is sufficient for nonnegativity.
+The integer and positive-real models separate this sufficient condition from necessity.
 
 \textbf{The $\mathbb{Z}$ counterexample} (\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Additive/Counterexamples/NegativeWithoutIdentity.lean}{\texttt{Additive/Counterexamples/NegativeWithoutIdentity.lean}}):
 \begin{itemize}
 \item $(\mathbb{Z}, +, \leq)$ satisfies K\&S Axioms 1--2 (associativity and strict order preservation)
 \item The Hölder embedding theorem applies (no anomalous pairs)
-\item But $\Theta(-1) = -1 < 0$---\textbf{negative values appear!}
+\item But $\Theta(-1)=-\Theta(1)<0$---\textbf{negative values appear!}
 \end{itemize}
 
 \textbf{Why K\&S's claim fails}: K\&S's positivity comes from \texttt{ident\_le}: $\forall x,\; \bot \leq x$.
@@ -2159,12 +2219,12 @@ This requires $\bot$ to \emph{exist} and be \emph{minimal}. For $\mathbb{Z}$:
 \item \textbf{With identity + \texttt{ident\_le}}: $\Theta(\bot) = 0$ provides canonical normalization;
       all other elements have $\Theta(x) > 0$.
 \item \textbf{Without identity}: The representation theorem works, but positivity is
-      \textbf{not guaranteed}. The embedding is unique up to additive constant, but
-      no constant can rescue positivity for unbounded-below structures.
+      \textbf{not guaranteed}: integer addition forces $\Theta(-1)=-\Theta(1)<0$.
+      Nonzero translations violate additivity, even without an identity.
 \end{itemize}
 
-\textbf{Status}: K\&S claim \textbf{corrected}. Identity with \texttt{ident\_le} is
-\textbf{essential} for positivity, not merely ``aesthetic.''
+\textbf{Status}: minimum identity is sufficient for nonnegativity, not necessary.
+\texttt{positive\_no\_left\_identity} and \texttt{positive\_no\_minimum} separate these claims.''
 
 \item \textbf{Additional axiom is necessary}: The representation theorem requires an explicit axiom beyond associativity and monotonicity---either separation or NAP (no anomalous pairs)---to enable rational approximation.
 
@@ -2199,17 +2259,17 @@ allows switching implementations without changing dependent code.
 %==============================================================================
 
 The entrypoint \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/FoundationsOfInference.lean}{\texttt{FoundationsOfInference.lean}} focuses on K\&S FOI.
-The repository also contains additional formalizations that complement the main development: independent derivation paths, equivalence theorems, and bridges connecting different approaches to entropy and KL divergence. This appendix lists the \textbf{major definitions} and \textbf{theorem statements} in these modules, with file/line pointers for direct audit.
+The standalone entropy foundation and MeTTapedia's supplementary comparisons complement the main development: independent derivation paths, equivalence theorems, and bridges connecting different approaches to entropy and KL divergence. This appendix lists the \textbf{major definitions} and \textbf{theorem statements} in these modules, with file/line pointers for direct audit.
 
 \subsection*{A. Unified finite entropy/KL import path}
 \addcontentsline{toc}{subsection}{Supplementary: Unified finite entropy/KL}
 
-\textbf{Curated import path}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/EntropyKL.lean}{\texttt{InformationTheory/EntropyKL.lean}}
-(Lines 1--44).  This file is intentionally a stable \emph{import path}---it does not introduce new
+\textbf{Curated import path (MeTTapedia)}: \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/EntropyKL.lean}{\texttt{Mettapedia/InformationTheory/EntropyKL.lean}}
+This file is intentionally a stable \emph{import path}---it does not introduce new
 definitions, but imports the main finite-discrete entropy/KL stack plus bridges.
 
 \begin{lstlisting}[caption={Curated entrypoint: entropy + KL from all routes (imports only)}]
-import InformationTheory.ShannonEntropy.Main
+import Mettapedia.InformationTheory.ShannonEntropy.Main
 import KnuthSkilling.Information.Main
 \end{lstlisting}
 
@@ -2263,10 +2323,10 @@ noncomputable def uniformDist (n : Nat) (hn : 0 < n) : ProbVec n :=
 \subsection*{B. ProbVec $\leftrightarrow$ ProbDist glue + key equivalences}
 \addcontentsline{toc}{subsection}{Supplementary: ProbVec \texorpdfstring{$\leftrightarrow$}{<->} ProbDist + equivalences}
 
-\textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean}{\texttt{InformationTheory/ShannonEntropy/Interface.lean}}
+\textbf{File}: \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean}{\texttt{InformationTheory/ShannonEntropy/Interface.lean}}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L219}{\texttt{probVecEquivProbDist}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L185-L223}{Lines 185--223, ShannonEntropy/Interface.lean}}
+\begin{definition}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L219}{\texttt{probVecEquivProbDist}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L185-L223}{Lines 185--223, ShannonEntropy/Interface.lean}}
 
 Equivalence between the mathlib representation (\texttt{ProbVec}) and the K\&S finite distribution
 type (\texttt{KSProbDist}).
@@ -2283,8 +2343,8 @@ def probVecEquivProbDist (n : Nat) : ProbVec n ≃ KSProbDist n where
   right_inv := fun p => by simp
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L234}{\texttt{shannonEntropy\_eq\_ks\_shannonEntropy}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L229-L246}{Lines 229--246, ShannonEntropy/Interface.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L234}{\texttt{shannonEntropy\_eq\_ks\_shannonEntropy}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L229-L246}{Lines 229--246, ShannonEntropy/Interface.lean}}
 
 The Shannon entropy defined on \texttt{ProbVec} agrees with the K\&S Shannon entropy on \texttt{ProbDist},
 via the bridge.
@@ -2299,8 +2359,8 @@ theorem shannonEntropy_eq_ks_shannonEntropy {n : Nat} (p : ProbVec n) :
   ...
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L266}{\texttt{klDivergenceVec}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L265-L268}{Lines 265--268, ShannonEntropy/Interface.lean}}
+\begin{definition}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L266}{\texttt{klDivergenceVec}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L265-L268}{Lines 265--268, ShannonEntropy/Interface.lean}}
 
 Unified finite KL divergence on \texttt{ProbVec}, defined by transporting the K\&S \texttt{klDivergence}
 along \texttt{ProbVec.toProbDist}.
@@ -2312,8 +2372,8 @@ noncomputable def klDivergenceVec {n : Nat} (P Q : ProbVec n)
   klDivergence P.toProbDist Q.toProbDist (by intro i hi; exact hQ_pos i hi)
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L278}{\texttt{klDivergenceVec\_nonneg}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L276-L281}{Lines 276--281, ShannonEntropy/Interface.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L278}{\texttt{klDivergenceVec\_nonneg}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L276-L281}{Lines 276--281, ShannonEntropy/Interface.lean}}
 
 Gibbs inequality for \texttt{klDivergenceVec}: $0 \le D(P\|Q)$ under the usual positivity-on-support
 hypothesis.
@@ -2326,8 +2386,8 @@ theorem klDivergenceVec_nonneg {n : Nat} (P Q : ProbVec n)
   klDivergence_nonneg' P.toProbDist Q.toProbDist (by intro i hi; exact hQ_pos i hi)
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L285}{\texttt{shannonEntropy\_via\_klDivergence}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Interface.lean\#L284-L308}{Lines 284--308, ShannonEntropy/Interface.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L285}{\texttt{shannonEntropy\_via\_klDivergence}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Interface.lean\#L284-L308}{Lines 284--308, ShannonEntropy/Interface.lean}}
 
 Entropy via KL: $H(P) = \log(n) - D(P \| \mathrm{Uniform}_n)$.
 \end{theorem}
@@ -2341,10 +2401,10 @@ theorem shannonEntropy_via_klDivergence {n : Nat} (P : ProbVec n) (hn : 0 < n) :
   ...
 \end{lstlisting}
 
-\textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean}{\texttt{InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean}}
+\textbf{File}: \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean}{\texttt{InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean}}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L236}{\texttt{klDivergence\_eq\_mathlib\_klDiv}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L229-L343}{Lines 229--343, ShannonEntropy/MeasureTheoreticBridge.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L236}{\texttt{klDivergence\_eq\_mathlib\_klDiv}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L229-L343}{Lines 229--343, ShannonEntropy/MeasureTheoreticBridge.lean}}
 
 The discrete finite KL formula agrees with mathlib's measure-theoretic \texttt{InformationTheory.klDiv},
 after converting a \texttt{ProbVec} to the corresponding finite measures.
@@ -2359,8 +2419,8 @@ theorem klDivergence_eq_mathlib_klDiv {n : Nat} (P Q : ProbVec n)
   ...
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L361}{\texttt{axiomatic\_equals\_measureTheoretic}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L361-L363}{Lines 361--363, ShannonEntropy/MeasureTheoreticBridge.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L361}{\texttt{axiomatic\_equals\_measureTheoretic}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/MeasureTheoreticBridge.lean\#L361-L363}{Lines 361--363, ShannonEntropy/MeasureTheoreticBridge.lean}}
 
 Faddeev axioms $\Rightarrow$ Shannon formula, packaged as a single bridge theorem from axioms to the
 measure-theoretic normalization.
@@ -2372,13 +2432,17 @@ theorem axiomatic_equals_measureTheoretic {n : Nat} (E : FaddeevEntropy) (p : Pr
   simpa using faddeev_H_eq_shannon E p
 \end{lstlisting}
 
+The canonical axiom-record conversions preserve the supplied entropy function at every arity.
+Their inverse laws form \texttt{faddeevShannonKhinchinEquiv}; inhabitedness is a separate corollary.
+The number of displayed clauses establishes neither independence nor minimality.
+
 \subsection*{C. Axiomatic entropy: Faddeev / Shannon (1948) / Shannon--Khinchin}
 \addcontentsline{toc}{subsection}{Supplementary: Axiomatic entropy (Faddeev/Shannon/Khinchin)}
 
-\textbf{Entry point}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Main.lean}{\texttt{InformationTheory/ShannonEntropy/Main.lean}}
+\textbf{Entry point}: \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Main.lean}{\texttt{InformationTheory/ShannonEntropy/Main.lean}}
 
 \medskip
-\textbf{Faddeev (1956): minimal axiomatization}
+\textbf{Faddeev (1956): binary-continuity characterization}
 
 \begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Faddeev.lean\#L77}{\texttt{FaddeevEntropy}}]
 \textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Faddeev.lean\#L75-L94}{Lines 75--94, ShannonEntropy/Faddeev.lean}}
@@ -2386,7 +2450,7 @@ theorem axiomatic_equals_measureTheoretic {n : Nat} (E : FaddeevEntropy) (p : Pr
 Faddeev's axiom interface: binary continuity, symmetry, recursivity (grouping), normalization.
 \end{definition}
 
-\begin{lstlisting}[caption={Faddeev axioms (minimal entropy interface)}]
+\begin{lstlisting}[caption={Faddeev axioms (binary-continuity interface)}]
 structure FaddeevEntropy where
   H : forall {n : Nat}, ProbVec n -> Real
   continuous_binary : Continuous (fun p : Set.Icc (0 : Real) 1 =>
@@ -2414,8 +2478,8 @@ theorem faddeev_H_eq_shannon (E : FaddeevEntropy) {n : Nat} (p : ProbVec n) :
 
 \textbf{Shannon (1948): original axiom interface}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Shannon1948.lean\#L196}{\texttt{Shannon1948Entropy}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/InformationTheory/ShannonEntropy/Shannon1948.lean\#L196-L210}{Lines 196--210, ShannonEntropy/Shannon1948.lean}}
+\begin{definition}[\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Shannon1948.lean\#L196}{\texttt{Shannon1948Entropy}}]
+\textbf{\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/ShannonEntropy/Shannon1948.lean\#L196-L210}{Lines 196--210, ShannonEntropy/Shannon1948.lean}}
 
 Shannon's original axiom interface (relabeling invariance, continuity, monotonicity on uniforms, grouping).
 \end{definition}
@@ -2486,19 +2550,42 @@ theorem shannonKhinchin_implies_faddeev (E : ShannonKhinchinEntropy) :
   ...
 \end{lstlisting}
 
-\subsection*{D. Shore--Johnson (1980): system independence $\Rightarrow$ Cauchy $\Rightarrow$ log $\Rightarrow$ KL}
+\subsection*{D. Shore--Johnson: finite inference laws and conditional KL analysis}
 \label{app:shore-johnson}
 \addcontentsline{toc}{subsection}{Supplementary: Shore--Johnson \texorpdfstring{$\to$}{->} KL}
+
+\textbf{Finite inference and its domain.}
+\path{KnuthSkilling/ShoreJohnson/Inference.lean} separates feasibility,
+at-most-one inference and existence. Uniqueness is stated on the positive-reference,
+closed convex domain; KL existence on nonempty affine constraint sets is proved
+using compactness. Empty constraint sets need not have an answer, and posterior
+coordinates may vanish. The constraint and posterior permutation actions commute.
+
+\textbf{Verified analytic scope.}
+\path{KnuthSkilling/ShoreJohnson/GradientSeparability.lean} constructs a coordinate
+gradient from explicit ratio-invariance and cocycle hypotheses.
+\path{KnuthSkilling/ShoreJohnson/TheoremI.lean} derives the affine stationarity
+criterion from actual directional derivatives and convexity, then compares positive
+minimizers with a separable objective. Boundary competitors are included.
+These are not claims that the four, or five, operator laws alone have been proved
+to imply every analytic premise.
+
+\textbf{Scale and observations.}
+\path{KnuthSkilling/ShoreJohnson/KLWitness.lean} provides the concrete KL model.
+Within the explicit separable analytic profile, uniqueness and prior preservation
+force the multiplier to be positive, permitting ordinary KL minimization.
+The independently constructed $\exp(D_{\rm KL})$ objective has the same minimizers
+and different values, demonstrating the distinction between these observations.
 
 \textbf{Scope note (Uffink~\cite{Uffink1995}).}
 At the level of inference procedures, weaker ``independence'' axioms can admit families of update rules
 (e.g.\ R\'enyi-like families).  In this project we isolate the core \emph{product additivity} hypothesis at the
-atom level, and then separate the analytic \emph{regularity gate} (measurability) that rules out Hamel solutions.
+atom level, within an explicitly supplied ratio-form class, and separate the analytic \emph{regularity gate} (measurability) that rules out Hamel solutions.
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean}{\texttt{KnuthSkilling/ShoreJohnson/SystemIndependence.lean}}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L45}{\texttt{SJSystemIndependenceAtom}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L45-L51}{Lines 45--51, ShoreJohnson/SystemIndependence.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L41}{\texttt{SJSystemIndependenceAtom}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L41-L47}{Lines 41--47, ShoreJohnson/SystemIndependence.lean}}
 
 Atomic system independence: additivity of $\sum d(p_i,q_i)$ over product distributions.
 \end{definition}
@@ -2512,10 +2599,15 @@ structure SJSystemIndependenceAtom (d : Real -> Real -> Real) : Prop where
         (∑ i : Fin n, d (P.p i) (Q.p i)) + (∑ j : Fin m, d (R.p j) (S.p j))
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L62}{\texttt{SJSystemIndependenceAtomPos}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L62-L68}{Lines 62--68, ShoreJohnson/SystemIndependence.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L51}{\texttt{SJSystemIndependenceAtomPos}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L51-L59}{Lines 51--59, ShoreJohnson/SystemIndependence.lean}}
 
 Positivity-restricted variant (the right formulation for \texttt{klAtom} and KL divergence).
+The lawful-reference route uses
+\texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable\_pos}; probability one is tested
+on a one-state reference, avoiding unsupported binary references.
+The unrestricted conditional theorem below is retained as a stronger interface;
+it is not the atom-additivity law satisfied by ordinary real KL.
 \end{definition}
 
 \begin{lstlisting}[caption={System independence with positivity hypotheses on references}]
@@ -2528,8 +2620,8 @@ structure SJSystemIndependenceAtomPos (d : Real -> Real -> Real) : Prop where
           (∑ i : Fin n, d (P.p i) (Q.p i)) + (∑ j : Fin m, d (R.p j) (S.p j))
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L80}{\texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L80-L84}{Lines 80--84, ShoreJohnson/SystemIndependence.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L69}{\texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/SystemIndependence.lean\#L69-L73}{Lines 69--73, ShoreJohnson/SystemIndependence.lean}}
 
 Dirac extraction: under system independence and measurability, $q \mapsto d(1,q)$ is logarithmic on $0<q\le 1$.
 \end{theorem}
@@ -2547,7 +2639,7 @@ theorem d_one_eq_const_mul_log_of_measurable
 \begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/KL.lean\#L74}{\texttt{klAtom}}]
 \textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/ShoreJohnson/KL.lean\#L74-L75}{Lines 74--75, ShoreJohnson/KL.lean}}
 
-The KL atom $w \log(w/u)$ (with Lean's standard boundary conventions for $0$).
+The total-real atom $w\log(w/u)$ is used for calculus. Its KL interpretation requires positive reference mass on the source support; unsupported pairs are represented by $\top$ in \texttt{klDivergenceTop}, not by a finite atom value.
 \end{definition}
 
 \begin{lstlisting}[caption={KL atom divergence}]
@@ -2590,8 +2682,8 @@ theorem sum_klAtom_eq_klDivergence {n : Nat} (P Q : ProbDist n)
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}{\texttt{KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean\#L33}{\texttt{mulCauchyOnPos\_eq\_const\_mul\_log\_of\_variationalEquation\_solution\_measurable}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean\#L33-L35}{Lines 33--35, Bridges/ShoreJohnsonVariationalBridge.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}{\texttt{mulCauchyOnPos\_eq\_const\_mul\_log\_of\_variationalEquation\_solution\_measurable}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Bridges/ShoreJohnsonVariationalBridge.lean}{Lines 33--35, Bridges/ShoreJohnsonVariationalBridge.lean}}
 
 Formal bridge: the Shore--Johnson multiplicative-Cauchy log lemma is a corollary of the Appendix~C lemma
 \texttt{variationalEquation\_solution\_measurable}.
@@ -2613,8 +2705,8 @@ theorem mulCauchyOnPos_eq_const_mul_log_of_variationalEquation_solution_measurab
 \medskip
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{\texttt{ProbabilityTheory/Cox/Basic.lean}}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L65}{\texttt{PlausibilityFunction}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L65-L70}{Lines 65--70, Cox/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{\texttt{PlausibilityFunction}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{Cox/Basic.lean}}
 
 Basic object: a real-valued plausibility function $p(A\mid B)\in[0,1]$.
 \end{definition}
@@ -2626,8 +2718,8 @@ structure PlausibilityFunction (Prop' : Type*) where
   p_le_one : forall A B, p A B <= 1
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L74}{\texttt{ConjunctionRule}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L74-L88}{Lines 74--88, Cox/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{\texttt{ConjunctionRule}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{Cox/Basic.lean}}
 
 Conjunction functional equation packaging: a binary operation $F$ on plausibilities, with unit interval
 range and continuity.
@@ -2644,8 +2736,8 @@ structure ConjunctionRule where
   F_zero_right : forall x, F x 0 = 0
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L91}{\texttt{NegationRule}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L91-L103}{Lines 91--103, Cox/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{\texttt{NegationRule}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{Cox/Basic.lean}}
 
 Negation functional equation packaging: a unary operation $G$ on plausibilities, with continuity and
 strict antitonicity.
@@ -2661,8 +2753,8 @@ structure NegationRule where
   G_one : G 1 = 0
 \end{lstlisting}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L107}{\texttt{AssociativityEquation}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean\#L105-L108}{Lines 105--108, Cox/Basic.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{\texttt{AssociativityEquation}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/Basic.lean}{Cox/Basic.lean}}
 
 Associativity equation on $F$ (coming from $(A\wedge B)\wedge C = A\wedge(B\wedge C)$).
 \end{definition}
@@ -2674,8 +2766,8 @@ def AssociativityEquation (F : Real -> Real -> Real) : Prop :=
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{\texttt{ProbabilityTheory/Cox/ProductRuleDerivation.lean}}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean\#L2348}{\texttt{cox\_productRule}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean\#L2348-L2350}{Lines 2348--2350, Cox/ProductRuleDerivation.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{\texttt{cox\_productRule}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{Cox/ProductRuleDerivation.lean}}
 
 Cox's main theorem: under Cox's axioms, there exists a reparametrization $p$ such that
 $p(F(x,y)) = p(x)p(y)$ on $(0,1]$.
@@ -2689,8 +2781,8 @@ theorem cox_productRule (C : CoxFullAxioms) :
   ...
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean\#L2390}{\texttt{cox\_commutativity}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean\#L2390-L2401}{Lines 2390--2401, Cox/ProductRuleDerivation.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{\texttt{cox\_commutativity}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{Cox/ProductRuleDerivation.lean}}
 
 Commutativity is derived: $F(x,y)=F(y,x)$ on the probability domain, as a consequence of the product rule.
 \end{theorem}
@@ -2703,8 +2795,8 @@ theorem cox_commutativity (C : CoxFullAxioms)
   ...
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean\#L3373}{\texttt{cox\_negationRule}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean\#L3373-L3375}{Lines 3373--3375, Cox/ProductRuleDerivation.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{\texttt{cox\_negationRule}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProductRuleDerivation.lean}{Cox/ProductRuleDerivation.lean}}
 
 Negation rule (power-family form): there exists $r>0$ such that $G(x)^r + x^r = 1$ on $(0,1)$.
 \end{theorem}
@@ -2718,8 +2810,8 @@ theorem cox_negationRule (N : CoxNegationAxioms) :
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean}{\texttt{ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean}}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean\#L28}{\texttt{cox\_productRule\_regrade}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean\#L18-L28}{Lines 18--28, Cox/ProbabilityCalculusBridge.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean}{\texttt{cox\_productRule\_regrade}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusBridge.lean}{Cox/ProbabilityCalculusBridge.lean}}
 
 Cox reparametrization matches the K\&S probability-calculus regraduation interface.
 \end{theorem}
@@ -2733,8 +2825,8 @@ theorem cox_productRule_regrade (C : CoxFullAxioms) :
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}{\texttt{ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}}
 
-\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean\#L31}{\texttt{CoxProbabilityModel}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean\#L31-L52}{Lines 31--52, Cox/ProbabilityCalculusIntegration.lean}}
+\begin{definition}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}{\texttt{CoxProbabilityModel}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}{Cox/ProbabilityCalculusIntegration.lean}}
 
 Event-level output: after regrading, Cox yields a probability-like valuation on a Boolean lattice of events
 satisfying the product and complement rules.
@@ -2755,8 +2847,8 @@ structure CoxProbabilityModel (alpha : Type*)
   complement_rule : forall a c, P (compl a) c = 1 - P a c
 \end{lstlisting}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean\#L70}{\texttt{sum\_rule\_disjoint}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean\#L70-L113}{Lines 70--113, Cox/ProbabilityCalculusIntegration.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}{\texttt{sum\_rule\_disjoint}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}{Cox/ProbabilityCalculusIntegration.lean}}
 
 Finite additivity for disjoint events, derived from product + complement rules.
 \end{theorem}
@@ -2769,7 +2861,7 @@ theorem sum_rule_disjoint (M : CoxProbabilityModel alpha) {a b : alpha} (h : Dis
 \end{lstlisting}
 
 \begin{theorem}[\texttt{ProbabilityCalculusClass instance}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean\#L117-L129}{Lines 117--129, Cox/ProbabilityCalculusIntegration.lean}}
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/ProbabilityTheory/Cox/ProbabilityCalculusIntegration.lean}{Cox/ProbabilityCalculusIntegration.lean}}
 
 The event-level Cox model instantiates the shared \texttt{ProbabilityCalculusClass} interface.
 \end{theorem}
@@ -2836,14 +2928,14 @@ meet/join are not the same as Boolean conjunction/disjunction for feature events
 the file mistakenly presented this as evidence for imprecise probability; the intended lesson is
 about choosing the correct event semantics.
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean\#L124}{\texttt{modular\_law\_holds}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean\#L119-L127}{Lines 119--127, Examples/ImpreciseOn7Element.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean}{\texttt{modular\_law\_holds}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean}{Lines 119--127, Examples/ImpreciseOn7Element.lean}}
 
 In the Boolean event model (using Boolean $\wedge/\vee$), modularity holds.
 \end{theorem}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean\#L197}{\texttt{lattice\_modular\_fails\_iff}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean\#L186-L201}{Lines 186--201, Examples/ImpreciseOn7Element.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean}{\texttt{lattice\_modular\_fails\_iff}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/ImpreciseOn7Element.lean}{Lines 186--201, Examples/ImpreciseOn7Element.lean}}
 
 If one instead interprets meet as lattice-meet (so that $\texttt{abc} \wedge \texttt{abd} = \texttt{ab}$),
 then the modular identity fails whenever the ``cores-only'' state has positive mass.
@@ -2854,15 +2946,21 @@ then the modular identity fails whenever the ``cores-only'' state has positive m
 
 \textbf{File}: \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImprecise.lean}{\texttt{KnuthSkilling/Examples/PreciseVsImprecise.lean}}
 
-\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImprecise.lean\#L212}{\texttt{decisions\_differ}}]
-\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImprecise.lean\#L212-L216}{Lines 212--216, Examples/PreciseVsImprecise.lean}}
+\begin{theorem}[\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImprecise.lean}{\texttt{decisions\_differ}}]
+\textbf{\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImprecise.lean}{Lines 212--216, Examples/PreciseVsImprecise.lean}}
 
 Exhibits a simple payoff table where expected utility and a maximin-style rule give different choices
 under interval uncertainty.
 \end{theorem}
 
-For a version that constructs K\&S representations on a Boolean event algebra and then compares
-decision rules, see \href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImpreciseGrounded.lean}{\texttt{Examples/PreciseVsImpreciseGrounded.lean}}.
+The grounded example constructs Boolean-event weights and proves that positive-total
+normalization recovers the supplied probabilities. Precision means agreement of
+normalized event answers, so different weight scales may still be precise.
+For the nonempty interval-constrained family, the normalized high-risk member
+attains both utility minima: $40$ for normal and $78$ for cautious. These are
+proved constrained minima, not unchecked coordinate corners. Expected utility
+and maximin remain separately chosen decision rules. See
+\href{https://github.com/zariuq/ks-foundations-of-inference/blob/main/KnuthSkilling/Examples/PreciseVsImpreciseGrounded.lean}{\texttt{Examples/PreciseVsImpreciseGrounded.lean}}.
 
 %==============================================================================
 \section*{Appendix: The KSSeparation Discovery}
@@ -3087,6 +3185,12 @@ Faddeev, D.~K. (1956).
 Solomonoff, R.~J. (1964).
 ``A Formal Theory of Inductive Inference.''
 \emph{Information and Control} 7, 1--22, 224--254.
+
+\bibitem{JohnsonShore1983}
+R.~W. Johnson and J.~E. Shore.
+Comments on and Correction to ``Axiomatic Derivation of the Principle of Maximum Entropy and the Principle of Minimum Cross-Entropy.''
+\emph{IEEE Transactions on Information Theory}, 29(6):942--943, 1983.
+\url{https://zenodo.org/records/1281600}.
 
 \end{thebibliography}
 

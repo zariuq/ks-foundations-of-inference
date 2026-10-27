@@ -6,35 +6,18 @@ import Mathlib.Topology.Algebra.Order.Archimedean
 import KnuthSkilling.Multiplicative.FunctionalEquation
 
 /-!
-# Appendix B: Solving the Product Equation from `StrictMono` (No Extra Topology Assumed)
+# Continuity from order and translated addition
 
-This module packages the **Lean-friendly Appendix B route** for the functional equation
-
-`Ψ(τ + ξ) + Ψ(τ + η) = Ψ(τ + ζ(ξ,η))`
-
-under the hypotheses K&S actually have after Appendix A:
-
-- positivity `∀ x, 0 < Ψ x`
-- strict monotonicity `StrictMono Ψ`
-
-The key step is:
-
-`ProductEquation + StrictMono + Positivity ⟹ Continuous Ψ`
-
-so we can apply the complete solver in
-`KnuthSkilling.Multiplicative.FunctionalEquation`.
-
-This file exists so downstream modules can use the *actual proof* without importing the
-unrelated “golden ratio / Diophantine approximation” machinery from the historical Appendix B
-proof route.
+Positivity and the product equation give arbitrarily small dyadic values and
+additive closure of the range. Density in the positive reals then lets Mathlib's
+monotone-continuity theorem rule out jumps. Continuity is a conclusion here;
+Cox's independent generator construction assumes it.
 -/
 
 namespace KnuthSkilling.Multiplicative
 
 open Classical
 open Set
-
-/-! ## Continuity from `ProductEquation` + `StrictMono` + Positivity -/
 
 /-- **Continuity from ProductEquation + StrictMono + Positivity**.
 
@@ -51,7 +34,6 @@ theorem productEquation_strictMono_pos_continuous
     (hPos : ∀ x, 0 < Ψ x)
     (hStrictMono : StrictMono Ψ) :
     Continuous Ψ := by
-  -- Step 1: Extract doubling parameter and constants
   let a : ℝ := ζ 0 0
   have hShift : ∀ τ : ℝ, Ψ (τ + a) = 2 * Ψ τ := fun τ => by
     simpa using ProductEquation.shift_two_mul hProd τ
@@ -62,7 +44,7 @@ theorem productEquation_strictMono_pos_continuous
     linarith [hPos 0]
   have ha_pos : 0 < a := by
     by_contra h
-    push_neg at h
+    push Not at h
     rcases h.lt_or_eq with ha_neg | ha_zero
     · have h1 : Ψ a < Ψ 0 := hStrictMono ha_neg
       have h2 : Ψ a = 2 * Ψ 0 := by
@@ -72,8 +54,6 @@ theorem productEquation_strictMono_pos_continuous
 
   let C := Ψ 0
   have hC_pos : 0 < C := hPos 0
-
-  -- Step 2: Range is closed under addition (from ProductEquation at τ = 0)
   have hRangeAdd : ∀ u v : ℝ, u ∈ Set.range Ψ → v ∈ Set.range Ψ → (u + v) ∈ Set.range Ψ := by
     intro u v ⟨x, hx⟩ ⟨y, hy⟩
     refine ⟨ζ x y, ?_⟩
@@ -81,8 +61,6 @@ theorem productEquation_strictMono_pos_continuous
     simp only [zero_add] at this
     rw [hx, hy] at this
     exact this.symm
-
-  -- Step 3: Doubling gives `C / 2^k` in range for all `k`.
   have hHalving_eq : ∀ k : ℕ, Ψ (-(k : ℤ) * a) = C / 2 ^ k := by
     intro k
     induction k with
@@ -104,8 +82,6 @@ theorem productEquation_strictMono_pos_continuous
   have hHalving : ∀ k : ℕ, C / (2 : ℝ) ^ k ∈ Set.range Ψ := by
     intro k
     exact ⟨-(k : ℤ) * a, hHalving_eq k⟩
-
-  -- Step 4: Additive closure gives `mC/2^k` in range for all `m ≥ 1, k`.
   have hDyadicInRange : ∀ m k : ℕ, 1 ≤ m → (m : ℝ) * C / (2 : ℝ) ^ k ∈ Set.range Ψ := by
     intro m k hm
     induction m with
@@ -128,8 +104,6 @@ theorem productEquation_strictMono_pos_continuous
         apply hRangeAdd
         · exact ih (by omega)
         · exact hHalving k
-
-  -- Step 5: Density in `(0,∞)`.
   have hDensityInPos : ∀ y : ℝ, 0 < y → ∀ ε > 0, ∃ v ∈ Set.range Ψ, |v - y| < ε := by
     intro y hy ε hε
     have hmin_pos : 0 < min ε y := lt_min hε hy
@@ -158,13 +132,11 @@ theorem productEquation_strictMono_pos_continuous
               · exact h2k
         _ = min ε y := by
               field_simp [ne_of_gt hmin_pos]
-    -- Choose m = ⌈y * 2^k / C⌉
     let r := y * (2 : ℝ) ^ k / C
     have hr_pos : 0 < r := div_pos (mul_pos hy (pow_pos (by norm_num) k)) hC_pos
     let m := Nat.ceil r
     have hm_ge_1 : 1 ≤ m := Nat.one_le_iff_ne_zero.mpr (Nat.ceil_pos.mpr hr_pos).ne'
     refine ⟨(m : ℝ) * C / (2 : ℝ) ^ k, hDyadicInRange m k hm_ge_1, ?_⟩
-    -- Show `|(mC/2^k) - y| < ε`.
     have hceil_bound : r ≤ m := Nat.le_ceil r
     have hne : (2 : ℝ) ^ k ≠ 0 := pow_ne_zero k (by norm_num)
     have h2k_pos : 0 < (2 : ℝ) ^ k := pow_pos (by norm_num) k
@@ -182,7 +154,6 @@ theorem productEquation_strictMono_pos_continuous
       linarith
     · have h2 : (m : ℝ) * C / (2 : ℝ) ^ k < y + C / (2 : ℝ) ^ k := by
         have h3 : (m : ℝ) < r + 1 := by
-          -- `Nat.ceil_lt_add_one` gives `m < r+1`.
           have h := Nat.ceil_lt_add_one (le_of_lt hr_pos)
           linarith
         calc
@@ -196,110 +167,16 @@ theorem productEquation_strictMono_pos_continuous
       have hstep : C / (2 : ℝ) ^ k < ε := lt_of_lt_of_le hk_large (min_le_left _ _)
       linarith
 
-  -- Step 6: Dense range in `(0,∞)` + strict mono → continuous.
-  rw [continuous_iff_continuousAt]
-  intro x₀
-  rw [Metric.continuousAt_iff]
-  intro ε hε
-  let y₀ := Ψ x₀
-  have hy₀_pos : 0 < y₀ := hPos x₀
-
-  -- Find `v₂` in range with `y₀ < v₂ < y₀ + ε`.
-  obtain ⟨v₂, hv₂_range, hv₂_close⟩ :=
-    hDensityInPos (y₀ + ε / 2) (by linarith) (ε / 2) (by linarith)
-  have hv₂_above : y₀ < v₂ := by
-    have : |v₂ - (y₀ + ε / 2)| < ε / 2 := hv₂_close
-    rw [abs_lt] at this
-    linarith
-  have hv₂_bound : v₂ < y₀ + ε := by
-    have : |v₂ - (y₀ + ε / 2)| < ε / 2 := hv₂_close
-    rw [abs_lt] at this
-    linarith
-
-  -- Find `v₁` below `y₀` when possible, otherwise use positivity.
-  by_cases hcase : y₀ - ε / 2 > 0
-  · obtain ⟨v₁, hv₁_range, hv₁_close⟩ :=
-      hDensityInPos (y₀ - ε / 2) hcase (ε / 2) (by linarith)
-    have hv₁_below : v₁ < y₀ := by
-      have : |v₁ - (y₀ - ε / 2)| < ε / 2 := hv₁_close
-      rw [abs_lt] at this
-      linarith
-    have hv₁_bound : y₀ - ε < v₁ := by
-      have : |v₁ - (y₀ - ε / 2)| < ε / 2 := hv₁_close
-      rw [abs_lt] at this
-      linarith
-
-    obtain ⟨x₁, hx₁⟩ := hv₁_range
-    obtain ⟨x₂, hx₂⟩ := hv₂_range
-
-    have hx₁_lt : x₁ < x₀ := by
-      by_contra h
-      push_neg at h
-      have : Ψ x₁ ≥ Ψ x₀ := by
-        rcases h.lt_or_eq with hlt | heq
-        · exact le_of_lt (hStrictMono hlt)
-        · simp [heq]
-      rw [hx₁] at this
-      linarith
-    have hx₂_gt : x₀ < x₂ := by
-      by_contra h
-      push_neg at h
-      have : Ψ x₂ ≤ Ψ x₀ := by
-        rcases h.lt_or_eq with hlt | heq
-        · exact le_of_lt (hStrictMono hlt)
-        · simp [heq]
-      rw [hx₂] at this
-      linarith
-
-    refine ⟨min (x₀ - x₁) (x₂ - x₀), lt_min (by linarith) (by linarith), ?_⟩
-    intro x hx
-    rw [Real.dist_eq] at hx ⊢
-    have hx_in : x₁ < x ∧ x < x₂ := by
-      constructor
-      · have : |x - x₀| < x₀ - x₁ := lt_of_lt_of_le hx (min_le_left _ _)
-        rw [abs_lt] at this
-        linarith
-      · have : |x - x₀| < x₂ - x₀ := lt_of_lt_of_le hx (min_le_right _ _)
-        rw [abs_lt] at this
-        linarith
-    have hΨx_bounds : v₁ < Ψ x ∧ Ψ x < v₂ := by
-      constructor
-      · rw [← hx₁]
-        exact hStrictMono hx_in.1
-      · rw [← hx₂]
-        exact hStrictMono hx_in.2
-    rw [abs_lt]
-    constructor <;> linarith
-  · push_neg at hcase
-    obtain ⟨x₂, hx₂⟩ := hv₂_range
-    have hx₂_gt : x₀ < x₂ := by
-      by_contra h
-      push_neg at h
-      have : Ψ x₂ ≤ Ψ x₀ := by
-        rcases h.lt_or_eq with hlt | heq
-        · exact le_of_lt (hStrictMono hlt)
-        · simp [heq]
-      rw [hx₂] at this
-      linarith
-    refine ⟨min 1 (x₂ - x₀), lt_min one_pos (by linarith), ?_⟩
-    intro x hx
-    rw [Real.dist_eq] at hx ⊢
-    have hx_upper : x < x₂ := by
-      have : |x - x₀| < x₂ - x₀ := lt_of_lt_of_le hx (min_le_right _ _)
-      rw [abs_lt] at this
-      linarith
-    have hΨx_upper : Ψ x < v₂ := by
-      -- `StrictMono` on ℝ gives the strict inequality for `x < x₂`.
-      rw [← hx₂]
-      exact hStrictMono hx_upper
-    have hΨx_lower : Ψ x > y₀ - ε := by
-      have hΨx_pos : 0 < Ψ x := hPos x
-      have : y₀ - ε < 0 := by linarith
-      linarith
-    rw [abs_lt]
-    constructor <;> linarith
-
-/-! ## Exponentiality (Appendix B) -/
+  let f : ℝ → Set.Ioi (0 : ℝ) := fun x => ⟨Ψ x, hPos x⟩
+  have hfmono : Monotone f := fun _ _ h => hStrictMono.monotone h
+  have hfdense : DenseRange f := by
+    rw [Metric.denseRange_iff]
+    intro y ε hε
+    obtain ⟨v, ⟨x, hx⟩, hv⟩ := hDensityInPos y.val y.2 ε hε
+    refine ⟨x, ?_⟩
+    change dist (y : ℝ) (Ψ x) < ε
+    simpa only [Real.dist_eq, hx, abs_sub_comm] using hv
+  exact continuous_subtype_val.comp (hfmono.continuous_of_denseRange hfdense)
 
 /-- Appendix B exponential solution under `StrictMono` + positivity, with continuity *derived*. -/
 theorem productEquation_solution_of_strictMono
@@ -319,7 +196,6 @@ theorem productEquation_solution_of_strictAnti
     (hPos : ∀ x, 0 < Ψ x)
     (hStrictAnti : StrictAnti Ψ) :
     ∃ C A : ℝ, 0 < C ∧ ∀ x : ℝ, Ψ x = C * Real.exp (A * x) := by
-  -- Transform via Ψ'(x) = Ψ(-x)
   let Ψ' : ℝ → ℝ := fun x => Ψ (-x)
   let ζ' : ℝ → ℝ → ℝ := fun ξ η => -ζ (-ξ) (-η)
   have hProd' : ProductEquation Ψ' ζ' := by

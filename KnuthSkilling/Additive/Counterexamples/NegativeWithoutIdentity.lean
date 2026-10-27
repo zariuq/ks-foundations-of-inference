@@ -28,6 +28,9 @@ import Mathlib.Tactic
 import KnuthSkilling.Core.Basic
 import OrderedSemigroups.Holder
 import Mathlib.Algebra.Group.TypeTags.Basic
+import Mathlib.Data.NNReal.Basic
+import KnuthSkilling.Additive.Proofs.GridInduction.Comparison
+import KnuthSkilling.Additive.Proofs.DirectCuts.Main
 
 namespace KnuthSkilling.AppendixA.Counterexamples
 
@@ -52,7 +55,7 @@ instance Int.instKSSemigroupBase : KSSemigroupBase ℤ where
 theorem Int.op_eq_add : ∀ a b : ℤ, op a b = a + b := fun _ _ => rfl
 
 /-- ℤ cannot satisfy `ident_le` (identity-as-minimum). -/
-theorem Int.cannot_satisfy_ident_le : ¬(∀ n : ℤ, (0 : ℤ) ≤ n) := by push_neg; use -1; omega
+theorem Int.cannot_satisfy_ident_le : ¬(∀ n : ℤ, (0 : ℤ) ≤ n) := by push Not; use -1; omega
 
 /-! ## Part 2: Bounded Lattices DO Give Positivity -/
 
@@ -164,39 +167,15 @@ theorem holder_embedding_produces_negatives
   obtain ⟨G, ⟨Θ⟩⟩ := holder_not_anom hna
   refine ⟨G, Θ, ?_⟩
   let Φ : ℤ → ℝ := fun n => Multiplicative.toAdd (Θ (Multiplicative.ofAdd n) : Multiplicative ℝ)
-  -- Φ is additive
   have hAdditive : ∀ a b : ℤ, Φ (a + b) = Φ a + Φ b := by
-    intro a b; simp only [Φ]
-    have hmul : Θ (Multiplicative.ofAdd a * Multiplicative.ofAdd b) =
-                Θ (Multiplicative.ofAdd a) * Θ (Multiplicative.ofAdd b) :=
-      Θ.map_mul _ _
-    rw [show Multiplicative.ofAdd a * Multiplicative.ofAdd b =
-            Multiplicative.ofAdd (a + b) from (ofAdd_add a b).symm] at hmul
-    have hcoe : (↑(Θ (Multiplicative.ofAdd a) * Θ (Multiplicative.ofAdd b)) : Multiplicative ℝ) =
-                (Θ (Multiplicative.ofAdd a) : Multiplicative ℝ) *
-                (Θ (Multiplicative.ofAdd b) : Multiplicative ℝ) := by simp only [MulMemClass.coe_mul]
-    conv_lhs => rw [hmul]; rw [hcoe, toAdd_mul]
+    intro a b
+    exact congrArg (fun z : G => Multiplicative.toAdd (z : Multiplicative ℝ))
+      (map_mul Θ (Multiplicative.ofAdd a) (Multiplicative.ofAdd b))
   -- Φ(0) = 0
   have hZero : Φ 0 = 0 := by
     have h : Φ 0 = Φ 0 + Φ 0 := by rw [← hAdditive 0 0]; ring_nf
     linarith
-  -- Φ is strictly monotone
-  have hStrictMono : StrictMono Φ := by
-    intro a b hab; simp only [Φ]
-    have h : Multiplicative.ofAdd a < Multiplicative.ofAdd b := by rwa [Multiplicative.ofAdd_lt]
-    have hΘ : Θ (Multiplicative.ofAdd a) < Θ (Multiplicative.ofAdd b) := by
-      rw [show (Θ (Multiplicative.ofAdd a) < Θ (Multiplicative.ofAdd b)) ↔
-              (Multiplicative.ofAdd a < Multiplicative.ofAdd b) from
-          ⟨fun hlt => (OrderIsoClass.map_le_map_iff Θ).mp (le_of_lt hlt) |>
-            fun hle => lt_of_le_of_ne hle (fun heq => by rw [heq] at hlt; exact lt_irrefl _ hlt),
-           fun hlt => lt_of_le_of_ne ((OrderIsoClass.map_le_map_iff Θ).mpr (le_of_lt hlt))
-              (fun heq => by
-                have := (OrderIsoClass.map_le_map_iff Θ).mp (le_of_eq heq.symm)
-                exact not_lt.mpr this hlt)⟩]
-      exact h
-    have hcoe : (Θ (Multiplicative.ofAdd a) : Multiplicative ℝ) <
-                (Θ (Multiplicative.ofAdd b) : Multiplicative ℝ) := Subtype.coe_lt_coe.mpr hΘ
-    exact Multiplicative.toAdd_lt.mpr hcoe
+  have hStrictMono : StrictMono Φ := fun _ _ h => Θ.strictMono h
   -- Φ(1) > 0
   have hOne : 0 < Φ 1 := by have := hStrictMono (by omega : (0:ℤ) < 1); rw [hZero] at this; exact this
   -- Φ(-1) < 0
@@ -226,3 +205,159 @@ K&S's positivity comes from `ident_le : ∀ x, ident ≤ x`, NOT from the repres
 theorem. The Hölder path works perfectly for ℤ but produces negative values. -/
 
 end KnuthSkilling.AppendixA.Counterexamples
+
+namespace KnuthSkilling.Additive.Counterexamples.Models
+
+open KSSemigroupBase KnuthSkillingMonoidBase
+open Proofs.OrderedSemigroupEmbedding.HolderEmbedding
+
+/-! Concrete profiles are explicit values, never global instances. The arithmetic
+readouts establish consistency before any abstract representation route is invoked. -/
+
+@[instance_reducible] noncomputable def realProfile : KnuthSkillingMonoidBase ℝ where
+  op := (· + ·)
+  op_assoc := add_assoc
+  op_strictMono_left := fun y _a _b h => _root_.add_lt_add_left h y
+  op_strictMono_right := fun x _a _b h => _root_.add_lt_add_right h x
+  ident := 0
+  op_ident_left := zero_add
+  op_ident_right := add_zero
+
+noncomputable def realReadout : letI := realProfile; RepresentationResult ℝ := by
+  let := realProfile
+  exact ⟨id, fun _ _ => Iff.rfl, fun _ _ => rfl⟩
+
+theorem real_premises : letI := realProfile;
+    Axioms.AnomalousPairs.NoAnomalousPairs ℝ ∧ KSSeparationStrict ℝ := by
+  let := realProfile
+  let r := realReadout
+  refine ⟨Proofs.GridInduction.Comparison.noAnomalousPairs_of_representation
+    ℝ r.Θ r.order_preserving r.additive, ?_⟩
+  let := r.separationSemigroupStrict
+  exact KSSeparationStrict_of_KSSeparationSemigroupStrict
+
+theorem reals_have_negative_values : letI := realProfile;
+    ¬ (∀ x : ℝ, ident ≤ x) := by
+  let := realProfile
+  intro h
+  have hh := h (-1)
+  change (0 : ℝ) ≤ -1 at hh
+  norm_num at hh
+
+@[instance_reducible] noncomputable def nnrealProfile : KnuthSkillingAlgebraBase NNReal where
+  op := (· + ·)
+  op_assoc := add_assoc
+  op_strictMono_left := fun y _a _b h => _root_.add_lt_add_left h y
+  op_strictMono_right := fun x _a _b h => _root_.add_lt_add_right h x
+  ident := 0
+  op_ident_left := zero_add
+  op_ident_right := add_zero
+  ident_le := fun _ => bot_le
+
+noncomputable def nnrealReadout : letI := nnrealProfile; RepresentationResult NNReal := by
+  let := nnrealProfile
+  exact ⟨fun x => (x : ℝ), fun _ _ => Iff.rfl, fun _ _ => rfl⟩
+
+theorem nnreal_premises : letI := nnrealProfile;
+    Axioms.AnomalousPairs.NoAnomalousPairs NNReal ∧ KSSeparationStrict NNReal := by
+  let := nnrealProfile
+  let r := nnrealReadout
+  refine ⟨Proofs.GridInduction.Comparison.noAnomalousPairs_of_representation
+    NNReal r.Θ r.order_preserving r.additive, ?_⟩
+  let := r.separationSemigroupStrict
+  exact KSSeparationStrict_of_KSSeparationSemigroupStrict
+
+abbrev PositiveReal := {x : ℝ // 0 < x}
+
+@[instance_reducible] noncomputable def positiveProfile : KSSemigroupBase PositiveReal where
+  op x y := ⟨x.val + y.val, add_pos x.property y.property⟩
+  op_assoc x y z := Subtype.ext (add_assoc x.val y.val z.val)
+  op_strictMono_left := by
+    intro y a b h
+    change a.val + y.val < b.val + y.val
+    change a.val < b.val at h
+    exact _root_.add_lt_add_left h y.val
+  op_strictMono_right := by
+    intro x a b h
+    change x.val + a.val < x.val + b.val
+    change a.val < b.val at h
+    exact _root_.add_lt_add_right h x.val
+
+noncomputable def positiveReadout : letI := positiveProfile; RepresentationResult PositiveReal := by
+  let := positiveProfile
+  exact ⟨Subtype.val, fun _ _ => Iff.rfl, fun _ _ => rfl⟩
+
+theorem positive_premises : letI := positiveProfile;
+    KSSeparationSemigroupStrict PositiveReal ∧
+      (∀ x : PositiveReal, IsPositive x) ∧ (∀ x y : PositiveReal, op x y = op y x) := by
+  let := positiveProfile
+  let r := positiveReadout
+  exact ⟨r.separationSemigroupStrict, fun x => (r.isPositive_iff x).mpr x.property, r.op_comm⟩
+
+/-- Strictly positive addition needs no identity in its carrier. -/
+theorem positive_no_left_identity : letI := positiveProfile;
+    ¬ ∃ e : PositiveReal, ∀ x, op e x = x := by
+  let := positiveProfile
+  rintro ⟨e, h⟩
+  exact (ne_of_lt (positive_premises.2.1 e e)) (h e).symm
+
+/-- Positivity can hold without any minimum element of the carrier. -/
+theorem positive_no_minimum : ¬ ∃ m : PositiveReal, ∀ x, m ≤ x := by
+  rintro ⟨m, h⟩
+  have hh := h ⟨m.val / 2, half_pos m.property⟩
+  change m.val ≤ m.val / 2 at hh
+  linarith [m.property]
+
+noncomputable def nnrealHolder : letI := nnrealProfile; RepresentationResult NNReal := by
+  let := nnrealProfile
+  let := nnreal_premises.1
+  exact holder_representation
+
+noncomputable def nnrealGrid : letI := nnrealProfile; RepresentationResult NNReal := by
+  let := nnrealProfile
+  let := nnreal_premises.2
+  -- Select the actual grid globalization, rather than another provider of its interface.
+  letI : RepresentationGlobalization NNReal := representationGlobalization_of_KSSeparationStrict
+  exact grid_normalized_representation.toRepresentationResult
+
+noncomputable def nnrealCuts : letI := nnrealProfile; RepresentationResult NNReal := by
+  let := nnrealProfile
+  let := nnreal_premises.2
+  exact Proofs.DirectCuts.cuts_representation 1 (by change (0 : NNReal) < 1; norm_num)
+
+theorem nnreal_one_positive : letI := nnrealProfile; IsPositive (1 : NNReal) := by
+  let := nnrealProfile
+  exact (nnrealReadout.isPositive_iff 1).mpr (by change (0 : ℝ) < 1; norm_num)
+
+/-- The actual three constructions have identical observations after unit calibration. -/
+theorem three_routes_calibrated (x : NNReal) : letI := nnrealProfile;
+    (nnrealHolder.calibrate 1 nnreal_one_positive).Θ x = (x : ℝ) ∧
+    (nnrealGrid.calibrate 1 nnreal_one_positive).Θ x = (x : ℝ) ∧
+    (nnrealCuts.calibrate 1 nnreal_one_positive).Θ x = (x : ℝ) := by
+  let := nnrealProfile
+  have h (r : RepresentationResult NNReal) :
+      (r.calibrate 1 nnreal_one_positive).Θ x = (x : ℝ) := by
+    rw [r.calibrate_agree nnrealReadout 1 nnreal_one_positive x]
+    simp [RepresentationResult.calibrate_apply, nnrealReadout]
+  exact ⟨h nnrealHolder, h nnrealGrid, h nnrealCuts⟩
+
+/-- Positive-natural cuts also execute on a genuinely identity-free positive carrier. -/
+theorem positive_cuts_exist : letI := positiveProfile; Nonempty (RepresentationResult PositiveReal) := by
+  let := positiveProfile
+  let := positive_premises.1
+  exact ⟨Proofs.DirectCuts.cuts_pnat_representation ⟨1, by norm_num⟩
+    (positive_premises.2.1 _) positive_premises.2.1 positive_premises.2.2⟩
+
+/-- Reordering additive events preserves the endpoint, not the history or first observation. -/
+theorem equal_endpoints_distinct_histories :
+    ([1, 2] : List ℝ) ≠ [2, 1] ∧
+    ([1, 2] : List ℝ).foldl (· + ·) 0 = ([2, 1] : List ℝ).foldl (· + ·) 0 ∧
+    ([1, 2] : List ℝ).head? ≠ ([2, 1] : List ℝ).head? := by norm_num
+
+theorem nonzero_shift_fails : letI := realProfile;
+    ¬ (∀ x y, realReadout.Θ (op x y) + 1 = (realReadout.Θ x + 1) + (realReadout.Θ y + 1)) := by
+  let := realProfile
+  rw [realReadout.shift_additive_iff 1 1]
+  norm_num
+
+end KnuthSkilling.Additive.Counterexamples.Models

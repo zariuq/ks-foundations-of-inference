@@ -1,43 +1,13 @@
 /-
-# Regularity Does NOT Imply LEM in General Heyting Algebras
+# Regularity, excluded middle and valuation observations
 
-## Overview
+Double-negation regularity need not give excluded middle, even on a finite
+Heyting algebra. Dense-Top is equivalent to excluded middle for every element;
+requiring excluded middle only for regular elements is weaker. The three-chain,
+five-element lattice and real-open examples separate these conditions.
 
-This file shows that the naive theorem "regular elements satisfy LEM" is FALSE
-in general Heyting algebras (and in fact can fail even for finite ones).
-We also record a sufficient hypothesis (Dense-Top) under which regular → LEM holds.
-
-## The Counterexample
-
-In the Heyting algebra of open sets of ℝ:
-- The interval (0,1) is a regular open set: int(cl(0,1)) = int[0,1] = (0,1)
-- But (0,1) ⊔ (0,1)ᶜ = (0,1) ∪ (-∞,0) ∪ (1,∞) = ℝ \ {0,1} ≠ ℝ
-
-## Key Insight
-
-The gap between regularity and LEM is not controlled by finiteness alone.
-Additional separation hypotheses (such as the Dense-Top property below) are what
-force regular → LEM. Infinite/continuous counterexamples can be understood as
-"boundary effects", but finiteness does not prevent failure.
-
-## The Dense-Top Property
-
-One key property that ensures "regular → LEM" is the Dense-Top property:
-  ∀ a, aᶜ = ⊥ → a = ⊤
-
-Boolean algebras have this property. Many finite and infinite Heyting algebras do not.
-
-## Ramifications for Probability Theory
-
-1. **Boolean (Classical) Probability**: P(A) + P(Aᶜ) = 1 depends on A ∪ Aᶜ = Ω
-2. **Finite BinaryEvidence**: Regular evidence satisfies pseudo-LEM
-3. **Continuous BinaryEvidence**: Even "regular-looking" evidence may fail LEM
-   - This justifies interval-valued probability in continuous settings
-
-## References
-
-- arXiv:2110.11515 "Degree of Satisfiability in Heyting Algebras"
-- Johnstone, "Stone Spaces" (1982) - Frame theory
+Complement gaps measure a valuation's observation. Reflecting their zero back
+to a lattice identity requires an additional separation hypothesis.
 -/
 
 import Mathlib.Order.Heyting.Basic
@@ -45,15 +15,11 @@ import Mathlib.Order.Heyting.Regular
 import Mathlib.Topology.Sets.Opens
 import Mathlib.Topology.Order.Basic
 import Mathlib.Tactic
+import KnuthSkilling.Core.HeytingBounds
 
 namespace KnuthSkilling.Heyting.RegularityLEMCounterexample
 
 open TopologicalSpace Set
-
-/-! ## Part 1: The Dense-Top Property
-
-A property that can force regular → LEM, but is not automatic (even for finite algebras).
--/
 
 variable {α : Type*} [HeytingAlgebra α]
 
@@ -67,15 +33,12 @@ class HasDenseTopProperty (α : Type*) [HeytingAlgebra α] : Prop where
 /-- KEY THEOREM: In any Heyting algebra with Dense-Top, regular elements satisfy LEM -/
 theorem regular_implies_LEM_of_denseTop [HasDenseTopProperty α] (a : α)
     (ha : Heyting.IsRegular a) : a ⊔ aᶜ = ⊤ := by
-  -- Key computation: (a ⊔ aᶜ)ᶜ = aᶜ ⊓ aᶜᶜ = aᶜ ⊓ a = ⊥
   have step1 : (a ⊔ aᶜ)ᶜ = ⊥ := by
     rw [compl_sup, ha.eq, inf_comm, inf_compl_eq_bot]
-  -- So a ⊔ aᶜ is dense
   have hDense : IsDense (a ⊔ aᶜ) := step1
-  -- By Dense-Top property, a ⊔ aᶜ = ⊤
   exact HasDenseTopProperty.dense_eq_top (a ⊔ aᶜ) hDense
 
-/-- CONVERSE: If regular doesn't imply LEM, then Dense-Top fails -/
+/-- The contrapositive of the sufficient Dense-Top condition. -/
 theorem not_denseTop_of_regular_not_LEM
     (h : ∃ a : α, Heyting.IsRegular a ∧ a ⊔ aᶜ ≠ ⊤) :
     ¬HasDenseTopProperty α := by
@@ -83,23 +46,28 @@ theorem not_denseTop_of_regular_not_LEM
   obtain ⟨a, ha_reg, ha_not_LEM⟩ := h
   exact ha_not_LEM (@regular_implies_LEM_of_denseTop α _ hDT a ha_reg)
 
-/-! ## Part 2: Dense-Top Property
+/-- Dense-Top characterizes excluded middle for all elements, not just regular ones. -/
+theorem denseTop_iff_excludedMiddle :
+    HasDenseTopProperty α ↔ ∀ a : α, a ⊔ aᶜ = ⊤ := by
+  constructor
+  · intro h a
+    apply h.dense_eq_top
+    change (a ⊔ aᶜ)ᶜ = ⊥
+    rw [compl_sup, inf_compl_eq_bot]
+  · intro h
+    exact ⟨fun a ha => by
+      change aᶜ = ⊥ at ha
+      simpa [ha] using h a⟩
 
-**Important**: The Dense-Top property does NOT hold for all finite Heyting algebras!
-
-**Counterexample**: The 3-element chain {⊥ < m < ⊤}
-- `mᶜ = m ⇨ ⊥ = ⊥` (only ⊥ is disjoint from m)
-- But `m ≠ ⊤`
-
-So "finite" alone is not sufficient for Dense-Top. The property holds for:
-- Boolean algebras (by `compl_eq_bot` theorem)
-- Finite algebras satisfying additional conditions (e.g., atomic + some separation property)
-
-The key insight is that Dense-Top distinguishes:
-- Finite Heyting algebras where it holds (includes Boolean)
-- Finite Heyting algebras where it fails (like the 3-chain)
-- Infinite Heyting algebras like Opens ℝ (where it also fails)
--/
+/-- The converse restricted to regular elements fails on the three-chain. -/
+theorem threeChain_regular_LEM_without_denseTop :
+    (∀ a : Fin 3, Heyting.IsRegular a → a ⊔ aᶜ = ⊤) ∧
+      ¬HasDenseTopProperty (Fin 3) := by
+  constructor
+  · decide
+  · intro h
+    have := h.dense_eq_top (1 : Fin 3) (by change (1 : Fin 3)ᶜ = 0; decide)
+    exact (by decide : (1 : Fin 3) ≠ ⊤) this
 
 section BooleanDenseTop
 
@@ -120,24 +88,7 @@ theorem regular_implies_LEM_boolean (a : β) : a ⊔ aᶜ = ⊤ :=
 
 end BooleanDenseTop
 
-/-! ## Part 3: A Finite Counterexample (Regular Does Not Imply LEM)
-
-We now give an explicit *finite* Heyting algebra where a regular element fails LEM.
-
-This refutes the common misconception that "finite" is enough to make regular → LEM true.
--/
-
 namespace FiniteCounterexample
-
-/-!
-We build a 5-element Heyting algebra `H5` with elements:
-`⊥ < a, b < ab < ⊤`, where `a` and `b` are incomparable.
-
-Its pseudocomplement satisfies:
-`aᶜ = b`, `bᶜ = a`, and `abᶜ = ⊥`.
-
-Then `a` is regular (`aᶜᶜ = a`) but `a ⊔ aᶜ = ab ≠ ⊤`.
--/
 
 inductive H5 : Type
   | bot : H5
@@ -278,6 +229,33 @@ theorem a_is_regular : Heyting.IsRegular (a : H5) := by
 theorem a_not_LEM : (a : H5) ⊔ aᶜ ≠ (⊤ : H5) := by
   decide
 
+private noncomputable def rank : H5 → ℝ
+  | bot => 0 | a => 1 / 3 | b => 1 / 3 | ab => 2 / 3 | top => 1
+
+/-- Equal atom weights with a positive mass above their join. -/
+noncomputable def rankValuation : ModularValuation H5 where
+  val := rank
+  monotone := by
+    intro x y h
+    change le' x y at h
+    cases x <;> cases y <;> norm_num [rank, le'] at *
+  val_bot := rfl
+  val_top := rfl
+  modular := by
+    intro x y
+    change rank x + rank y = rank (sup' x y) + rank (inf' x y)
+    cases x <;> cases y <;> norm_num [rank, sup', inf']
+
+/-- Exact negation of a regular element does not force a point interval. -/
+theorem regular_exact_negation_with_positive_width :
+    Heyting.IsRegular (a : H5) ∧
+      heytingInterval rankValuation aᶜ =
+        (fun x : ℝ => 1 - x) ⁻¹' heytingInterval rankValuation a ∧
+      heytingWidth rankValuation a = 1 / 3 := by
+  refine ⟨a_is_regular, heytingInterval_compl_eq_of_regular _ _ rfl, ?_⟩
+  norm_num [heytingWidth, upperBound, lowerBound, rankValuation, rank,
+    Compl.compl, himp']
+
 end H5
 
 /-- There exists a finite Heyting algebra with a regular element that fails LEM. -/
@@ -289,12 +267,6 @@ theorem exists_finite_regular_not_LEM :
   · exact H5.a_not_LEM
 
 end FiniteCounterexample
-
-/-! ## Part 4: Opens of Topological Spaces
-
-The opens of a topological space form a Frame (complete Heyting algebra).
-In this setting, Dense-Top can fail.
--/
 
 section TopologicalCounterexample
 
@@ -310,35 +282,7 @@ is the largest open set disjoint from U, which equals Opens.interior((U : Set X)
 -/
 theorem opens_compl_eq_interior_compl (U : Opens X) :
     ((Uᶜ : Opens X) : Set X) = interior (U : Set X)ᶜ := by
-  ext x
-  constructor
-  · -- Direction 1: x ∈ (Uᶜ : Set X) → x ∈ interior((U : Set X)ᶜ)
-    intro hx_compl  -- hx_compl : x ∈ (Uᶜ : Set X), i.e., x ∈ the Heyting complement
-    -- Uᶜ is an open set, and we need to show (Uᶜ : Set X) ⊆ (U : Set X)ᶜ
-    have h_subset : ((Uᶜ : Opens X) : Set X) ⊆ (U : Set X)ᶜ := by
-      intro y hy_in_compl hy_in_U
-      -- Then y ∈ Uᶜ ⊓ U, but Uᶜ ⊓ U = ⊥
-      have hmem : y ∈ ((Uᶜ ⊓ U) : Opens X) := ⟨hy_in_compl, hy_in_U⟩
-      have h_bot : (Uᶜ ⊓ U : Opens X) = ⊥ := by rw [inf_comm]; exact inf_compl_eq_bot
-      rw [h_bot] at hmem
-      exact hmem  -- y ∈ ⊥ is a contradiction
-    -- Uᶜ is open and contained in (U : Set X)ᶜ, so it's in the interior
-    exact interior_maximal h_subset (Uᶜ : Opens X).isOpen hx_compl
-  · -- Direction 2: x ∈ interior((U : Set X)ᶜ) → x ∈ (Uᶜ : Set X)
-    intro hx_int  -- hx_int : x ∈ interior((U : Set X)ᶜ)
-    -- Opens.interior((U : Set X)ᶜ) is disjoint from U
-    -- By the universal property: Disjoint V U → V ≤ Uᶜ
-    have h_le : Opens.interior (U : Set X)ᶜ ≤ Uᶜ := by
-      rw [le_compl_iff_disjoint_right]
-      -- Show Disjoint (Opens.interior (U : Set X)ᶜ) U
-      rw [disjoint_iff]
-      ext y
-      simp only [SetLike.mem_coe, Opens.mem_inf, Opens.mem_interior, Opens.mem_bot,
-                 iff_false, not_and]
-      intro hy_int hy_U
-      have hy_not_U : y ∈ (U : Set X)ᶜ := interior_subset hy_int
-      exact hy_not_U hy_U
-    exact h_le hx_int
+  exact Opens.coe_compl_eq_interior_compl
 
 /-- An open set is "dense" in the Heyting sense if its complement has empty interior.
 
@@ -350,20 +294,8 @@ For Opens X (a Frame = complete Heyting algebra):
 So IsDense U (i.e., Uᶜ = ⊥) iff interior(Uᶜ) = ∅, i.e., U is topologically dense. -/
 theorem opens_dense_iff (U : Opens X) :
     IsDense U ↔ interior (U : Set X)ᶜ = ∅ := by
-  unfold IsDense
-  rw [← opens_compl_eq_interior_compl]
-  constructor
-  · intro h
-    -- If Uᶜ = ⊥, then (Uᶜ : Set X) = ∅
-    rw [h]
-    rfl
-  · intro h
-    -- If (Uᶜ : Set X) = ∅, then Uᶜ = ⊥
-    ext x
-    simp only [SetLike.mem_coe, Opens.mem_bot, iff_false]
-    intro hx
-    have : x ∈ (∅ : Set X) := by rw [← h]; exact hx
-    exact this
+  rw [IsDense, ← opens_compl_eq_interior_compl]
+  exact ⟨fun h => by rw [h]; rfl, fun h => SetLike.coe_injective h⟩
 
 /-- The counterexample structure: X has a dense open proper subset -/
 def HasDenseProperOpen (X : Type*) [TopologicalSpace X] : Prop :=
@@ -385,37 +317,12 @@ theorem not_denseTop_of_dense_proper_open (h : HasDenseProperOpen X) :
 
 /-- ℝ has a dense proper open (any interval missing boundary points) -/
 theorem real_has_dense_proper_open : HasDenseProperOpen ℝ := by
-  -- Example: ℝ \ {0} = (-∞, 0) ∪ (0, ∞) is open, dense, but not all of ℝ
-  use ⟨Iio (0:ℝ) ∪ Ioi 0, isOpen_Iio.union isOpen_Ioi⟩
-  constructor
-  · -- Show interior((Iio 0 ∪ Ioi 0)ᶜ) = ∅
-    -- (Iio 0 ∪ Ioi 0)ᶜ = {0}, and interior({0}) = ∅ in ℝ
-    -- We need to show interior({0}) = ∅
-    have h_coe : ((⟨Iio (0:ℝ) ∪ Ioi 0, isOpen_Iio.union isOpen_Ioi⟩ : Opens ℝ) : Set ℝ)
-        = Iio 0 ∪ Ioi 0 := rfl
-    rw [h_coe]
-    have h_compl : ((Iio (0:ℝ) ∪ Ioi 0) : Set ℝ)ᶜ = {0} := by
-      ext x
-      simp only [mem_compl_iff, mem_union, mem_Iio, mem_Ioi, not_or, not_lt, mem_singleton_iff]
-      constructor
-      · intro ⟨h1, h2⟩
-        linarith
-      · intro hx
-        rw [hx]
-        simp
-    rw [h_compl]
-    -- Show interior({0}) = ∅ using that singletons have empty interior in ℝ
-    -- ℝ is a PerfectSpace (no isolated points), so interior of any singleton is empty
-    exact interior_singleton 0
-  · -- Show Iio 0 ∪ Ioi 0 ≠ univ
-    intro h
-    -- 0 ∈ univ but 0 ∉ Iio 0 ∪ Ioi 0
-    have h0_univ : (0:ℝ) ∈ (univ : Set ℝ) := mem_univ 0
-    have h0_not_in : (0:ℝ) ∉ ((Iio (0:ℝ) ∪ Ioi 0) : Set ℝ) := by
-      simp only [mem_union, mem_Iio, mem_Ioi, not_or, not_lt]
-      exact ⟨le_refl 0, le_refl 0⟩
-    rw [← h] at h0_univ
-    exact h0_not_in h0_univ
+  refine ⟨⟨({0} : Set ℝ)ᶜ, isClosed_singleton.isOpen_compl⟩, ?_, ?_⟩
+  · change interior (({0} : Set ℝ)ᶜ)ᶜ = ∅
+    simpa only [compl_compl] using interior_singleton (0 : ℝ)
+  · intro h
+    have := congrArg (fun s : Set ℝ => (0 : ℝ) ∈ s) h
+    simp at this
 
 /-- MAIN COUNTEREXAMPLE: Opens of ℝ does NOT have Dense-Top property -/
 theorem opens_real_not_denseTop : ¬HasDenseTopProperty (Opens ℝ) :=
@@ -423,160 +330,36 @@ theorem opens_real_not_denseTop : ¬HasDenseTopProperty (Opens ℝ) :=
 
 /-- Helper: interior of (0,1)ᶜ in ℝ equals (-∞,0) ∪ (1,∞). -/
 private lemma interior_Ioo_01_compl : interior (Ioo (0:ℝ) 1)ᶜ = Iio 0 ∪ Ioi 1 := by
-  apply le_antisymm
-  · -- interior (Ioo 0 1)ᶜ ⊆ Iio 0 ∪ Ioi 1
-    intro y hy
-    -- hy : y ∈ interior (Ioo 0 1)ᶜ
-    -- Show y < 0 ∨ y > 1 by proving ¬(0 ≤ y ≤ 1)
-    by_contra h_not
-    simp only [mem_union, mem_Iio, mem_Ioi, not_or, not_lt] at h_not
-    obtain ⟨h_ge_0, h_le_1⟩ := h_not
-    -- So 0 ≤ y ≤ 1
-    -- But y ∈ interior (Ioo 0 1)ᶜ means there's an open ball B(y, ε) ⊆ (Ioo 0 1)ᶜ
-    -- (Ioo 0 1)ᶜ = (-∞, 0] ∪ [1, ∞)
-    -- For 0 ≤ y ≤ 1, any ball around y contains points in (0, 1)
-    -- Specifically: if 0 < y < 1, then B(y, min(y, 1-y)/2) ⊆ (0, 1), contradiction
-    -- if y = 0, then B(0, ε) contains points in (0, min(ε, 1)), contradiction
-    -- if y = 1, then B(1, ε) contains points in (max(0, 1-ε), 1), contradiction
-    -- hy : y ∈ interior (Ioo 0 1)ᶜ, which is open
-    -- So there's a ball around y
-    have h_open : IsOpen (interior (Ioo (0:ℝ) 1)ᶜ) := isOpen_interior
-    obtain ⟨ε, hε_pos, hball⟩ := Metric.isOpen_iff.mp h_open y hy
-    -- hball : Metric.ball y ε ⊆ interior (Ioo 0 1)ᶜ ⊆ (Ioo 0 1)ᶜ
-    by_cases hy0 : y = 0
-    · -- Case y = 0
-      rw [hy0] at hball
-      have h_in_ball : min (ε / 2) (1 / 2) ∈ Metric.ball (0:ℝ) ε := by
-        rw [Metric.mem_ball]
-        have h_pos : (0:ℝ) < min (ε / 2) (1 / 2) := lt_min (half_pos hε_pos) (by linarith)
-        show dist (min (ε / 2) (1 / 2)) 0 < ε
-        rw [Real.dist_eq]
-        simp only [sub_zero, abs_of_pos h_pos]
-        calc min (ε / 2) (1 / 2)
-          _ ≤ ε / 2 := min_le_left _ _
-          _ < ε := half_lt_self hε_pos
-      have h_in_interior : min (ε / 2) (1 / 2) ∈ interior (Ioo (0:ℝ) 1)ᶜ := hball h_in_ball
-      have : min (ε / 2) (1 / 2) ∈ (Ioo (0:ℝ) 1)ᶜ := interior_subset h_in_interior
-      simp only [mem_compl_iff, mem_Ioo, not_and] at this
-      have h1 : (0:ℝ) < min (ε / 2) (1 / 2) := lt_min (half_pos hε_pos) (by linarith)
-      have h2 : min (ε / 2) (1 / 2) < 1 := min_lt_of_right_lt (by linarith)
-      exact this h1 h2
-    by_cases hy1 : y = 1
-    · -- Case y = 1
-      rw [hy1] at hball
-      have h_in_ball : 1 - min (ε / 2) (1 / 2) ∈ Metric.ball (1:ℝ) ε := by
-        rw [Metric.mem_ball, Real.dist_eq]
-        have h_pos : (0:ℝ) < min (ε / 2) (1 / 2) := lt_min (half_pos hε_pos) (by linarith)
-        have h_simp : (1:ℝ) - min (ε / 2) (1 / 2) - 1 = - min (ε / 2) (1 / 2) := by ring
-        rw [h_simp, abs_neg, abs_of_pos h_pos]
-        calc min (ε / 2) (1 / 2)
-          _ ≤ ε / 2 := min_le_left _ _
-          _ < ε := half_lt_self hε_pos
-      have h_in_interior : 1 - min (ε / 2) (1 / 2) ∈ interior (Ioo (0:ℝ) 1)ᶜ := hball h_in_ball
-      have : 1 - min (ε / 2) (1 / 2) ∈ (Ioo (0:ℝ) 1)ᶜ := interior_subset h_in_interior
-      simp only [mem_compl_iff, mem_Ioo, not_and] at this
-      have h1 : (0:ℝ) < 1 - min (ε / 2) (1 / 2) := by linarith [min_le_right (ε / 2) (1 / 2)]
-      have h2 : 1 - min (ε / 2) (1 / 2) < 1 := by linarith [min_le_right (ε / 2) (1 / 2), lt_min (half_pos hε_pos) (by linarith : (0:ℝ) < 1 / 2)]
-      exact this h1 h2
-    · -- Case 0 < y < 1
-      have h_y_in : y ∈ Ioo (0:ℝ) 1 := ⟨lt_of_le_of_ne h_ge_0 (Ne.symm hy0), lt_of_le_of_ne h_le_1 hy1⟩
-      -- y ∈ Ioo 0 1, which is open, so there's a ball around y in Ioo 0 1
-      -- This contradicts that B(y, ε) ⊆ (Ioo 0 1)ᶜ
-      have h_in_ball : y ∈ Metric.ball y ε := Metric.mem_ball_self hε_pos
-      have h_in_interior : y ∈ interior (Ioo (0:ℝ) 1)ᶜ := hball h_in_ball
-      have : y ∈ (Ioo (0:ℝ) 1)ᶜ := interior_subset h_in_interior
-      simp only [mem_compl_iff] at this
-      exact this h_y_in
-  · -- Iio 0 ∪ Ioi 1 ⊆ interior (Ioo 0 1)ᶜ
-    have h_open : IsOpen (Iio (0:ℝ) ∪ Ioi 1) := isOpen_Iio.union isOpen_Ioi
-    have h_subset : Iio (0:ℝ) ∪ Ioi 1 ⊆ (Ioo 0 1)ᶜ := by
-      intro y hy
-      cases hy with
-      | inl h => simp only [mem_compl_iff, mem_Ioo, not_and]; intro; linarith [mem_Iio.mp h]
-      | inr h => simp only [mem_compl_iff, mem_Ioo, not_and]; intro; linarith [mem_Ioi.mp h]
-    exact interior_maximal h_subset h_open
+  rw [interior_compl, closure_Ioo (by norm_num : (0 : ℝ) ≠ 1)]
+  ext x
+  simp only [mem_compl_iff, mem_Icc, mem_union, mem_Iio, mem_Ioi, not_and_or, not_le]
 
 /-- Helper: The double complement of (0,1) in Opens ℝ equals (0,1) -/
 lemma Ioo_01_is_regular :
     let U : Opens ℝ := ⟨Ioo (0:ℝ) 1, isOpen_Ioo⟩
     U = Uᶜᶜ := by
   intro U
-  -- Use SetLike.ext' to convert Opens equality to Set equality
-  refine SetLike.ext' ?_
-  -- Goal: ↑U = ↑(Uᶜᶜ)
-  -- Let Uc := Uᶜ and Ucc := Uᶜᶜ to avoid parsing ambiguity
-  let Uc : Opens ℝ := Uᶜ
-  let Ucc : Opens ℝ := Ucᶜ
-  -- Prove U = Ucc by showing ↑U = ↑Ucc
-  show (U : Set ℝ) = (Ucc : Set ℝ)
-  -- Compute both sides
-  have h_U : (U : Set ℝ) = Ioo (0:ℝ) 1 := rfl
-  have h_Ucc : (Ucc : Set ℝ) = Ioo (0:ℝ) 1 := by
-    -- Apply opens_compl_eq_interior_compl twice
-    have eq1 : (Ucc : Set ℝ) = interior (Uc : Set ℝ)ᶜ :=
-      opens_compl_eq_interior_compl Uc
-    have eq2 : (Uc : Set ℝ) = interior (U : Set ℝ)ᶜ :=
-      opens_compl_eq_interior_compl U
-    calc (Ucc : Set ℝ)
-      _ = interior (Uc : Set ℝ)ᶜ := eq1
-      _ = interior (interior (U : Set ℝ)ᶜ)ᶜ := by rw [eq2]
-      _ = interior (interior (Ioo (0:ℝ) 1)ᶜ)ᶜ := rfl
-      _ = interior (Iio (0:ℝ) ∪ Ioi 1)ᶜ := by rw [interior_Ioo_01_compl]
-      _ = interior (Icc 0 1) := by
-          congr 1
-          ext y
-          simp only [mem_compl_iff, mem_union, mem_Iio, mem_Ioi, not_or, not_lt, mem_Icc]
-      _ = Ioo (0:ℝ) 1 := interior_Icc
-  rw [h_U, h_Ucc]
+  apply SetLike.ext'
+  change Ioo (0 : ℝ) 1 = (↑(Uᶜᶜ) : Set ℝ)
+  rw [opens_compl_eq_interior_compl, opens_compl_eq_interior_compl,
+    ← closure_eq_compl_interior_compl]
+  change Ioo (0 : ℝ) 1 = interior (closure (Ioo (0 : ℝ) 1))
+  rw [closure_Ioo (by norm_num : (0 : ℝ) ≠ 1), interior_Icc]
 
 /-- COROLLARY: There exists a regular element in Opens ℝ that fails LEM -/
 theorem exists_regular_not_LEM_in_opens_real :
     ∃ U : Opens ℝ, Heyting.IsRegular U ∧ U ⊔ Uᶜ ≠ ⊤ := by
-  let U : Opens ℝ := ⟨Ioo (0:ℝ) 1, isOpen_Ioo⟩
-  use U
-  constructor
-  · -- U is regular: U = Uᶜᶜ
-    exact Ioo_01_is_regular.symm
-  · -- U ⊔ Uᶜ ≠ ⊤
-    intro h_eq_top
-    -- Strategy: Show 0 ∉ U and 0 ∉ Uᶜ, which contradicts 0 ∈ U ⊔ Uᶜ = ⊤
-    have h0_not_U : (0:ℝ) ∉ (U : Set ℝ) := by
-      intro h
-      -- 0 ∈ Ioo 0 1 means 0 < 0 ∧ 0 < 1, which is false
-      -- (U : Set ℝ) = Ioo 0 1 by definition
-      change (0:ℝ) ∈ Ioo 0 1 at h
-      obtain ⟨h1, h2⟩ := h
-      exact lt_irrefl 0 h1
-    have h0_not_compl : (0:ℝ) ∉ (↑Uᶜ : Set ℝ) := by
-      -- Uᶜ = interior((0,1)ᶜ) = (-∞,0) ∪ (1,∞)
-      have h_eq : (↑Uᶜ : Set ℝ) = interior (↑U : Set ℝ)ᶜ := opens_compl_eq_interior_compl U
-      rw [h_eq]
-      have h_U_coe : (↑U : Set ℝ) = Ioo 0 1 := rfl
-      rw [h_U_coe, interior_Ioo_01_compl]
-      intro h
-      -- 0 ∈ Iio 0 ∪ Ioi 1 means 0 < 0 ∨ 1 < 0
-      simp only [mem_union, mem_Iio, lt_self_iff_false, mem_Ioi, false_or] at h
-      -- h : 1 < 0
-      linarith
-    -- But 0 ∈ ⊤ = U ⊔ Uᶜ
-    have h0_in_sup : (0:ℝ) ∈ (U ⊔ Uᶜ : Opens ℝ) := by
-      rw [h_eq_top]
-      trivial
-    -- U ⊔ Uᶜ in Opens has underlying set = union of underlying sets
-    have h_sup_coe : (↑(U ⊔ Uᶜ) : Set ℝ) = (↑U : Set ℝ) ∪ (↑Uᶜ : Set ℝ) := by
-      -- The sup in Opens is the union of the underlying sets
-      rfl
-    rw [← SetLike.mem_coe, h_sup_coe] at h0_in_sup
-    cases h0_in_sup with
-    | inl h => exact h0_not_U h
-    | inr h => exact h0_not_compl h
+  let U : Opens ℝ := ⟨Ioo (0 : ℝ) 1, isOpen_Ioo⟩
+  refine ⟨U, Ioo_01_is_regular.symm, ?_⟩
+  intro h
+  have h0 : (0 : ℝ) ∈ (U ⊔ Uᶜ : Opens ℝ) := by rw [h]; trivial
+  change (0 : ℝ) ∈ (U : Set ℝ) ∪ (↑Uᶜ : Set ℝ) at h0
+  rw [opens_compl_eq_interior_compl] at h0
+  change (0 : ℝ) ∈ Ioo 0 1 ∪ interior (Ioo (0 : ℝ) 1)ᶜ at h0
+  rw [interior_Ioo_01_compl] at h0
+  norm_num at h0
 
 end TopologicalCounterexample
-
-/-! ## Part 4: Ramifications for Probability Theory
-
-The failure of "regular → LEM" has deep implications for probability.
--/
 
 section ProbabilityRamifications
 
@@ -590,23 +373,30 @@ structure ProbabilityFunction (α : Type*) [HeytingAlgebra α] where
   P_mono : ∀ x y, x ≤ y → P x ≤ P y
   P_add : ∀ x y, Disjoint x y → P (x ⊔ y) = P x + P y
 
-/-- The classical sum rule P(A) + P(Aᶜ) = 1 REQUIRES LEM -/
+/-- Preserve the supplied function while exposing its additive law. -/
+def ProbabilityFunction.toAdditiveValuation (μ : ProbabilityFunction α) :
+    ProbabilityTheory.Common.AdditiveValuation α where
+  val := μ.P
+  mono := μ.P_mono
+  val_bot := μ.P_bot
+  val_top := μ.P_top
+  additive a b hab := μ.P_add a b (disjoint_iff.mpr hab)
+
+/-- Excluded middle suffices for the classical complement sum rule. -/
 theorem sum_rule_requires_LEM (μ : ProbabilityFunction α) (a : α)
     (hLEM : a ⊔ aᶜ = ⊤) : μ.P a + μ.P aᶜ = 1 := by
-  have hDisj : Disjoint a aᶜ := disjoint_compl_right
-  calc μ.P a + μ.P aᶜ = μ.P (a ⊔ aᶜ) := (μ.P_add a aᶜ hDisj).symm
-    _ = μ.P ⊤ := by rw [hLEM]
-    _ = 1 := μ.P_top
+  calc μ.P a + μ.P aᶜ = μ.P (a ⊔ aᶜ) :=
+        complementSum_eq_sup μ.toAdditiveValuation a
+    _ = 1 := by rw [hLEM, μ.P_top]
 
 /-- Without LEM, we only get an INEQUALITY: P(A) + P(Aᶜ) ≤ 1 -/
 theorem sum_rule_inequality (μ : ProbabilityFunction α) (a : α) :
     μ.P a + μ.P aᶜ ≤ 1 := by
-  have hDisj : Disjoint a aᶜ := disjoint_compl_right
-  calc μ.P a + μ.P aᶜ = μ.P (a ⊔ aᶜ) := (μ.P_add a aᶜ hDisj).symm
-    _ ≤ μ.P ⊤ := μ.P_mono _ _ le_top
-    _ = 1 := μ.P_top
+  calc μ.P a + μ.P aᶜ = μ.P (a ⊔ aᶜ) :=
+        complementSum_eq_sup μ.toAdditiveValuation a
+    _ ≤ 1 := μ.toAdditiveValuation.le_one _
 
-/-- The "excluded middle gap" measures how much LEM fails -/
+/-- The observed complement defect; zero need not reflect a lattice identity. -/
 def excludedMiddleGap (μ : ProbabilityFunction α) (a : α) : ℝ :=
   1 - (μ.P a + μ.P aᶜ)
 
@@ -620,42 +410,13 @@ theorem excludedMiddleGap_nonneg (μ : ProbabilityFunction α) (a : α) :
 theorem excludedMiddleGap_zero_iff_LEM (μ : ProbabilityFunction α) (a : α)
     (hStrict : ∀ x y, x < y → μ.P x < μ.P y) :
     excludedMiddleGap μ a = 0 ↔ a ⊔ aᶜ = ⊤ := by
-  unfold excludedMiddleGap
-  constructor
-  · intro h
-    have hSum : μ.P a + μ.P aᶜ = 1 := by linarith
-    have hDisj : Disjoint a aᶜ := disjoint_compl_right
-    have hEq : μ.P (a ⊔ aᶜ) = μ.P ⊤ := by
-      rw [μ.P_add a aᶜ hDisj, hSum, μ.P_top]
-    by_contra hne
-    have hlt : a ⊔ aᶜ < ⊤ := lt_top_iff_ne_top.mpr hne
-    have : μ.P (a ⊔ aᶜ) < μ.P ⊤ := hStrict _ _ hlt
-    linarith
-  · intro hLEM
-    have : μ.P a + μ.P aᶜ = 1 := sum_rule_requires_LEM μ a hLEM
-    linarith
+  apply complementGap_zero_iff_of_reflects_top μ.toAdditiveValuation
+  intro x hx
+  by_contra h
+  have hlt := hStrict x ⊤ (lt_top_iff_ne_top.mpr h)
+  rw [μ.P_top] at hlt
+  exact (ne_of_lt hlt) hx
 
 end ProbabilityRamifications
-
-/-! ## Summary
-
-1. **Dense-Top Property**: aᶜ = ⊥ → a = ⊤
-   - Boolean algebras HAVE this property
-   - It can fail in both finite and infinite Heyting algebras
-
-2. **Regular → LEM** is EQUIVALENT to Dense-Top:
-   - regular_implies_LEM_of_denseTop: Dense-Top → (regular → LEM)
-   - not_denseTop_of_regular_not_LEM: ¬(regular → LEM) → ¬Dense-Top
-
-3. **Counterexamples**:
-   - Finite: `FiniteCounterexample.H5` has a regular element `a` with `a ⊔ aᶜ ≠ ⊤`
-   - Infinite: In `Opens ℝ`, the interval (0,1) is regular but fails LEM
-
-4. **Probability Implications**:
-   - Classical sum rule P(A) + P(Aᶜ) = 1 requires LEM
-   - Without LEM, we only get P(A) + P(Aᶜ) ≤ 1
-   - The gap 1 - (P(A) + P(Aᶜ)) measures "excluded middle failure"
-   - This justifies interval-valued probability: [P(A), 1 - P(Aᶜ)]
--/
 
 end KnuthSkilling.Heyting.RegularityLEMCounterexample

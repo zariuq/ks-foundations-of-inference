@@ -1,5 +1,5 @@
 import Mathlib.Data.NNReal.Basic
-import Mathlib.Data.Real.Sqrt
+import Mathlib.Analysis.Real.Sqrt
 import Mathlib.NumberTheory.Real.Irrational
 import KnuthSkilling.Additive.Proofs.GridInduction.Core.Induction.Construction
 
@@ -37,27 +37,9 @@ private lemma nat_iterate_add_left_eq_mul (x : ℝ≥0) : ∀ n : ℕ,
     Nat.iterate (fun z : ℝ≥0 => x + z) n x = ((n + 1 : ℕ) : ℝ≥0) * x
   | 0 => by simp
   | n + 1 => by
-      have ih := nat_iterate_add_left_eq_mul x n
-      have h_step :
-          Nat.iterate (fun z : ℝ≥0 => x + z) (n + 1) x
-            = x + Nat.iterate (fun z : ℝ≥0 => x + z) n x := by
-        simp [Function.iterate_succ_apply']
-      rw [h_step, ih]
-      have hcoeff : (((n + 1 : ℕ) : ℝ≥0) + 1) = ((n + 2 : ℕ) : ℝ≥0) := by
-        have hn : (n + 1 + 1 : ℕ) = n + 2 := by omega
-        calc
-          ((n + 1 : ℕ) : ℝ≥0) + 1 = ((n + 1 + 1 : ℕ) : ℝ≥0) := by
-            simp [Nat.cast_add]
-          _ = ((n + 2 : ℕ) : ℝ≥0) := by
-            simp [hn]
-      calc
-        x + ((n + 1 : ℕ) : ℝ≥0) * x
-            = ((n + 1 : ℕ) : ℝ≥0) * x + x := by
-                simp [add_comm]
-        _ = (((n + 1 : ℕ) : ℝ≥0) + 1) * x := by
-                simp [add_mul, one_mul]
-        _ = ((n + 2 : ℕ) : ℝ≥0) * x := by
-                exact congrArg (fun a : ℝ≥0 => a * x) hcoeff
+    rw [Function.iterate_succ_apply', nat_iterate_add_left_eq_mul x n]
+    push_cast
+    ring
 
 noncomputable local instance : KnuthSkillingAlgebra ℝ≥0 where
   op := (· + ·)
@@ -101,14 +83,8 @@ private lemma F2_atom1 : F2.atoms i1 = ⟨Real.sqrt 2, by positivity⟩ := by
 private lemma iterate_op_add_eq_mul (x : ℝ≥0) : ∀ n : ℕ, iterate_op x n = (n : ℝ≥0) * x
   | 0 => by simp [iterate_op, KnuthSkillingAlgebraBase.ident]
   | n + 1 => by
-      have ih := iterate_op_add_eq_mul x n
-      calc
-        iterate_op x (n + 1) = op x (iterate_op x n) := by
-          simp [iterate_op_succ]
-        _ = x + (n : ℝ≥0) * x := by simp [KnuthSkillingAlgebraBase.op, ih]
-        _ = (n : ℝ≥0) * x + x := by simp [add_comm]
-        _ = ((n : ℝ≥0) + 1) * x := by simp [add_mul, one_mul]
-        _ = ((n + 1 : ℕ) : ℝ≥0) * x := by simp [Nat.cast_add, Nat.cast_one]
+    simp [iterate_op_succ, KnuthSkillingAlgebraBase.op, iterate_op_add_eq_mul x n,
+      Nat.cast_succ, add_mul, add_comm]
 
 private lemma mu_F2 (r : Multi 2) :
     ((mu (α := ℝ≥0) F2 r : ℝ≥0) : ℝ) = (r i0 : ℝ) + (r i1 : ℝ) * Real.sqrt 2 := by
@@ -162,7 +138,7 @@ private lemma iterate_op_d (u : ℕ) :
 lemma B_empty_for_F2_d : ∀ r u, 0 < u → r ∉ extensionSetB F2 d u := by
   intro r u hu hrB
   have hEq : mu F2 r = iterate_op d u := by
-    simpa [extensionSetB, Set.mem_setOf_eq] using hrB
+    simpa [extensionSetB, Set.mem_ofPred_eq] using hrB
   -- Coerce to ℝ and expand both sides.
   have hEqR :
       ((mu (α := ℝ≥0) F2 r : ℝ≥0) : ℝ) = ((iterate_op d u : ℝ≥0) : ℝ) :=

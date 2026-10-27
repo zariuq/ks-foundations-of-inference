@@ -223,7 +223,7 @@ theorem modeling_choice_summary :
     · exact lattice_modular_fails_iff P
     · intro hne
       by_contra h
-      push_neg at h
+      push Not at h
       simp only [prob_abcd_bool, prob_ab_bool, prob_abc_bool, prob_abd_bool] at hne
       have heq : P.p coresOnly = 0 := le_antisymm h (P.nonneg coresOnly)
       simp only [heq] at hne
@@ -285,7 +285,7 @@ end ConfigState
 | Prerequisites | ✓ Captured by zero atoms | ✓ Captured by zero atoms |
 | Cores-only state | Excluded (p=0) | Allowed (p>0 possible) |
 | Modular law | ✓ Always holds | ✗ Fails if p(coresOnly)>0 |
-| Imprecise needed? | No | Only if insisting on lattice ops |
+| Imprecise needed? | No | No: the compared observations differ |
 
 **Conclusion**: This example is primarily about semantics.  With an appropriate Boolean event model:
 - Set impossible configurations to probability 0

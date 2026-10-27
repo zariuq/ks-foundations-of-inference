@@ -303,93 +303,6 @@ noncomputable def sumObjective {n : ℕ} (φ : ℝ → ℝ) (q : Fin n → ℝ) 
 noncomputable def sumObjectiveCoord {n : ℕ} (φ : Fin n → ℝ → ℝ) (q : Fin n → ℝ) : ℝ :=
   ∑ k : Fin n, φ k (q k)
 
-theorem hasDerivAt_sumObjective_shift2 {n : ℕ}
-    (φ : ℝ → ℝ) (q : Fin n → ℝ) (i j : Fin n) (t : ℝ) (hij : i ≠ j)
-    (φ'i φ'j : ℝ)
-    (hφi : HasDerivAt φ φ'i t)
-    (hφj : HasDerivAt φ φ'j (q i + q j - t)) :
-    HasDerivAt (fun u => sumObjective φ (shift2 q i j u)) (φ'i - φ'j) t := by
-  classical
-  -- Derivative of the linear map `u ↦ q i + q j - u`.
-  have hlin : HasDerivAt (fun u : ℝ => q i + q j - u) (-1) t := by
-    have hid : HasDerivAt (fun u : ℝ => u) 1 t := hasDerivAt_id t
-    simpa using hid.const_sub (q i + q j)
-  -- Build pointwise derivatives for each coordinate.
-  have hcoord :
-      ∀ k ∈ (Finset.univ : Finset (Fin n)),
-        HasDerivAt (fun u => φ (shift2 q i j u k))
-          (if k = i then φ'i else if k = j then -φ'j else 0) t := by
-    intro k _hk
-    by_cases hki : k = i
-    · subst hki
-      simpa [shift2_apply_i] using hφi
-    · by_cases hkj : k = j
-      · have hji : j ≠ i := ne_comm.mp hij
-        have hcomp : HasDerivAt (fun u => φ (q i + q j - u)) (φ'j * (-1)) t :=
-          hφj.comp t hlin
-        -- simplify the scalar product to `-φ'j`
-        simpa [shift2, hki, hkj, hji, mul_comm, mul_left_comm, mul_assoc] using hcomp
-      · have hconst : HasDerivAt (fun _ : ℝ => φ (q k)) 0 t := hasDerivAt_const t (φ (q k))
-        have hrewrite : (fun u => φ (shift2 q i j u k)) = fun _ : ℝ => φ (q k) := by
-          funext u
-          simp [shift2_apply_other, hki, hkj]
-        simpa [hrewrite, hki, hkj] using hconst
-  -- Sum the coordinate derivatives.
-  have hsum :
-      HasDerivAt (fun u => sumObjective φ (shift2 q i j u))
-        (∑ k : Fin n, if k = i then φ'i else if k = j then -φ'j else 0) t := by
-    simpa [sumObjective] using
-      (HasDerivAt.fun_sum (u := (Finset.univ : Finset (Fin n)))
-        (A := fun k u => φ (shift2 q i j u k))
-        (A' := fun k => if k = i then φ'i else if k = j then -φ'j else 0)
-        (x := t) hcoord)
-  -- Simplify the derivative sum.
-  have hsum' :
-      (∑ k : Fin n, if k = i then φ'i else if k = j then -φ'j else 0) = φ'i - φ'j := by
-    classical
-    let s : Finset (Fin n) := Finset.univ
-    let f : Fin n → ℝ := fun k => if k = i then φ'i else if k = j then -φ'j else 0
-    have hi : i ∈ s := by simp [s]
-    have hj : j ∈ s.erase i := by
-      exact Finset.mem_erase.mpr ⟨ne_comm.mp hij, by simp [s]⟩
-    have hsum_i : (Finset.sum (s.erase i) f) + f i = Finset.sum s f :=
-      Finset.sum_erase_add (s := s) (f := f) (a := i) hi
-    have hsum_j : (Finset.sum ((s.erase i).erase j) f) + f j = Finset.sum (s.erase i) f :=
-      Finset.sum_erase_add (s := s.erase i) (f := f) (a := j) hj
-    have hsum_rest : Finset.sum ((s.erase i).erase j) f = 0 := by
-      refine Finset.sum_eq_zero ?_
-      intro k hk
-      have hkj : k ≠ j := (Finset.mem_erase.mp hk).1
-      have hk' : k ∈ s.erase i := (Finset.mem_erase.mp hk).2
-      have hki : k ≠ i := (Finset.mem_erase.mp hk').1
-      simp [hki, hkj]
-    have hsum_s :
-        Finset.sum s f =
-          (Finset.sum ((s.erase i).erase j) f) + f j + f i := by
-      calc
-        Finset.sum s f = (Finset.sum (s.erase i) f) + f i := by
-          simpa using hsum_i.symm
-        _ = ((Finset.sum ((s.erase i).erase j) f) + f j) + f i := by
-          simp [hsum_j.symm]
-        _ = (Finset.sum ((s.erase i).erase j) f) + f j + f i := by
-          ac_rfl
-    have hji : j ≠ i := ne_comm.mp hij
-    have hfi : f i = φ'i := by
-      simp [f]
-    have hfj : f j = -φ'j := by
-      simp [f, hji]
-    have hsum_f : Finset.sum s f = φ'i - φ'j := by
-      calc
-        Finset.sum s f = (Finset.sum ((s.erase i).erase j) f) + f j + f i := hsum_s
-        _ = f j + f i := by simp [hsum_rest]
-        _ = (-φ'j) + φ'i := by
-              simp [hfj, hfi]
-        _ = φ'i - φ'j := by
-              ring
-    simpa [s, f] using hsum_f
-  -- Finish.
-  simpa [hsum'] using hsum
-
 theorem hasDerivAt_sumObjectiveCoord_shift2 {n : ℕ}
     (φ : Fin n → ℝ → ℝ) (q : Fin n → ℝ) (i j : Fin n) (t : ℝ) (hij : i ≠ j)
     (φ'i φ'j : ℝ)
@@ -430,51 +343,25 @@ theorem hasDerivAt_sumObjectiveCoord_shift2 {n : ℕ}
         (A' := fun k => if k = i then φ'i else if k = j then -φ'j else 0)
         (x := t) hcoord)
   -- Simplify the derivative sum.
-  have hsum' :
-      (∑ k : Fin n, if k = i then φ'i else if k = j then -φ'j else 0) = φ'i - φ'j := by
-    classical
-    let s : Finset (Fin n) := Finset.univ
-    let f : Fin n → ℝ := fun k => if k = i then φ'i else if k = j then -φ'j else 0
-    have hi : i ∈ s := by simp [s]
-    have hj : j ∈ s.erase i := by
-      exact Finset.mem_erase.mpr ⟨ne_comm.mp hij, by simp [s]⟩
-    have hsum_i : (Finset.sum (s.erase i) f) + f i = Finset.sum s f :=
-      Finset.sum_erase_add (s := s) (f := f) (a := i) hi
-    have hsum_j : (Finset.sum ((s.erase i).erase j) f) + f j = Finset.sum (s.erase i) f :=
-      Finset.sum_erase_add (s := s.erase i) (f := f) (a := j) hj
-    have hsum_rest : Finset.sum ((s.erase i).erase j) f = 0 := by
-      refine Finset.sum_eq_zero ?_
-      intro k hk
-      have hkj : k ≠ j := (Finset.mem_erase.mp hk).1
-      have hk' : k ∈ s.erase i := (Finset.mem_erase.mp hk).2
-      have hki : k ≠ i := (Finset.mem_erase.mp hk').1
-      simp [hki, hkj]
-    have hsum_s :
-        Finset.sum s f =
-          (Finset.sum ((s.erase i).erase j) f) + f j + f i := by
-      calc
-        Finset.sum s f = (Finset.sum (s.erase i) f) + f i := by
-          simpa using hsum_i.symm
-        _ = ((Finset.sum ((s.erase i).erase j) f) + f j) + f i := by
-          simp [hsum_j.symm]
-        _ = (Finset.sum ((s.erase i).erase j) f) + f j + f i := by
-          ac_rfl
-    have hji : j ≠ i := ne_comm.mp hij
-    have hfi : f i = φ'i := by
-      simp [f]
-    have hfj : f j = -φ'j := by
-      simp [f, hji]
-    have hsum_f : Finset.sum s f = φ'i - φ'j := by
-      calc
-        Finset.sum s f = (Finset.sum ((s.erase i).erase j) f) + f j + f i := hsum_s
-        _ = f j + f i := by simp [hsum_rest]
-        _ = (-φ'j) + φ'i := by
-              simp [hfj, hfi]
-        _ = φ'i - φ'j := by
-              ring
-    simpa [s, f] using hsum_f
+  have hsum' : (∑ k : Fin n, if k = i then φ'i else if k = j then -φ'j else 0) = φ'i - φ'j := by
+    have he (k : Fin n) : (if k = i then φ'i else if k = j then -φ'j else 0) =
+        (if k = i then φ'i else 0) + (if k = j then -φ'j else 0) := by
+      by_cases hi : k = i
+      · subst k; simp [hij]
+      · by_cases hj : k = j <;> simp_all
+    simp_rw [he, Finset.sum_add_distrib]
+    simp [sub_eq_add_neg]
   -- Finish.
   simpa [hsum'] using hsum
+
+theorem hasDerivAt_sumObjective_shift2 {n : ℕ}
+    (φ : ℝ → ℝ) (q : Fin n → ℝ) (i j : Fin n) (t : ℝ) (hij : i ≠ j)
+    (φ'i φ'j : ℝ)
+    (hφi : HasDerivAt φ φ'i t)
+    (hφj : HasDerivAt φ φ'j (q i + q j - t)) :
+    HasDerivAt (fun u => sumObjective φ (shift2 q i j u)) (φ'i - φ'j) t := by
+  simpa only [sumObjective, sumObjectiveCoord] using
+    hasDerivAt_sumObjectiveCoord_shift2 (fun _ => φ) q i j t hij φ'i φ'j hφi hφj
 
 theorem shift2_critical_eq_coord {n : ℕ}
     (φ : Fin n → ℝ → ℝ) (q : Fin n → ℝ) (i j : Fin n) (hij : i ≠ j)

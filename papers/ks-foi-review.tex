@@ -377,11 +377,11 @@ Add explicit density axiom (no anomalous pairs / separation), stronger than Arch
 
 Identity element &
 Bottom element ``optional,'' but normalization left implicit. &
-Without identity, additive coordinate is unique up to additive constant. \\[4pt]
+At a positive anchor, calibration fixes multiplicative scale; nonzero translations break additivity. \\[4pt]
 
 Re-grading rigidity &
 Text suggests discontinuous re-grading might preserve the sum rule. &
-Order-preserving + additive $\Rightarrow$ affine (hence continuous). \\[4pt]
+Strictly order-preserving additive real re-grading is positive linear, with zero translation. \\[4pt]
 
 Regularity (App.~C) &
 Uniqueness sketched, but Cauchy pathologies exist without a gate. &
@@ -396,14 +396,10 @@ State regularity hypothesis (measurability or monotonicity suffices). \\
 
 \textbf{K\&S paper}: Trichotomy is used throughout but never explicitly required.
 
-\textbf{Formalization finding}: Linear order is \emph{necessary} for point-valued representations.
-We prove: if a partial order has incomparable elements, no faithful $\Theta : \alpha \to \mathbb{R}$
-exists (since $\mathbb{R}$ is totally ordered, any such $\Theta$ would force comparability).
-
-\textbf{Generalization}: Relaxing to partial order yields \emph{interval-valued} representations
-(Walley~\cite{Walley1991}), where interval width measures uncertainty from incomparability.
-
-\textbf{Status}: Implicit assumption; now proven necessary.
+\textbf{Formalization finding}: An order-reflecting map into $\mathbb{R}$ forces
+the source order to be total. One-way scalar fidelity is weaker and can assign
+values to incomparable lattice elements. Chosen interval models require their
+own coherence assumptions; deleting totality does not construct them.
 
 \subsection{Separation Property vs.\ Archimedean}
 
@@ -434,8 +430,8 @@ and ordered.'' In our development, once the representation hypotheses are strong
 a real embedding (e.g.\ separation/no-anomalous-pairs), commutativity follows as a theorem from that
 embedding.
 
-\textbf{Status}: Implicit assumption. Separation (equivalently, \emph{no anomalous pairs})
-must be stated explicitly.
+\textbf{Status}: Implicit assumption. The precise separation profile and sign hypotheses
+must be stated explicitly; the positive, strict and bilateral forms differ.
 
 \subsection{The Discontinuous Re-grading Claim}
 
@@ -444,19 +440,12 @@ standard arguments ($101.011_2$ representing $5\frac{3}{8}$) and interpret them 
 base-3 ternary\ldots\ Valuation becomes discontinuous everywhere, but the sum rule
 still works.''
 
-\textbf{Formalization finding}: The sum rule \emph{algebraically} holds for discontinuous
-re-gradings---but such re-gradings violate \textbf{Axiom~1} (order preservation).
-
-Any \emph{monotone} additive function $f: \mathbb{R} \to \mathbb{R}$ is automatically
-linear: $f(x) = cx$ for some constant $c$. The base-conversion example preserves
-additivity but destroys monotonicity.
-
-\textbf{What K\&S meant}: Continuity need not be assumed \emph{separately}---it follows
-from monotonicity + additivity.
-
-\textbf{What we proved}: Under K\&S's full axioms (including order preservation), the
-representation is unique up to linear rescaling. Discontinuous re-gradings are excluded
-by Axiom~1, not by an extra continuity assumption.
+\textbf{Checked boundary}: A map $f:\mathbb{R}\to\mathbb{R}$ preserving
+ordinary addition and monotone order is linear: $f(x)=f(1)x$, hence continuous.
+Strict monotonicity makes the scalar positive; no surjectivity premise is needed.
+This theorem concerns the same addition on source and target. Transporting
+addition to a different operation is a different interpretation claim; the
+formal theorem does not identify that claim with ordinary additive re-grading.
 
 \textbf{Sketch (monotone additive $\Rightarrow$ linear).}
 Additivity implies $f(qx)=qf(x)$ for all rational $q$.
@@ -523,9 +512,9 @@ This requires $\bot$ to \emph{exist} and be \emph{minimal}. For $\mathbb{Z}$:
 \toprule
 \textbf{Aspect} & \textbf{What K\&S say} & \textbf{What's actually true} \\
 \midrule
-Identity & ``Optional'' / ``aesthetic'' & \textbf{Essential} for positivity \\
-Fidelity alone & ``Ensures positive values'' & \textbf{Requires} a bottom element ($\bot \le x$) \\
-Normalization & Unique up to additive constant & Constant can shift values negative \\
+Identity & ``Optional'' / ``aesthetic'' & Minimum identity suffices for nonnegativity \\
+Fidelity alone & ``Ensures positive values'' & Order preservation alone does not fix signs \\
+Normalization & Unit freedom & Positive-anchor calibration fixes scale \\
 \bottomrule
 \end{tabular}
 \caption{K\&S positivity claim clarified by formalization.}
@@ -536,12 +525,12 @@ Normalization & Unique up to additive constant & Constant can shift values negat
 \item \textbf{With a minimum element $\bot$}: $\Theta(\bot) = 0$ provides canonical
       normalization; all other elements have $\Theta(x) > 0$.
 \item \textbf{Without identity}: The representation theorem works, but positivity is
-      \textbf{not guaranteed}. The embedding is unique up to additive constant, but
-      no constant can rescue positivity for unbounded-below structures.
+      \textbf{not guaranteed}: integer addition forces $\Theta(-1)=-\Theta(1)<0$.
+      Nonzero translations violate additivity, even without an identity.
 \end{itemize}
 
-\textbf{Status}: \textbf{Scope clarified}. A bounded-below normalization hypothesis (existence of a minimum element)
-is essential for positivity, not merely ``aesthetic''; without a bottom element, the embedding can take negative values.
+\textbf{Status}: a zero-valued minimum is sufficient for nonnegativity, but is not necessary.
+Positive-real addition has positive values with neither an identity nor a minimum; integer addition has negative values.
 
 %=============================================================================
 \section{Comparison with Alternative Foundations}
@@ -642,13 +631,13 @@ of decisions, loss functions, or monetary exchange can be discarded as unnecessa
 Beyond the proofs themselves, formalization yields concrete counterexamples that pinpoint exactly what
 fails when a hypothesis is dropped:
 \begin{enumerate}
-\item \textbf{Positivity without a minimum fails:} on $(\mathbb{Z},+, \le)$, an additive order representation exists
-but necessarily assigns negative values; positivity requires a bounded-below normalization hypothesis.
+\item \textbf{Signs depend on the profile:} integer addition forces negative values, while positive-real addition
+has positive readouts without an identity or minimum. A zero-valued minimum suffices for nonnegativity.
 \item \textbf{Separation is not derivable from the base axioms:} there are models satisfying the scale axioms
 but failing separation (hence failing the representation theorem); separation/no-anomalous-pairs must be
 assumed explicitly.
 \item \textbf{No nontrivial finite value scale:} any nontrivial model of the scale axioms has an infinite set of
-possible plausibility values; strict monotonicity forces infinite divisibility of the scale.
+possible plausibility values; strict monotonicity supplies an infinite iteration chain.
 \item \textbf{Cauchy pathologies:} without a regularity gate (measurable/monotone/continuous), Cauchy-type
 functional equations admit Hamel-basis solutions, so logarithms (and hence KL/entropy) are not forced.
 \end{enumerate}
@@ -754,7 +743,7 @@ Appendix C & \nolinkurl{Variational/Main.lean} & \nolinkurl{variationalEquation_
 Section 7 & \nolinkurl{Probability/ConditionalProbability/Basic.lean} & \nolinkurl{chainProductRule}, \nolinkurl{bayesTheorem} \\
 Section 8 & \nolinkurl{Information/InformationEntropy.lean} & \nolinkurl{klDivergence}, \nolinkurl{shannonEntropy} \\
 Bridges (opt.) & \nolinkurl{Bridges/ShoreJohnsonVariationalBridge.lean} & \nolinkurl{mulCauchyOnPos_eq_const_mul_log} \\
-Bridges (opt.) & \nolinkurl{Bridges/AlgorithmicProbabilityBridge.lean} & \nolinkurl{gibbs_inequality_shared_gate} \\
+MeTTapedia bridge & \nolinkurl{Mettapedia/UniversalAI/KnuthSkilling/AlgorithmicProbability.lean} & \nolinkurl{gibbs_inequality_shared_gate} \\
 \bottomrule
 \end{longtable}
 

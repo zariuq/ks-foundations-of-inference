@@ -37,64 +37,17 @@ theorem representation_unique_up_to_posScale
     (hΘ₂_ident : Θ₂ ident = 0)
     (hΘ₂_add : ∀ x y : α, Θ₂ (op x y) = Θ₂ x + Θ₂ y) :
     ∃ c : ℝ, 0 < c ∧ ∀ x : α, Θ₂ x = c * Θ₁ x := by
-  classical
-
-  -- Positivity of Θ₁(a), Θ₂(a) from `ident < a` and order-reflection.
-  have hΘ₁a_pos : 0 < Θ₁ a := by
-    have hnotle : ¬ Θ₁ a ≤ Θ₁ ident := by
-      intro hle
-      have : a ≤ ident := (hΘ₁_order a ident).2 hle
-      exact (not_le_of_gt ha) this
-    have hlt : Θ₁ ident < Θ₁ a := lt_of_not_ge hnotle
-    simpa [hΘ₁_ident] using hlt
-
-  have hΘ₂a_pos : 0 < Θ₂ a := by
-    have hnotle : ¬ Θ₂ a ≤ Θ₂ ident := by
-      intro hle
-      have : a ≤ ident := (hΘ₂_order a ident).2 hle
-      exact (not_le_of_gt ha) this
-    have hlt : Θ₂ ident < Θ₂ a := lt_of_not_ge hnotle
-    simpa [hΘ₂_ident] using hlt
-
-  have hΘ₁a_ne : Θ₁ a ≠ 0 := ne_of_gt hΘ₁a_pos
-  have hΘ₂a_ne : Θ₂ a ≠ 0 := ne_of_gt hΘ₂a_pos
-
-  -- Both normalized maps coincide with the cut-based construction.
-  have hcuts₁ : ∀ x : α, Θ_cuts a ha x = Θ₁ x / Θ₁ a := fun x =>
-    Θ_cuts_eq_div_of_representation a ha Θ₁ hΘ₁_order hΘ₁_ident hΘ₁_add x
-  have hcuts₂ : ∀ x : α, Θ_cuts a ha x = Θ₂ x / Θ₂ a := fun x =>
-    Θ_cuts_eq_div_of_representation a ha Θ₂ hΘ₂_order hΘ₂_ident hΘ₂_add x
-
-  -- Therefore Θ₂ = c * Θ₁ with c = Θ₂(a) / Θ₁(a).
-  refine ⟨Θ₂ a / Θ₁ a, div_pos hΘ₂a_pos hΘ₁a_pos, ?_⟩
-  intro x
-  have hdiv : Θ₂ x / Θ₂ a = Θ₁ x / Θ₁ a := by
-    calc
-      Θ₂ x / Θ₂ a = Θ_cuts a ha x := by simp [hcuts₂ x]
-      _ = Θ₁ x / Θ₁ a := hcuts₁ x
-
-  -- Clear denominators in ℝ.
-  have hmul₂ : (Θ₂ x / Θ₂ a) * Θ₂ a = Θ₂ x := by
-    simp [hΘ₂a_ne]
-
-  calc
-    Θ₂ x = (Θ₂ x / Θ₂ a) * Θ₂ a := hmul₂.symm
-    _ = (Θ₁ x / Θ₁ a) * Θ₂ a := by simp [hdiv]
-    _ = (Θ₂ a / Θ₁ a) * Θ₁ x := by
-      calc
-        (Θ₁ x / Θ₁ a) * Θ₂ a = (Θ₁ x * Θ₂ a) / Θ₁ a := by
-          simp [div_mul_eq_mul_div]
-        _ = (Θ₂ a * Θ₁ x) / Θ₁ a := by
-          simp [mul_comm]
-        _ = (Θ₂ a / Θ₁ a) * Θ₁ x := by
-          simp [div_mul_eq_mul_div]
+  let r : NormalizedRepresentationResult α := ⟨⟨Θ₁, hΘ₁_order, hΘ₁_add⟩, hΘ₁_ident⟩
+  let t : NormalizedRepresentationResult α := ⟨⟨Θ₂, hΘ₂_order, hΘ₂_add⟩, hΘ₂_ident⟩
+  exact r.toRepresentationResult.unique_up_to_posScale t.toRepresentationResult a
+    ((isPositive_iff_ident_lt a).mpr ha)
 
 /-!
 ## Corollary: grid Θ and cuts Θ agree up to scale
 -/
 
 theorem associativity_representation_grid_and_cuts_agree_up_to_scale
-    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparation α] [KSSeparationStrict α] :
+    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparationStrict α] :
     ∃ (Θ_grid Θ_cuts : α → ℝ) (c : ℝ),
       0 < c ∧
       (∀ u v : α, u ≤ v ↔ Θ_grid u ≤ Θ_grid v) ∧
@@ -115,7 +68,7 @@ theorem associativity_representation_grid_and_cuts_agree_up_to_scale
     · intro x; simp
 
   -- Nontrivial: pick any `a₀ > ident` to define the scaling constant.
-  push_neg at htriv
+  push Not at htriv
   obtain ⟨a₀, ha₀_ne⟩ := htriv
   have ha₀ : ident < a₀ := lt_of_le_of_ne (ident_le a₀) (Ne.symm ha₀_ne)
 

@@ -13,25 +13,21 @@ import KnuthSkilling.ShoreJohnson.SJ3Locality
 import KnuthSkilling.ShoreJohnson.KLWitness
 import KnuthSkilling.ShoreJohnson.RatioInvarianceCounterexample
 import KnuthSkilling.ShoreJohnson.Integration
+import KnuthSkilling.ShoreJohnson.MaximumEntropy
 
 /-!
-# Shore-Johnson (1980) entrypoint
+# Finite inference laws and conditional Shore–Johnson analysis
 
-This entrypoint keeps two threads visible:
+* `Inference`, `Constraints`, `Objective`: partial inference, affine observations,
+  explicit admissibility and minimizer observations.
+* `GradientSeparability`, `SJ3Locality`, `TheoremI`: analytic transport and a
+  variational comparison under stated ratio/cocycle, derivative and convexity laws.
+* `KLWitness`: a concrete positive-reference KL model, existence, and the
+  conditional positive-scale conclusion with prior preservation.
+* `MaximumEntropy`: a four-law countermodel showing why prior preservation matters.
+* `SystemIndependence`, `Theorem`, `KL`, `Bridge`: functional-equation rigidity
+  under atom-level hypotheses, and its connection to finite divergence.
 
-1. **SJ axioms and inference formalism** (SJ1--SJ4) leading to sum-form objectives and
-   system independence. Core modules:
-   `Inference`, `Constraints`, `Objective`, `TheoremI`, `SystemIndependence`,
-   `OperatorAtomBridge`, `Theorem`, `KL`.
-
-2. **Path C overlap with Appendix C**. The Shore-Johnson path derives the same
-   multiplicative Cauchy/log equation used in the Appendix C variational route.
-   See `ShoreJohnson.KLDerivation` and compare with
-   `KnuthSkilling/Variational/Main.lean`.
-
-Analytic regularity for SJ3 -> locality is packaged in `GradientSeparability` and
-`SJ3Locality`. We also include **positive** and **negative** examples of the
-ratio-invariance axiom:
-- `KLWitness`: KL atom satisfies `DerivRatioInvariant`.
-- `RatioInvarianceCounterexample`: quadratic loss fails it.
+The operator-to-analytic implications remain separate theorem targets; this
+entrypoint does not certify a complete five-axiom derivation of KL.
 -/

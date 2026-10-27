@@ -9,44 +9,18 @@ import Mathlib.Data.ENNReal.Basic
 import Mathlib.Topology.MetricSpace.Basic
 
 /-!
-# K&S Section 8: Information and Entropy
+# Variational entropy, finite distributions and information
 
-This file formalizes **Section 8** of Knuth & Skilling (2012), deriving information
-and entropy as special cases of the variational potential from Appendix C.
+Finite partitions of a normalized bivaluation produce the supplied probability
+weights. Disjoint event sums use the common finite-join observation law.
+The variational choice `(A,B,C)=(0,-1,-1)` gives Shannon entropy, interpreted
+as a sum of Mathlib's continuous `negMulLog` components.
 
-## Key Point: DERIVATION, Not Definition
-
-Shannon entropy is **not just defined** here—it is **derived** from the variational
-framework established in Appendix C (Variational/Main.lean). The derivation shows
-that the entropy formula is an "inevitable consequence" of seeking a variational
-quantity for probability distributions.
-
-## Derivation Chain
-
-1. **Appendix C** establishes: Any variational potential satisfying
-   `H'(m_x · m_y) = λ(m_x) + μ(m_y)` with measurability has the form:
-   ```
-   H(m) = A + B·m + C·(m·log(m) - m)
-   ```
-
-2. **Section 6** (Divergence.lean) specializes to divergence with `A = u`, `B = -log(u)`, `C = 1`.
-
-3. **Section 8** (this file) specializes to:
-   - **Information (8.1)**: Divergence for probability distributions (normalized measures)
-   - **Entropy (8.2)**: Setting `A = 0`, `B = C` gives `H = C·Σ p_k·log(p_k)`
-     With `C = -1`, this is Shannon entropy `S(p) = -Σ p_k·log(p_k)`.
-
-## Shannon's Three Properties
-
-K&S claim these are "inevitable consequences of seeking a variational quantity":
-1. **Continuity**: S is a continuous function of its arguments
-2. **Monotonicity**: If there are n equal choices (p_k = 1/n), then S increases in n
-3. **Grouping**: If a choice is broken down, S adds according to expectation
-
-## References
-
-- K&S "Foundations of Inference" (2012), Section 8 "Information and Entropy"
-- Shannon, C. E. (1948). "A Mathematical Theory of Communication"
+The real KL formula requires reference support. Extended finite KL retains
+singular pairs as infinity; `InformationEntropyMathlib` identifies it with
+measure divergence through the shared countable construction. Entropy grouping,
+uniform and certain distributions connect these independently defined formulas.
+Reference: Knuth and Skilling, “Foundations of Inference” (2012), Section 8.
 -/
 
 namespace KnuthSkilling.Information.InformationEntropy
@@ -157,53 +131,12 @@ theorem baseMeasure_sum_eq_sup_of_disjoint
     {n : ℕ} (atoms : Fin n → α)
     (hDisjoint : ∀ i j, i ≠ j → Disjoint (atoms i) (atoms j)) :
     ∑ i : Fin n, baseMeasure B (atoms i) = baseMeasure B (⨆ i, atoms i) := by
-  induction n with
-  | zero =>
-    -- Empty sum is 0, empty iSup is ⊥
-    simp only [Finset.univ_eq_empty, sum_empty, iSup_of_empty]
-    -- baseMeasure B ⊥ = B.p ⊥ ⊤
-    -- If ⊤ = ⊥, then baseMeasure B ⊥ = B.p ⊥ ⊥ which could be anything
-    -- But we want 0 = baseMeasure B ⊥
-    -- This is tricky because baseMeasure.bot requires hTop : ⊤ ≠ ⊥
-    -- For the degenerate case ⊤ = ⊥, we handle separately
-    by_cases h : (⊤ : α) = ⊥
-    · -- Degenerate: ⊤ = ⊥, so the lattice is trivial
-      -- baseMeasure B ⊥ = B.p ⊥ ⊤ = B.p ⊥ ⊥
-      -- We need positivity of p only when ⊥ < x, but ⊥ ≤ ⊤ = ⊥ means nothing is > ⊥
-      -- Actually in this case ⊥ = ⊤, so baseMeasure B ⊥ = B.p ⊤ ⊤ (by context)
-      unfold baseMeasure
-      rw [B.p_context ⊥ ⊤]
-      simp only [bot_inf_eq]
-      -- p(⊥|⊤) when ⊤ = ⊥ means p(⊥|⊥) = p(⊥ ⊓ ⊥|⊥) = p(⊥|⊥)
-      -- We need to show this is 0. Use p_sum_disjoint with ⊥ ⊔ ⊥ = ⊥
-      have hsum := B.p_sum_disjoint ⊥ ⊥ ⊤ disjoint_bot_left (by simp)
-      simp at hsum
-      -- hsum : B.p ⊥ ⊤ = 0
-      exact hsum.symm
-    · -- Non-degenerate: use baseMeasure.bot
-      exact (baseMeasure.bot B h).symm
-  | succ m ih =>
-    -- Split the sum: ∑ i : Fin (m+1), f i = ∑ i : Fin m, f (castSucc i) + f (last m)
-    rw [Fin.sum_univ_castSucc]
-    -- Split the iSup
-    rw [iSup_fin_succ]
-    -- Disjointness for the recursive call
-    have hDisj' : ∀ i j : Fin m, i ≠ j →
-        Disjoint (atoms (Fin.castSucc i)) (atoms (Fin.castSucc j)) := fun i j hij => by
-      have h : Fin.castSucc i ≠ Fin.castSucc j := fun h => hij (Fin.castSucc_injective m h)
-      exact hDisjoint (Fin.castSucc i) (Fin.castSucc j) h
-    -- Apply induction hypothesis
-    have ih' : ∑ i : Fin m, baseMeasure B (atoms (Fin.castSucc i)) =
-        baseMeasure B (⨆ i : Fin m, atoms (Fin.castSucc i)) := ih (atoms ∘ Fin.castSucc) hDisj'
-    rw [ih']
-    -- Now use binary additivity: need disjointness between (⨆ castSucc) and (last)
-    have hDisjLast : Disjoint (⨆ i : Fin m, atoms (Fin.castSucc i)) (atoms (Fin.last m)) := by
-      rw [iSup_disjoint_iff]
-      intro i
-      have h : Fin.castSucc i ≠ Fin.last m := Fin.castSucc_ne_last i
-      exact hDisjoint (Fin.castSucc i) (Fin.last m) h
-    -- Apply baseMeasure.additive
-    rw [← baseMeasure.additive B _ _ hDisjLast]
+  have hbot : baseMeasure B ⊥ = 0 := by
+    have h := B.p_sum_disjoint ⊥ ⊥ ⊤ disjoint_bot_left (by simp)
+    simpa [baseMeasure] using h
+  simpa only [Finset.sup_eq_iSup, Finset.mem_univ, iSup_true] using
+    KnuthSkilling.Probability.BooleanRepresentation.sum_eq_finset_sup_of_disjoint
+      (baseMeasure B) hbot (baseMeasure.additive B) atoms hDisjoint Finset.univ
 
 open Finset in
 /-- **Finite partition induces ProbDist** (key connection theorem).
@@ -324,45 +257,8 @@ cancel when summed over normalized distributions).
 theorem klDivergence_from_divergence_formula {n : ℕ} (P Q : ProbDist n)
     (hQ_pos : ∀ i, P.p i ≠ 0 → 0 < Q.p i) :
     klDivergence P Q hQ_pos = ∑ i, atomDivergence (P.p i) (Q.p i) - (∑ i, Q.p i - ∑ i, P.p i) := by
-  simp only [klDivergence, P.sum_one, Q.sum_one, sub_self, sub_zero]
-  -- Goal: Σ p*log(p/q) = Σ (q - p + p*log(p/q))
-  -- Key: Σ(q-p) = 1 - 1 = 0, so RHS = 0 + Σ p*log(p/q) = LHS
-  have hcancel : ∑ i, (Q.p i - P.p i) = 0 := by
-    rw [sum_sub_distrib, Q.sum_one, P.sum_one]; ring
-  have hrw : ∑ i, atomDivergence (P.p i) (Q.p i) =
-      ∑ i, ((Q.p i - P.p i) + P.p i * log (P.p i / Q.p i)) := by
-    apply sum_congr rfl
-    intro i _
-    unfold atomDivergence; ring
-  rw [hrw, sum_add_distrib, hcancel, zero_add]
-
-/-- KL divergence is non-negative (Gibbs' inequality).
-
-**Strict version**: Requires all probabilities to be strictly positive.
-See `klDivergence_nonneg'` for a relaxed version allowing zeros in P. -/
-theorem klDivergence_nonneg {n : ℕ} (P Q : ProbDist n)
-    (hP_pos : ∀ i, 0 < P.p i) (hQ_pos : ∀ i, P.p i ≠ 0 → 0 < Q.p i) :
-    0 ≤ klDivergence P Q hQ_pos := by
-  -- This follows from Gibbs' inequality on the full divergence
-  have hdiv_nonneg : 0 ≤ ∑ i, atomDivergence (P.p i) (Q.p i) := by
-    apply sum_nonneg
-    intro i _
-    have hQi : 0 < Q.p i := hQ_pos i (ne_of_gt (hP_pos i))
-    exact atomDivergence_nonneg (P.p i) (Q.p i) (hP_pos i) hQi
-  -- The (q - p) terms sum to 0 due to normalization
-  have hcancel : ∑ i, (Q.p i - P.p i) = 0 := by
-    rw [sum_sub_distrib, Q.sum_one, P.sum_one]; ring
-  -- Expand atomDivergence and split the sum
-  have hexpand : ∑ i, atomDivergence (P.p i) (Q.p i) =
-      (∑ i, (Q.p i - P.p i)) + ∑ i, P.p i * log (P.p i / Q.p i) := by
-    have hrw : ∑ i, atomDivergence (P.p i) (Q.p i) =
-        ∑ i, ((Q.p i - P.p i) + P.p i * log (P.p i / Q.p i)) := by
-      apply sum_congr rfl
-      intro i _
-      unfold atomDivergence; ring
-    rw [hrw, sum_add_distrib]
-  rw [hexpand, hcancel, zero_add] at hdiv_nonneg
-  simpa [klDivergence] using hdiv_nonneg
+  simp only [klDivergence, atomDivergence, sum_add_distrib, sum_sub_distrib]
+  ring
 
 /-- KL divergence is non-negative (Gibbs' inequality) - **relaxed version**.
 
@@ -372,35 +268,21 @@ of P (to avoid the `p_i > 0 ∧ q_i = 0` divergence-to-∞ case). -/
 theorem klDivergence_nonneg' {n : ℕ} (P Q : ProbDist n)
     (hQ_pos : ∀ i, P.p i ≠ 0 → 0 < Q.p i) :
     0 ≤ klDivergence P Q hQ_pos := by
-  -- Use atomDivergenceExt which handles w = 0
-  have hdiv_nonneg : 0 ≤ ∑ i, atomDivergenceExt (P.p i) (Q.p i) := by
-    apply sum_nonneg
-    intro i _
-    by_cases hPi : P.p i = 0
-    · -- If P.p i = 0 then atomDivergenceExt 0 u = u, so nonneg follows from Q.nonneg.
-      simpa [hPi] using Q.nonneg i
-    · have hQi_pos : 0 < Q.p i := hQ_pos i hPi
-      exact atomDivergenceExt_nonneg (P.p i) (Q.p i) (P.nonneg i) hQi_pos
-  -- The (q - p) terms sum to 0 due to normalization
-  have hcancel : ∑ i, (Q.p i - P.p i) = 0 := by
-    rw [sum_sub_distrib, Q.sum_one, P.sum_one]; ring
-  -- atomDivergenceExt equals atomDivergence for positive p, and u for p = 0
-  -- In both cases, the sum structure is the same
-  have hexpand : ∑ i, atomDivergenceExt (P.p i) (Q.p i) =
-      (∑ i, (Q.p i - P.p i)) + ∑ i, P.p i * log (P.p i / Q.p i) := by
-    have hrw : ∑ i, atomDivergenceExt (P.p i) (Q.p i) =
-        ∑ i, ((Q.p i - P.p i) + P.p i * log (P.p i / Q.p i)) := by
-      apply sum_congr rfl
-      intro i _
-      unfold atomDivergenceExt
-      split_ifs with hp
-      · -- Case P.p i = 0: contributes Q.p i = (Q.p i - 0) + 0 * log(...)
-        simp [hp]
-      · -- Case P.p i ≠ 0: standard formula
-        ring
-    rw [hrw, sum_add_distrib]
-  rw [hexpand, hcancel, zero_add] at hdiv_nonneg
-  simpa [klDivergence] using hdiv_nonneg
+  have h := divergence_nonneg_of_support P.p Q.p P.nonneg Q.nonneg hQ_pos
+  have heq : divergence P.p Q.p = klDivergence P Q hQ_pos := by
+    simpa only [divergence, P.sum_one, Q.sum_one, sub_self, sub_zero] using
+      (klDivergence_from_divergence_formula P Q hQ_pos).symm
+  rwa [heq] at h
+
+/-- KL divergence is non-negative (Gibbs' inequality).
+
+**Strict version**: Requires all probabilities to be strictly positive.
+See `klDivergence_nonneg'` for a relaxed version allowing zeros in P. -/
+theorem klDivergence_nonneg {n : ℕ} (P Q : ProbDist n)
+    (hP_pos : ∀ i, 0 < P.p i) (hQ_pos : ∀ i, P.p i ≠ 0 → 0 < Q.p i) :
+    0 ≤ klDivergence P Q hQ_pos := by
+  have _ := hP_pos
+  exact klDivergence_nonneg' P Q hQ_pos
 
 theorem klDivergenceTop_toReal_eq_of_support_pos {n : ℕ} (P Q : ProbDist n)
     (hQ_pos : ∀ i, P.p i ≠ 0 → 0 < Q.p i) :
@@ -479,22 +361,20 @@ This version allows zero probabilities (which contribute 0 to entropy by the
 convention `0 · log(0) = 0`). The equality holds because `entropyComponent (-1) 0 = 0`. -/
 theorem shannonEntropy_eq' {n : ℕ} (P : ProbDist n) :
     shannonEntropy P = -∑ i, P.p i * log (P.p i) := by
-  unfold shannonEntropy
-  rw [← sum_neg_distrib]
+  simp only [shannonEntropy, entropyComponent, entropyForm, ← sum_neg_distrib]
   congr 1
-  ext i
-  -- Handle both cases: p = 0 and p > 0
-  by_cases hp : P.p i = 0
-  · -- Case p = 0: both sides are 0
-    simp only [hp, entropyComponent_zero, neg_zero, zero_mul]
-  · -- Case p > 0: use the standard formula
-    have hp_pos : 0 < P.p i := (P.nonneg i).lt_of_ne' hp
-    rw [entropyComponent_eq (-1) (P.p i) hp_pos]
-    ring
+  funext i
+  ring
+
+/-- The variational entropy is observed by Mathlib's continuous entropy component. -/
+theorem shannonEntropy_eq_sum_negMulLog {n : ℕ} (P : ProbDist n) :
+    shannonEntropy P = ∑ i, negMulLog (P.p i) := by
+  rw [shannonEntropy_eq']
+  simp only [negMulLog, neg_mul, sum_neg_distrib]
 
 /-- **Connection to variational form**: Shannon entropy is the sum of `entropyForm 0 (-1) (-1)`.
 
-This explicitly shows the derivation from Appendix C. -/
+This expands the chosen variational parameters componentwise. -/
 theorem shannonEntropy_from_entropyForm {n : ℕ} (P : ProbDist n) :
     shannonEntropy P = ∑ i, entropyForm 0 (-1) (-1) (P.p i) := rfl
 
@@ -539,57 +419,10 @@ theorem klDivergence_uniform_eq_log_sub_shannonEntropy {n : ℕ} (P : ProbDist n
       have : 0 < (1 : ℝ) / n := by positivity
       simpa [uniformDist] using this) =
       log n - shannonEntropy P := by
-  classical
-  -- Rewrite the RHS in the usual `log n + Σ p_i log p_i` form.
-  have hRHS : log n - shannonEntropy P = log n + ∑ i, P.p i * log (P.p i) := by
-    rw [shannonEntropy_eq' (P := P)]
-    ring
-  -- Expand KL to the explicit uniform formula.
-  have hn0 : (n : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hn)
-  have hden : ((1 : ℝ) / n) ≠ 0 := div_ne_zero one_ne_zero hn0
-  have hlog_unif : log ((1 : ℝ) / n) = -log n := by
-    rw [log_div one_ne_zero hn0]
-    simp [log_one]
-  have hterm :
-      ∀ i : Fin n,
-        P.p i * log (P.p i / ((1 : ℝ) / n)) = P.p i * log (P.p i) - P.p i * log ((1 : ℝ) / n) := by
-    intro i
-    by_cases hPi : P.p i = 0
-    · simp [hPi]
-    · rw [log_div hPi hden]
-      ring
-  -- Now compute the finite sum.
-  have hU :
-      klDivergence P (uniformDist n hn) (by
-        intro i _
-        have : 0 < (1 : ℝ) / n := by positivity
-        simpa [uniformDist] using this) =
-      (∑ i : Fin n, P.p i * log (P.p i)) - ∑ i : Fin n, P.p i * log ((1 : ℝ) / n) := by
-    -- Expand definition and distribute.
-    simp only [klDivergence, uniformDist]
-    have :
-        (∑ i : Fin n, P.p i * log (P.p i / ((1 : ℝ) / n))) =
-          ∑ i : Fin n, (P.p i * log (P.p i) - P.p i * log ((1 : ℝ) / n)) := by
-      refine Finset.sum_congr rfl ?_
-      intro i _
-      simpa using hterm i
-    rw [this, Finset.sum_sub_distrib]
-  rw [hU]
-  -- Factor out the constant `log(1/n)` and use `∑ p_i = 1`.
-  have hsum_const :
-      (∑ i : Fin n, P.p i * log ((1 : ℝ) / n)) = (∑ i : Fin n, P.p i) * log ((1 : ℝ) / n) := by
-    simpa using
-      (Finset.sum_mul (s := (Finset.univ : Finset (Fin n))) (f := fun i : Fin n => P.p i)
-        (log ((1 : ℝ) / n))).symm
-  -- Finish: `-log(1/n) = log n`.
-  have hneg_log_unif : -log ((1 : ℝ) / n) = log n := by
-    rw [hlog_unif]
-    ring
-  -- Put everything together.
-  rw [hsum_const, P.sum_one]
-  simp only [one_mul]
-  -- `Σ p_i log p_i - log(1/n) = log n + Σ p_i log p_i`
-  linarith [hRHS, hneg_log_unif]
+  have h := divergence_from_uniform_eq_logn_sub_entropy hn P.p P.nonneg P.sum_one
+  rw [divergence_eq_kl_for_prob P.p (fun _ => 1 / (n : ℝ)) P.sum_one
+    (uniformDist n hn).sum_one] at h
+  simpa only [klDivergence, uniformDist, shannonEntropy_eq_sum_negMulLog] using h
 
 theorem klDivergenceTop_uniform_toReal {n : ℕ} (P : ProbDist n) (hn : 0 < n) :
     (klDivergenceTop P (uniformDist n hn)).toReal = log n - shannonEntropy P := by
@@ -852,14 +685,8 @@ continuous extension with value 0 at 0). -/
 theorem shannonEntropy_continuous_on_interior (n : ℕ) :
     ContinuousOn (fun p : Fin n → ℝ => -∑ i, p i * log (p i))
         {p | ∀ i, 0 < p i} := by
-  apply ContinuousOn.neg
-  apply continuousOn_finset_sum
-  intro i _
-  apply ContinuousOn.mul
-  · exact (continuous_apply i).continuousOn
-  · apply ContinuousOn.comp continuousOn_log (continuous_apply i).continuousOn
-    intro p hp
-    simp only [Set.mem_compl_iff, Set.mem_singleton_iff]
-    exact ne_of_gt (hp i)
+  have h : Continuous (fun p : Fin n → ℝ => ∑ i, negMulLog (p i)) :=
+    continuous_finsetSum _ (fun i _ => continuous_negMulLog.comp (continuous_apply i))
+  simpa only [negMulLog, neg_mul, sum_neg_distrib] using h.continuousOn
 
 end KnuthSkilling.Information.InformationEntropy

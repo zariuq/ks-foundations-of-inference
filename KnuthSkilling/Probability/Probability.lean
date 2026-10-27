@@ -8,7 +8,7 @@ the familiar probability calculus and information measures.
 ## What's Exported
 
 ### Probability Calculus
-- **ProbabilityDerivation**: Full derivation from Appendix A+B
+- **ProbabilityDerivation**: Consequences of supplied representation and calibration profiles
 - **ProbabilityCalculus**: Canonical interface (sum rule, product rule, Bayes)
 - **ConditionalProbability**: K&S Section 7 (chaining axiom)
 - **Independence**: Independence axioms and consequences
@@ -17,7 +17,7 @@ the familiar probability calculus and information measures.
 - **Divergence**: K&S Section 6 (KL divergence foundations)
 - **InformationEntropy**: K&S Section 8 (Shannon entropy)
 - **DivergenceMathlib**: Bridge to `Mathlib.InformationTheory.klDiv`
-- **InformationEntropyMathlib**: Bridge to mathlib entropy
+- **InformationEntropyMathlib**: Finite extended-KL bridge to Mathlib measures
 
 ## Layer Structure
 

@@ -7,44 +7,15 @@ import KnuthSkilling.Probability.BooleanRepresentation
 import KnuthSkilling.Information.InformationEntropy
 
 /-!
-# Finite Probability: Grounding ProbDist on K&S Derivation
+# Finite coordinates of Boolean event observations
 
-This file provides the **bridge** between:
-- **Event-level K&S probability** (`KSBooleanRepresentation` on `Set Ω`)
-- **Coordinate-level probability** (`ProbDist Ω` as a vector of singleton probabilities)
-
-## Key Insight
-
-K&S probability theory is fundamentally about quantifying lattices/events. A finite
-probability distribution is the *derived coordinate representation* induced by KS
-probability on a finite sample space `Ω`:
-
-```
-KSBooleanRepresentation (Set Ω)
-        ↓ (extract singleton probabilities)
-ProbDist Ω  (vector of P({ω}) for each ω ∈ Ω)
-```
-
-The key theorem is that these singleton probabilities sum to 1 because:
-1. Singletons are pairwise disjoint
-2. Their union is the entire space
-3. KS probability satisfies finite additivity on disjoint unions
-4. KS probability of the entire space is 1
-
-## Main Definitions
-
-* `toProbDist` - extracts a `ProbDist` from a KS representation
-
-## Main Theorems
-
-* `probability_sup_of_disjoint` - finite additivity on disjoint unions
-* `probability_sum_singletons` - sum of singleton probabilities = probability of union
-* `probability_eq_sum_singletons` - probability of any set = sum of its singleton probabilities
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012)
-- This approach follows guidance from GPT-5.2 Pro on properly grounding ProbDist
+A normalized Boolean event valuation determines singleton weights. Shared
+finite disjoint-additivity laws show that they sum to one and reconstruct
+every event probability. The explicit equivalence with `Fin (card Ω)` retains
+the original sample-space observations in the finite-distribution representation.
+Normalization requires nonzero total weight; zero total weight is not a
+probability distribution.
+Reference: Knuth and Skilling, “Foundations of Inference” (2012), Appendix A.
 -/
 
 namespace KnuthSkilling.Probability.FiniteProbability
@@ -72,7 +43,8 @@ variable (R : KSBooleanRepresentation (Set Ω))
 /-- **Disjoint sets have zero intersection probability**.
 
 If `a` and `b` are disjoint sets, then `P(a ∩ b) = P(∅) = 0`. -/
-theorem probability_inf_eq_zero_of_disjoint {a b : Set Ω} (h : Disjoint a b) :
+theorem probability_inf_eq_zero_of_disjoint {Ω : Type*} [Fintype Ω] [DecidableEq Ω]
+    (R : KSBooleanRepresentation (Set Ω)) {a b : Set Ω} (h : Disjoint a b) :
     R.probability (a ⊓ b) = 0 := by
   have hinf : a ⊓ b = ⊥ := h.eq_bot
   simp only [hinf]
@@ -102,7 +74,8 @@ Key facts about singletons in a finite type:
 -/
 
 /-- Singletons are pairwise disjoint. -/
-theorem singleton_disjoint {ω₁ ω₂ : Ω} (h : ω₁ ≠ ω₂) :
+theorem singleton_disjoint {Ω : Type*} [Fintype Ω] [DecidableEq Ω]
+    {ω₁ ω₂ : Ω} (h : ω₁ ≠ ω₂) :
     Disjoint ({ω₁} : Set Ω) {ω₂} := by
   rw [Set.disjoint_iff_inter_eq_empty]
   ext x
@@ -112,7 +85,8 @@ theorem singleton_disjoint {ω₁ ω₂ : Ω} (h : ω₁ ≠ ω₂) :
   exact h hx2
 
 /-- The union of all singletons is the entire space. -/
-theorem iUnion_singleton_eq_univ : (⋃ ω : Ω, ({ω} : Set Ω)) = Set.univ := by
+theorem iUnion_singleton_eq_univ {Ω : Type*} [Fintype Ω] [DecidableEq Ω] :
+    (⋃ ω : Ω, ({ω} : Set Ω)) = Set.univ := by
   ext x
   simp only [mem_iUnion, mem_singleton_iff, mem_univ, iff_true]
   exact ⟨x, rfl⟩
@@ -138,42 +112,14 @@ variable (R : KSBooleanRepresentation (Set Ω))
 This is the workhorse lemma for proving `sum_one` in `toProbDist`. -/
 theorem probability_sum_singletons (h : R.Θ ⊤ ≠ 0) (s : Finset Ω) :
     ∑ ω ∈ s, R.probability ({ω} : Set Ω) = R.probability (⋃ ω ∈ s, ({ω} : Set Ω)) := by
-  induction s using Finset.induction_on with
-  | empty =>
-    simp only [Finset.sum_empty, Finset.notMem_empty, Set.iUnion_of_empty, Set.iUnion_empty]
-    exact R.probability_bot.symm
-  | insert ω₀ s hω₀ ih =>
-    rw [Finset.sum_insert hω₀]
-    -- Rewrite the union as {ω₀} ∪ (⋃ ω ∈ s, {ω})
-    have hunion : (⋃ ω ∈ insert ω₀ s, ({ω} : Set Ω)) =
-        {ω₀} ∪ (⋃ ω ∈ s, ({ω} : Set Ω)) := by
-      ext x
-      simp only [mem_iUnion, Finset.mem_insert, mem_singleton_iff, mem_union]
-      constructor
-      · intro ⟨ω, hω_mem, hx_eq⟩
-        cases hω_mem with
-        | inl h => left; rw [hx_eq, h]
-        | inr h => right; exact ⟨ω, h, hx_eq⟩
-      · intro hcase
-        cases hcase with
-        | inl h => exact ⟨ω₀, Or.inl rfl, h⟩
-        | inr h =>
-          obtain ⟨ω, hω_in, hx_eq⟩ := h
-          exact ⟨ω, Or.inr hω_in, hx_eq⟩
-    rw [hunion]
-    -- The new singleton is disjoint from the existing union
-    have hDisj : Disjoint ({ω₀} : Set Ω) (⋃ ω ∈ s, ({ω} : Set Ω)) := by
-      rw [Set.disjoint_iff_inter_eq_empty]
-      ext x
-      simp only [mem_inter_iff, mem_singleton_iff, mem_iUnion, mem_empty_iff_false, iff_false,
-                 not_and, not_exists]
-      intro hx ω hω_in hω_eq
-      subst hx hω_eq
-      exact hω₀ hω_in
-    -- Use {ω₀} ∪ ... = {ω₀} ⊔ ... for the sup form
-    have hsup : ({ω₀} : Set Ω) ∪ (⋃ ω ∈ s, ({ω} : Set Ω)) =
-        ({ω₀} : Set Ω) ⊔ (⋃ ω ∈ s, ({ω} : Set Ω)) := rfl
-    rw [hsup, probability_sup_of_disjoint R h hDisj, ih]
+  have hsup : s.sup (fun ω => ({ω} : Set Ω)) = ⋃ ω ∈ s, ({ω} : Set Ω) := by
+    induction s using Finset.induction_on with
+    | empty => simp
+    | insert _ _ hi ih => simp [Finset.sup_insert, ih]
+  simpa only [hsup] using
+    sum_eq_finset_sup_of_disjoint R.probability R.probability_bot
+      (fun _ _ hd => probability_sup_of_disjoint R h hd)
+      (fun ω => ({ω} : Set Ω)) (fun _ _ hne => singleton_disjoint hne) s
 
 /-- **Sum over all elements equals probability of entire space**. -/
 theorem probability_sum_all_singletons (h : R.Θ ⊤ ≠ 0) :

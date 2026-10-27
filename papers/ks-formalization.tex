@@ -275,13 +275,14 @@ Our formalization provides \textbf{three independent proof paths}, each with dif
 \textbf{Technique}: K\&S's constructive proof proceeds by:
 \begin{enumerate}
 \item \textbf{One type}: For a single atom $a$, assign $\text{iterate\_op}\, a\, n \mapsto n \cdot \Theta(a)$.
-\item \textbf{Induction}: For a new atom $d$, use separation to find $(u, v)$ such that $a^u < d^v \leq a^{u+1}$.
-   Define $\Theta(d) = (u + \delta) / v$ for appropriate $\delta \in [0, 1]$.
+\item \textbf{Induction}: Compare old-grid values with iterates $d^u$ using the A/B/C regions.
+   Choose $\delta$ as the common B-statistic, or the supremum of A-statistics when B is empty.
+   Strict base admissibility then gives $\Theta'(\mu(F,r)\oplus d^t)=\Theta(\mu(F,r))+t\delta$.
 \item \textbf{Globalization}: Show this extends to all combinations consistently (the ``triple family trick'').
 \end{enumerate}
 
-\textbf{Files}: \texttt{Additive/Proofs/GridInduction/Core/Induction/ThetaPrime.lean} (3,609 lines), \\
-\hspace*{2em} \texttt{Additive/Proofs/GridInduction/Core/MultiGrid.lean} (2,995 lines)
+\textbf{Files}: \texttt{Additive/Proofs/GridInduction/Core/Induction/ThetaPrime.lean}, \\
+\hspace*{2em} \texttt{Additive/Proofs/GridInduction/Core/Induction/Construction.lean} and \texttt{Core/MultiGrid.lean}
 
 \textbf{Pros}: Follows K\&S paper closely; self-contained \\
 \textbf{Cons}: Complex grid management; hard to maintain
@@ -315,8 +316,7 @@ theorem associativity_representation
 
 \begin{lstlisting}[caption={Cuts-based representation theorem}]
 theorem associativity_representation_cuts
-    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparation α]
-    [KSSeparationStrict α] :
+    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparationStrict α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       Θ ident = 0 ∧
@@ -325,7 +325,7 @@ theorem associativity_representation_cuts
 
 \subsubsection{Approach 3: H\"older Embedding (Classical Route)}
 
-\textbf{Assumptions}: \texttt{NoAnomalousPairs} only!
+\textbf{Assumptions}: \texttt{KSSemigroupBase} plus \texttt{NoAnomalousPairs}.
 
 \textbf{Technique}: Leverage Eric Paul's formalized H\"older theorem for ordered semigroups:
 \begin{enumerate}
@@ -335,7 +335,7 @@ theorem associativity_representation_cuts
 \item Extract $\Theta$ from the multiplicative order isomorphism
 \end{enumerate}
 
-\textbf{Files}: \texttt{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean} (761 lines) + Eric's library
+\textbf{Files}: \texttt{Additive/Proofs/OrderedSemigroupEmbedding/HolderEmbedding.lean} + Eric's library
 
 \textbf{Pros}: Classical assumptions; shortest local code; most elegant \\
 \textbf{Cons}: Depends on external library
@@ -388,8 +388,11 @@ Maintainability & Low & Medium & \textbf{High} \\
 \end{tabular}
 \end{center}
 
-\textbf{Recommendation}: For practical use, the H\"older approach is preferred due to its minimal assumptions and elegant proof structure.
-For pedagogical purposes or K\&S paper alignment, the cuts approach provides a good balance.
+\textbf{Comparison boundary}: Each route retains its declared existence premises.
+Given a lawful additive order embedding, grid observations, iteration and separation
+reuse the same preservation laws. Positive-anchor calibration makes the observations
+of any two supplied representations agree. The local grid realization bridge does
+not repair the separate global-anchor interface.
 
 \subsection{Unified Interface}
 
@@ -419,34 +422,19 @@ After Appendix A regrades $\oplus$ to real addition, K\&S introduce a second sca
 $\otimes$ for the direct product of independent lattices.  Appendix B shows that $\otimes$ must
 be multiplication up to a single global scale constant.
 
-In Lean we formalize this conclusion in three complementary ways (all sorry-free):
-\begin{enumerate}
-\item \textbf{Product-equation route} (closest to K\&S's presentation):
-  assume an additive order-isomorphism representation of $\otimes$ on $\mathbb{R}_{>0}$,
-  i.e. $\Theta(x \otimes y) = \Theta x + \Theta y$, together with distributivity over $+$ (Axiom~3).
-  This yields the Appendix~B product equation for $\Psi := \Theta^{-1}$, which we solve to obtain
-  $\Psi(x) = C e^{Ax}$ and hence $(x \otimes y) = (xy)/C$.
-  (Lean: \texttt{Multiplicative/Main.lean}.)
-\item \textbf{Lean-friendly "avoid Appendix A again" route}:
-  do \emph{not} assume a representation theorem for $\otimes$.
-  Instead, package the regularity properties as \texttt{TensorRegularity} (associativity + injectivity of $t \mapsto 1 \otimes t$)
-  and combine with distributivity (Axiom~3) to derive $(x \otimes y) = (xy)/C$ directly.
-  (Lean: \texttt{Multiplicative/AczelTheorem.lean}.)
-\item \textbf{WARNING: Circular Reasoning Anti-Pattern}.
-  A previous file \texttt{EventBridge.lean} was \textbf{deleted} because it contained circular reasoning:
-  it defined \texttt{mulTensor := multiplication} and then ``proved'' multiplication equals scaled multiplication.
-  \textbf{This proves nothing!}  The correct approach (what \texttt{AczelTheorem.lean} does) is to start with
-  an \emph{abstract} tensor $\otimes$ satisfying Axioms 3--4 and prove that ANY such tensor equals scaled multiplication.
-\end{enumerate}
+The global-inverse route consumes an additive order isomorphism and
+distributivity, then solves the product equation. The direct algebraic route
+uses distributivity, associativity and injectivity of $t\mapsto1\otimes t$,
+without a continuity premise. Both yield \texttt{ScaledMultRep}.
+\texttt{Multiplicative/DistributiveTensor.lean} is the unique direct proof home;
+its historical entrypoints remain importable together.
 
-\textbf{Key point:} the Appendix~A axiom \texttt{ident\_le} (identity is the bottom element) is
-appropriate for $\oplus$ but structurally incompatible with $\otimes$ on $(0,\infty)$, where the
-identity is $1$ and is \emph{not} a minimum element.  Our Appendix~B development avoids this
-mismatch by never trying to model $\otimes$ as a "bottomed" additive monoid.
-
-\textbf{Axiom audit:} We checked all \texttt{Multiplicative/*.lean} files for \texttt{axiom}, \texttt{sorry}, or \texttt{admit}---none found.
-The injectivity requirement in \texttt{TensorRegularity} is \emph{derived} from distributivity + commutativity
-via \texttt{TensorRegularity.of\_assoc\_of\_distrib\_of\_comm}, not assumed.
+The direct proof obtains $x\otimes t=xk(t)$. Associativity and injectivity of
+$k$ reflect commutativity of the factors and force $k(t)=tk(1)$.
+Left projection shows why the injectivity premise matters.
+Cox's interval generator is a separate theorem that assumes continuity.
+The normalized lattice bridge proves distributivity at attained tuples;
+it does not provide arbitrary positive-real preimages.
 
 \subsection{K\&S's Approach: Fibonacci Recurrence}
 
@@ -466,13 +454,16 @@ This clever proof avoids continuity assumptions and works purely combinatorially
 \subsection{Formalization Notes}
 
 \begin{itemize}
-\item \textbf{K\&S's Fibonacci proof}: COMPLETE.  The full Fibonacci recurrence argument is formalized
-  in \texttt{Multiplicative/Proofs/Direct/FibonacciProof.lean}, including:
+\item \textbf{Recurrence lemmas}: The maintained development
+  \texttt{Multiplicative/Proofs/Direct/FibonacciProof.lean} proves:
   \begin{enumerate}
   \item Golden ratio irrationality (\texttt{goldenRatio\_irrational})
   \item Dense offsets $\{m - n\phi : m,n \in \mathbb{N}, n \geq 1\}$ in $\mathbb{R}$ (\texttt{dense\_fib\_linear\_combinations})
   \item The 2-term and 3-term recurrences that produce Fibonacci behavior
   \end{enumerate}
+  Its named exponential-solution theorem uses derived continuity and the
+  continuous functional-equation theorem; the auxiliary recurrence results
+  alone do not constitute the entire historical Fibonacci route.
 
 \item \textbf{KEY ACHIEVEMENT: Continuity derivation}.  We prove that continuity follows from
   the ProductEquation + strict monotonicity + positivity, avoiding the need to assume continuity:
@@ -502,10 +493,10 @@ theorem ks_appendix_b_fibonacci_strictMono
 \item \textbf{Mathlib support}: we use \texttt{Real.log\_mul} and related properties of $\exp/\log$ for the
   log-coordinate arguments.
 
-\item \textbf{Archived alternatives}: Two incomplete approaches (deriving StrictMono from Continuous,
-  and deriving StrictMono from weak Monotone) are preserved in \texttt{Multiplicative/Scratch/FibonacciProofScratch.lean}
-  for reference.  These were not needed because K\&S Appendix A already provides StrictMono from
-  the order isomorphism representation.
+\item \textbf{Hypothesis boundary}: The theorem above takes strict monotonicity
+  explicitly. An application through an order-isomorphism representation supplies
+  that premise. Deriving it from continuity or weak monotonicity alone is a
+  separate obligation.
 \end{itemize}
 
 \section{The Variational Theorem (Appendix C)}
@@ -707,17 +698,23 @@ Our core theorem uses the weaker assumption; monotonicity can be stated as a cor
 
 Shore--Johnson's axioms for maximum entropy inference (IEEE Trans.\ IT, 1980) include a ``system independence''
 requirement that can be viewed as another route to the same logarithmic structure.
-In a discrete, summand-level setting:
+For discrete inference the 1983 correction adds a null-information prior-preservation
+law~\cite{JohnsonShore1983}. The checked maximum-entropy countermodel satisfies the
+four structural laws but violates prior preservation. The KL model separates
+existence from uniqueness and admits boundary posteriors under positive references.
+
+At the summand level we make stronger functional assumptions explicit:
+
 \begin{itemize}
 \item Assume an atomic divergence $d(p,q)$ satisfies $d(0,q)=0$ and that the sum
-  $\sum_i d(p_i,q_i)$ is additive over product distributions (an SJ4-style hypothesis).
+  $\sum_i d(p_i,q_i)$ is additive over product distributions with positive references. This is an additional value-level hypothesis, not merely a law about selected posteriors.
 \item Dirac-delta test distributions then force a multiplicative Cauchy equation for
   $g(q) := d(1,q)$ on the probability domain $0<q\le 1$.
 \item With a regularity gate (we again take measurability), this implies $g(q)=C\log q$.
 \end{itemize}
 
 We formalize this ``Dirac extraction $\to$ log'' lemma as
-\texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable}
+\texttt{d\_one\_eq\_const\_mul\_log\_of\_measurable\_pos}
 in \texttt{KnuthSkilling/ShoreJohnson/SystemIndependence.lean} (re-exported via \texttt{ShoreJohnson/Theorem.lean}).
 This provides a clean comparison point between Shore--Johnson's system-independence intuition and
 K\&S Appendix~C: both rely on the same functional-equation rigidity, and both require an explicit
@@ -738,6 +735,12 @@ For convenience, the project re-exports the key Shore--Johnson lemmas we use in
 We then connect the resulting atom-level KL identity to the project's finite KL divergence
 definition on \texttt{ProbDist} (Section~8 layer) in
 \texttt{KnuthSkilling/ShoreJohnson/Bridge.lean}.
+
+The sum-form comparison now uses full feasible affine directions, a supplied
+Fr\'echet derivative, and convexity. Ratio invariance remains an explicit premise
+of the gradient-extraction theorem. Within the separable analytic profile,
+uniqueness and prior preservation force a positive KL multiplier. These results
+are conditional; they do not certify a complete operator-to-KL characterization.
 
 \subsection{The Entropy/Divergence Form}
 
@@ -776,7 +779,7 @@ We formalize this in
 For comparison (and to honor the historical development), we also formalize classical axiomatic
 characterizations of Shannon entropy \emph{independently of K\&S}:
 \begin{itemize}
-\item Shannon's original 1948 axioms + uniqueness (Appendix~2 of Shannon): \texttt{InformationTheory/ShannonEntropy/Shannon1948.lean} (sorry-free).
+\item Shannon's original 1948 axioms + uniqueness (Appendix~2 of Shannon): MeTTapedia's \texttt{Mettapedia/InformationTheory/ShannonEntropy/Shannon1948.lean}.
 \item Faddeev's 1956 axiom system + uniqueness theorem: \texttt{InformationTheory/ShannonEntropy/Faddeev.lean} (sorry-free).
 \item Shannon--Khinchin's 1957 axiom interface and the bridge to/from Faddeev:
 \texttt{InformationTheory/ShannonEntropy/ShannonKhinchin.lean} and
@@ -798,6 +801,14 @@ Highlights:
   (\texttt{Seq.klDiv\_toMeasureTop\_eq\_divergenceInfTop} and
   \texttt{Seq.klDiv\_toMeasureTop\_eq\_ofReal\_divergenceInf} in
   \texttt{KnuthSkilling/Information/DivergenceMathlib.lean}).
+\item \textbf{Support-free extended correspondence}: nonnegative summable weights
+  satisfy \texttt{Countable.klDiv\_toMeasure\_eq\_divergenceInfTop\_all}.
+  Unsupported source atoms contribute infinity, while real-series identities
+  retain support and summability premises. Finite and sequence bridges reuse
+  the countable proof rather than repeating its measure construction.
+\item \textbf{Common-scale calibration}: \texttt{mul\_complement\_calibration}
+  in \path{KnuthSkilling/Probability/Regraduation.lean} proves uniqueness of a
+  normalized monotone readout preserving multiplication and ordinary complement.
 \item \textbf{Shannon properties}: entropy of the uniform distribution is $\log n$
   (\texttt{shannonEntropy\_uniform}), strict monotonicity in $n$ for uniform distributions
   (\texttt{shannonEntropy\_uniform\_strictMono}), grouping/additivity in a binary refinement
@@ -831,8 +842,8 @@ Eric Paul's Lean 4 formalization of this classical theory provides a clean, mini
 
 \textbf{Practical recommendation}: For new formalizations building on K\&S, the H\"older approach is preferred:
 \begin{itemize}
-\item Uses classical assumptions (\texttt{NoAnomalousPairs} only)
-\item Shortest local codebase (761 lines vs.\ 6,612 for grid approach)
+\item Uses classical assumptions (\texttt{NoAnomalousPairs} on the base ordered semigroup)
+\item Explicit interpretation of the external ordered-semigroup theorem
 \item Most mathematically elegant
 \item Leverages Eric Paul's battle-tested library
 \end{itemize}
@@ -1167,7 +1178,7 @@ We formalize a multi-axis classification of probability theories, placing K\&S a
 
 Each axis represents a binary or multi-valued property of probability theories.
 
-\textbf{Formalization}: See \texttt{ProbabilityTheory/Hypercube/Basic.lean}
+\textbf{Formalization}: See MeTTapedia\textquotesingle s \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/Hypercube/Basic.lean}{\texttt{Mettapedia/ProbabilityTheory/Hypercube/Basic.lean}}.
 
 \begin{itemize}
 \item \textbf{Commutativity}: $P(A \cap B) = P(B \cap A)$? (Classical: yes; Quantum: no)
@@ -1241,8 +1252,16 @@ The hypercube suggests unexplored combinations:
 \item \textbf{Non-commutative classical}: Classical probability without $P(A \cap B) = P(B \cap A)$
 \end{itemize}
 
-\textbf{Formalization}: See \texttt{ProbabilityTheory/Hypercube/NovelTheories.lean} and \\
-\hspace*{2em} \texttt{ProbabilityTheory/Hypercube/NeighborTheories.lean}
+\textbf{Formalization}: See MeTTapedia\textquotesingle s
+\href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/Hypercube/NovelTheories.lean}{\texttt{Mettapedia/ProbabilityTheory/Hypercube/NovelTheories.lean}} and \\
+\hspace*{2em} \href{https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/Hypercube/NeighborTheories.lean}{\texttt{Mettapedia/ProbabilityTheory/Hypercube/NeighborTheories.lean}}.
+
+\paragraph{Scope of structural labels.}
+\texttt{Core/Hypercube.lean} supplies two axes and four labels, not a
+classification theorem for probability theories. Incomparable elements alone
+do not imply non-Boolean logic or force interval-valued probabilities. The
+Heyting interval construction and its compatible valuation are explicit in
+\texttt{Core/HeytingBounds.lean}; pointwise bounds alone need not be realizable.
 
 \section{To-Do: Open Gaps in Formalization}
 \label{app:todo}
@@ -1263,8 +1282,12 @@ structure KSModel (E S : Type*)
     v (a ⊔ b) = op (v a) (v b)
 \end{lstlisting}
 
-The scale $S$ is equipped with its K\&S algebra structure from the start.
-The representation theorem tells us this algebra embeds into $(\mathbb{R}, +)$, so using $\mathbb{R}_{\geq 0}$ with addition as our scale is canonical.
+The scale $S$ is supplied with its ordered combination structure.
+A representation requires the stated separation or no-anomalous-pairs premises;
+its result is an additive order embedding, not necessarily a surjection.
+Nonnegative-real addition is a concrete inhabited scale. Normalizing the composed
+event weights requires a positive total; calibrated representation routes then
+produce the same event probability answers.
 
 \texttt{KSModelWithRepresentation} extends this by composing with the representation $\Theta : S \to \mathbb{R}$, yielding the full pipeline:
 \[
@@ -1281,22 +1304,12 @@ Lean proves that any $\otimes : \mathbb{R}_{>0}\to\mathbb{R}_{>0}\to\mathbb{R}_{
 distributivity over $+$ (Axiom~3) and mild regularity (associativity, plus injectivity of
 $t \mapsto 1 \otimes t$) is multiplication up to a global scale constant.
 This is formalized as \texttt{TensorRegularity} in
-\texttt{Multiplicative/AczelTheorem.lean}.
+\texttt{Multiplicative/DistributiveTensor.lean}.
 
-\textbf{WARNING: Circular Reasoning Anti-Pattern}.
-A previous file \texttt{EventBridge.lean} was \textbf{deleted} because it contained circular reasoning.
-It claimed to ``bridge'' event-level to scalar-level by defining \texttt{mulTensor := multiplication}
-and then ``proving'' multiplication equals scaled multiplication.  \textbf{This proves nothing!}
-
-The error was confusing ``multiplication satisfies these axioms'' with ``any tensor satisfying these
-axioms equals multiplication.''  The former is trivial field theory; the latter is the actual theorem.
-
-The \textbf{correct approach} (what \texttt{AczelTheorem.lean} does):
-\begin{enumerate}
-\item Start with an \emph{abstract} tensor $\otimes$ satisfying K\&S Axioms 3--4
-\item Prove that ANY such tensor must equal scaled multiplication
-\item The tensor's identity is \emph{derived}, not assumed
-\end{enumerate}
+The tensor is supplied independently of multiplication. Its normalization
+is a proved injective monoid homomorphism, with a finite-fold correspondence.
+These statements concern the specified algebraic execution and observations;
+they do not establish a native runtime implementation.
 
 \subsection{Cauchy's Functional Equation}
 
@@ -1311,12 +1324,13 @@ using Mathlib’s continuous additive $\Rightarrow$ $\mathbb{R}$-linear infrastr
 
 \textbf{Status}: demonstrated.
 
-See \texttt{KnuthSkilling/Examples/} (and the nearby \texttt{Bridges/} and \texttt{Exploration/} folders) for:
+See \texttt{KnuthSkilling/Examples/} and \texttt{KnuthSkilling/Bridges/} for:
 \begin{itemize}
 \item \texttt{Examples/CoinDie.lean}: Fair coin flip and fair die roll \texttt{ProbDist} examples.
   Verifies: $P(\emptyset)=0$, $P(\Omega)=1$, additivity $P(H \cup T) = P(H) + P(T)$.
 \item \texttt{Bridges/Model.lean}: The three-element chain $\{\bot < m < \top\}$ as a \texttt{PlausibilitySpace}.
-\item \texttt{Exploration/OpenIntervalLattice.lean}: Open sets / intervals of $\mathbb{R}$ as a distributive lattice.
+\item \texttt{Examples/PreciseVsImpreciseGrounded.lean}: precise and imprecise
+  valuations on a finite lattice, with their decision readouts.
 \end{itemize}
 
 \bibliographystyle{plain}
@@ -1363,6 +1377,12 @@ Springer, 1998.
 F.~H. Clarke.
 \textit{Optimization and Nonsmooth Analysis}.
 SIAM, 1990.
+
+\bibitem{JohnsonShore1983}
+R.~W. Johnson and J.~E. Shore.
+Comments on and Correction to ``Axiomatic Derivation of the Principle of Maximum Entropy and the Principle of Minimum Cross-Entropy.''
+\emph{IEEE Transactions on Information Theory}, 29(6):942--943, 1983.
+\url{https://zenodo.org/records/1281600}.
 
 \end{thebibliography}
 

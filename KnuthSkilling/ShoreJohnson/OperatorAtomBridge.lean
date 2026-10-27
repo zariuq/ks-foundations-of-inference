@@ -4,28 +4,16 @@ import KnuthSkilling.ShoreJohnson.KL
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 
 /-!
-# Shore-Johnson Operator → Atom Bridge
+# Product values and selected posteriors
 
-This file bridges the gap between:
-- **Operator-level axioms** (`ShoreJohnsonAxioms`): SJ1-SJ4 on inference methods
-- **Atom-level properties** (`SJSystemIndependenceAtom`): additivity of divergence over products
+An inference law constrains the selected posteriors. Product additivity is a
+separate assertion about objective values. Strictly increasing transformations
+preserve minimizers without preserving that value equation.
 
-## The Key Insight
-
-SJ4 (system independence) at the operator level says:
-  If inference factorizes over products (i.e., inferring on two independent systems
-  separately gives the same result as inferring jointly), then the objective must
-  also factorize.
-
-When the objective has sum form `F = ofAtom d`, this forces the atom `d` to satisfy:
-  `∑ d(P⊗R, Q⊗S) = ∑ d(P,Q) + ∑ d(R,S)`
-
-Combined with the regularity gate (measurability), this gives KL uniqueness.
-
-## Main Results
-
-- `sj4_forces_atom_additivity_at_point`: SJ4 + sum-form objective → atom additivity
-- `shore_johnson_axioms_imply_atom_independence`: Complete bridge from operator axioms to atom properties
+This module computes KL product additivity with positive references, permits
+zero source entries, and packages explicitly supplied atom-additivity laws.
+The concrete inference-system law is proved from the KL joint decomposition
+in `KLWitness`, rather than inferred from an equality of minimizer sets.
 -/
 
 namespace KnuthSkilling.ShoreJohnson.OperatorAtomBridge
@@ -108,12 +96,14 @@ theorem minimizer_singletonConstraintProd_eq_prod
     (hSJ : ShoreJohnsonAxioms I) (hF : Realizes I F)
     {n m : ℕ} (p₁ : ProbDist n) (p₂ : ProbDist m)
     (q₁ : ProbDist n) (q₂ : ProbDist m) (Q : ProbDistProd n m)
+    (ha₁ : Admissible p₁ (singletonConstraint q₁))
+    (ha₂ : Admissible p₂ (singletonConstraint q₂))
     (hQ : IsMinimizerProd F (p₁ ⊗ p₂) (singletonConstraintProd q₁ q₂) Q) :
     Q = (q₁ ⊗ q₂) := by
   have h₁ : IsMinimizer F p₁ (singletonConstraint q₁) q₁ := isMinimizer_singletonConstraint F p₁ q₁
   have h₂ : IsMinimizer F p₂ (singletonConstraint q₂) q₂ := isMinimizer_singletonConstraint F p₂ q₂
   exact eq_prod_of_isMinimizer_product hSJ hF p₁ p₂
-    (singletonConstraint q₁) (singletonConstraint q₂) q₁ q₂ Q h₁ h₂ hQ
+    (singletonConstraint q₁) (singletonConstraint q₂) q₁ q₂ Q ha₁ ha₂ h₁ h₂ hQ
 
 /-! ## For a sum-form objective, product divergence decomposes -/
 
@@ -129,46 +119,6 @@ theorem ofAtom_D_eq {n : ℕ} (d : ℝ → ℝ → ℝ) (q p : ProbDist n) :
     (ofAtom d).D q p = ∑ i : Fin n, d (q.p i) (p.p i) := by
   simp only [ofAtom]
 
-/-! ## The main bridge theorem
-
-**Key insight on the gap between operator-level and atom-level:**
-
-SJ4 (system independence) at the operator level constrains WHICH distribution is the
-minimizer (it must be the product of marginal minimizers). However, it does not directly
-constrain the VALUES of the objective at those distributions.
-
-Shore-Johnson's 1980 paper bridges this gap using variational/calculus arguments:
-- For KL divergence: D_KL(Q || P₁⊗P₂) = D_KL(q₁ || P₁) + D_KL(q₂ || P₂) + MI(Q)
-  where MI(Q) ≥ 0 is mutual information, with MI = 0 iff Q = q₁⊗q₂.
-- The "excess" E(Q) := F.DProd(Q, P) - [F.D(q₁, p₁) + F.D(q₂, p₂)] being ≥ 0
-  with equality at product distributions implies additivity.
-
-**Our approach:**
-
-Rather than formalizing the full variational argument, we take the cleaner path:
-1. SJ4 at operator level → minimizers factorize (proven: `eq_prod_of_isMinimizer_product`)
-2. Atom additivity is taken as an explicit structural assumption
-3. Together these give `SJSystemIndependenceAtom`
-
-This is mathematically honest: the additivity property is a consequence of SJ4 via
-variational arguments in Shore-Johnson's paper, but we make it explicit here rather
-than hiding the gap behind unproven lemmas.
--/
-
-/-! ## KL Atom Product Additivity (Direct Calculation)
-
-The KL atom `d(w,u) = w * log(w/u)` satisfies product additivity.
-This is **proven by direct calculation** following Shore-Johnson (1980), not assumed.
-
-The proof uses:
-1. `log((a*b)/(c*d)) = log(a/c) + log(b/d)` for positive arguments
-2. Sum factorization: `∑_{ij} f(i)*g(j) = (∑_i f(i)) * (∑_j g(j))`
-3. Probability normalization: `∑ P.p = 1`
-
-**Mathematical reference**: Shore & Johnson (1980), Theorem 1; Cover & Thomas (2006),
-Elements of Information Theory, Theorem 2.5.3 (Chain Rule for KL Divergence).
--/
-
 /-- Regularity of klAtom: `klAtom 0 u = 0` for all u. -/
 theorem klAtom_regularAtom : RegularAtom klAtom := by
   intro u
@@ -176,7 +126,7 @@ theorem klAtom_regularAtom : RegularAtom klAtom := by
 
 /-- Key lemma: For strictly positive probabilities, the klAtom on a product decomposes.
 
-`klAtom(P_i * R_j, Q_i * S_j) = klAtom(P_i, Q_i) + (P_i / Q_i) * R_j * log(R_j / S_j)` -/
+`klAtom(P_i * R_j, Q_i * S_j) = R_j * klAtom(P_i, Q_i) + P_i * klAtom(R_j, S_j)` -/
 theorem klAtom_prod_decompose_pos {P_i Q_i R_j S_j : ℝ}
     (hP : 0 < P_i) (hQ : 0 < Q_i) (hR : 0 < R_j) (hS : 0 < S_j) :
     klAtom (P_i * R_j) (Q_i * S_j) =
@@ -212,7 +162,8 @@ strictly positive entries:
 
 **Note**: The strict positivity requirement on Q and S (the "reference" distributions)
 is the standard "absolute continuity" assumption in KL divergence theory.
-Without it, KL divergence is infinite and the identity doesn't hold. -/
+Outside the support regime the total-real atom is not a KL readout;
+use the extended divergence instead. -/
 theorem klAtom_productAdditiveAtom_pos {n m : ℕ} [NeZero n] [NeZero m]
     (P Q : ProbDist n) (R S : ProbDist m)
     (hQ : ∀ i, 0 < Q.p i) (hS : ∀ j, 0 < S.p j) :
@@ -282,41 +233,6 @@ theorem klAtom_dirac_additivity {n m : ℕ} [NeZero n] [NeZero m]
 
 /-! ## The complete bridge -/
 
-/-- **Main Theorem**: Shore-Johnson axioms + sum-form objective + **product additivity** → atom system independence.
-
-If an inference method `I` satisfies the Shore-Johnson axioms (SJ1-SJ4),
-is realized by an objective `F`, and `F` has the sum form `ofAtom d` with:
-- regularity `d(0,x) = 0`, and
-- product additivity (the key structural assumption)
-
-then `d` satisfies the atom-level system independence property that feeds into
-the Dirac extraction / Cauchy equation pipeline.
-
-**Note on product additivity assumption:**
-Shore-Johnson's 1980 paper derives product additivity from SJ4 via variational arguments
-(the "excess" function E(Q) is minimized at product distributions, implying E = 0 there).
-We make this explicit as an assumption rather than formalizing the full variational proof.
-This is the honest approach: the structure is clear, and the assumption is well-motivated.
-
-**Important caveat for `klAtom`:**
-The specific `klAtom` function DOES NOT satisfy `ProductAdditiveAtom` for all distributions,
-only for those where the reference distributions (Q, S) have strictly positive entries.
-See `klAtom_productAdditiveAtom_pos` for the proven version with this hypothesis.
-However, the Dirac extraction pathway (`dirac_extraction_cauchy`) only uses this property
-with Dirac distributions at points where the reference is positive, so `klAtom` still
-works for that purpose. See `klAtom_dirac_additivity`. -/
-theorem shore_johnson_axioms_imply_atom_independence
-    {I : InferenceMethod} {F : ObjectiveFunctional}
-    (_hSJ : ShoreJohnsonAxioms I) (_hF : Realizes I F)
-    (d : ℝ → ℝ → ℝ)
-    (hReg : RegularAtom d)
-    (hAdd : ProductAdditiveAtom d)  -- Explicit assumption (see note above)
-    (_hF_D : ∀ {n : ℕ} (q p : ProbDist n), F.D q p = (ofAtom d).D q p)
-    (_hF_DProd : ∀ {n m : ℕ} (Q P : ProbDistProd n m), F.DProd Q P = (ofAtom d).DProd Q P) :
-    SJSystemIndependenceAtom d where
-  regularAtom := hReg
-  add_over_products := fun {_n _m} _ _ P Q R S => hAdd P Q R S
-
 /-- Alternative formulation: directly from regularity and additivity assumptions,
 without requiring the full Shore-Johnson axioms structure.
 
@@ -350,20 +266,15 @@ theorem klAtom_cauchy_on_pos (q₁ q₂ : ℝ) (hq₁ : 0 < q₁) (hq₂ : 0 < q
 /-- **Main Result**: The KL atom satisfies the positivity-restricted system independence property.
 
 This is the correct formalization for `klAtom`: product additivity holds when the reference
-distributions Q and S have strictly positive entries (absolute continuity condition).
+distributions Q and S have strictly positive entries, a sufficient support condition.
 
 This result connects Shore-Johnson's Theorem 1 to the KL divergence via `SJSystemIndependenceAtomPos`. -/
 theorem klAtom_sjSystemIndependenceAtomPos : SJSystemIndependenceAtomPos klAtom where
   regularAtom := klAtom_regularAtom
   add_over_products_pos := fun P Q R S hQ hS => klAtom_productAdditiveAtom_pos P Q R S hQ hS
 
-/-! ## KL Atom: Direct Log Form via Cauchy Equation
+/-! ## The positive-reference atom law feeds the shared Cauchy/log solver. -/
 
-Since `klAtom 1 q = -log q`, we can directly derive the logarithmic form without going through
-the full `SJSystemIndependenceAtom` machinery. This bypasses the issue that `klAtom` doesn't
-satisfy universal product additivity. -/
-
-/-- The Cauchy equation for `klAtom 1` restricted to the probability domain (0,1]. -/
 theorem klAtom_cauchy_Ioc (q₁ q₂ : ℝ) (hq₁_pos : 0 < q₁) (_hq₁_le1 : q₁ ≤ 1)
     (hq₂_pos : 0 < q₂) (_hq₂_le1 : q₂ ≤ 1) :
     klAtom 1 (q₁ * q₂) = klAtom 1 q₁ + klAtom 1 q₂ :=
@@ -385,10 +296,8 @@ logarithmic form on the probability domain (0,1].
 This is proven directly from the Cauchy equation + measurability, without going through
 the universal product additivity that `klAtom` doesn't satisfy. -/
 theorem klAtom_d_one_eq_const_mul_log :
-    ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → klAtom 1 q = C * Real.log q := by
-  have hCauchy : ∀ q₁ q₂ : ℝ, 0 < q₁ → q₁ ≤ 1 → 0 < q₂ → q₂ ≤ 1 →
-      klAtom 1 (q₁ * q₂) = klAtom 1 q₁ + klAtom 1 q₂ := klAtom_cauchy_Ioc
-  exact mul_cauchy_Ioc_eq_const_mul_log (klAtom 1) hCauchy measurable_klAtom_one
+    ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → klAtom 1 q = C * Real.log q :=
+  d_one_eq_const_mul_log_of_measurable_pos klAtom klAtom_sjSystemIndependenceAtomPos measurable_klAtom_one
 
 /-- Explicit constant: `klAtom 1 q = -1 * log q` for `q ∈ (0,1]`. -/
 theorem klAtom_one_eq_neg_log (q : ℝ) (_hq_pos : 0 < q) :

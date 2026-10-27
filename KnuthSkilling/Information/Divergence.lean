@@ -9,46 +9,21 @@ import KnuthSkilling.Variational.Main
 import InformationTheory.Basic
 
 /-!
-# K&S Section 6: Divergence (Variational Potential Application)
+# Variational divergence and its KL interpretation
 
-This file formalizes the **divergence formula** from K&S Section 6 "Variation".
+The K&S variational form with parameters `(u, -log u, 1)` gives
+`u - w + w * log (w / u)`. Its interpretation as `u * klFun (w/u)`
+transfers positivity and equality laws from Mathlib. Equal total masses cancel
+its linear correction, yielding the usual logarithmic KL sum.
 
-## Background
+Real logarithms and division are total, so the real formula is interpreted as
+KL only on the stated support domain. Countable real series additionally need
+summability. The extended-valued finite sum retains unsupported mass as infinity;
+infinite input weights use an explicit infinity branch. Measure-level agreement
+for nonnegative finite masses is proved in `DivergenceMathlib`.
 
-From Appendix C (Variational/Main.lean), we have the general entropy form:
-```
-H_i(m_i) = A_i + B_i·m_i + C_i·(m_i·log(m_i) - m_i)
-```
-
-Section 6 specializes this to define **divergence** - a measure of how much a destination
-measure `w` differs from a source measure `u`.
-
-## The Divergence Formula (K&S Eq. 44)
-
-Setting:
-- `C = 1` (ensures H has a minimum, not maximum)
-- `B_i = -log(u_i)` (places the unconstrained minimum at `u`)
-- `A_i = u_i` (makes the minimum value zero)
-
-Yields the **divergence formula**:
-```
-H(w | u) = Σ_i (u_i - w_i + w_i·log(w_i/u_i))
-```
-
-## Properties
-
-1. **Non-negativity**: `H(w|u) ≥ 0`
-2. **Zero iff equal**: `H(w|u) = 0 ↔ w = u`
-3. **Not symmetric**: `H(w|u) ≠ H(u|w)` in general
-4. **Not a metric**: Triangle inequality fails
-
-These properties show that divergence quantifies "from-to" separation, but cannot
-define a geometric distance.
-
-## References
-
-- K&S "Foundations of Inference" (2012), Section 6 "Variation"
-- Especially Section 6.1 "Divergence and Distance"
+The asymmetric and triangle-failure examples distinguish divergence from a metric.
+Reference: Knuth and Skilling, “Foundations of Inference” (2012), Sections 6 and 8.
 -/
 
 namespace KnuthSkilling.Information.Divergence
@@ -95,70 +70,32 @@ theorem log_ineq_strict (t : ℝ) (ht : 0 < t) (ht1 : t ≠ 1) : 0 < t - 1 - log
   rw [exp_log ht] at h
   linarith
 
-/-- The divergence function is non-negative for positive arguments.
+/-- Our `atomDivergence` equals mathlib's `klFun` scaled by `u`.
 
-**Proof**: Let `s = u/w`. Then `φ(w,u) = w·(s - 1 - log(s))` where `s > 0`.
-By the log inequality, `s - 1 - log(s) ≥ 0`, hence `φ(w,u) ≥ 0`. -/
+`atomDivergence w u = u - w + w·log(w/u) = u · klFun(w/u)`
+
+where `klFun t = t·log(t) + 1 - t`. -/
+theorem atomDivergence_eq_mul_klFun (w u : ℝ) (hw : 0 < w) (hu : 0 < u) :
+    atomDivergence w u = u * InformationTheory.klFun (w / u) := by
+  unfold atomDivergence InformationTheory.klFun
+  have hu_ne : u ≠ 0 := ne_of_gt hu
+  have hw_ne : w ≠ 0 := ne_of_gt hw
+  rw [log_div hw_ne hu_ne]
+  field_simp [hu_ne]
+  ring
+
+/-- Positivity follows from the standard KL integrand through the formula bridge. -/
 theorem atomDivergence_nonneg (w u : ℝ) (hw : 0 < w) (hu : 0 < u) :
     0 ≤ atomDivergence w u := by
-  unfold atomDivergence
-  -- Rewrite: u - w + w·log(w/u) = w·(u/w - 1 + log(w/u))
-  --                              = w·(u/w - 1 - log(u/w))
-  have hw_ne : w ≠ 0 := ne_of_gt hw
-  have hu_ne : u ≠ 0 := ne_of_gt hu
-  let s := u / w
-  have hs : 0 < s := div_pos hu hw
-  -- φ(w,u) = w * (s - 1 - log s)
-  have hrewrite : u - w + w * log (w / u) = w * (s - 1 - log s) := by
-    simp only [s]
-    rw [log_div hw_ne hu_ne]
-    have : log w - log u = -(log u - log w) := by ring
-    rw [this, ← log_div hu_ne hw_ne]
-    field_simp
-    ring
-  rw [hrewrite]
-  exact mul_nonneg (le_of_lt hw) (log_ineq s hs)
+  rw [atomDivergence_eq_mul_klFun w u hw hu]
+  exact mul_nonneg hu.le (InformationTheory.klFun_nonneg (div_pos hw hu).le)
 
-/-- Divergence equals zero if and only if `w = u`. -/
+/-- Equality in the KL integrand reflects equality of positive weights. -/
 theorem atomDivergence_eq_zero_iff (w u : ℝ) (hw : 0 < w) (hu : 0 < u) :
     atomDivergence w u = 0 ↔ w = u := by
-  constructor
-  · -- If φ(w,u) = 0, then w = u
-    intro h
-    unfold atomDivergence at h
-    have hw_ne : w ≠ 0 := ne_of_gt hw
-    have hu_ne : u ≠ 0 := ne_of_gt hu
-    let s := u / w
-    have hs : 0 < s := div_pos hu hw
-    -- φ(w,u) = w * (s - 1 - log s) = 0
-    have hrewrite : u - w + w * log (w / u) = w * (s - 1 - log s) := by
-      simp only [s]
-      rw [log_div hw_ne hu_ne]
-      have : log w - log u = -(log u - log w) := by ring
-      rw [this, ← log_div hu_ne hw_ne]
-      field_simp
-      ring
-    rw [hrewrite] at h
-    -- w > 0 and w * (s - 1 - log s) = 0 implies s - 1 - log s = 0
-    have hcore : s - 1 - log s = 0 := by
-      have := mul_eq_zero.mp h
-      cases this with
-      | inl hw0 => exact absurd hw0 hw_ne
-      | inr h' => exact h'
-    -- s - 1 - log s = 0 implies s = 1 (since strict inequality holds for s ≠ 1)
-    by_contra hw_ne_u
-    -- s ≠ 1 because s = u/w and w ≠ u
-    have hs1 : s ≠ 1 := by
-      simp only [s]
-      intro heq
-      have : u = w := by field_simp at heq; linarith
-      exact hw_ne_u this.symm
-    have hstrict := log_ineq_strict s hs hs1
-    linarith
-  · -- If w = u, then φ(w,u) = 0
-    intro heq
-    rw [heq]
-    exact atomDivergence_self u hu
+  rw [atomDivergence_eq_mul_klFun w u hw hu, mul_eq_zero]
+  simp only [hu.ne', false_or]
+  rw [InformationTheory.klFun_eq_zero_iff (div_pos hw hu).le, div_eq_one_iff_eq hu.ne']
 
 /-! ## Vector Divergence
 
@@ -169,7 +106,7 @@ For vectors of measures, the total divergence is the sum of per-atom divergences
 
 `H(w | u) = Σ_i (u_i - w_i + w_i·log(w_i/u_i))`
 
-This is the unique variational potential with the required properties. -/
+This fixes the scale parameter of the variational family to one. -/
 noncomputable def divergence {n : ℕ} (w u : Fin n → ℝ) : ℝ :=
   ∑ i, atomDivergence (w i) (u i)
 
@@ -186,25 +123,14 @@ theorem divergence_nonneg {n : ℕ} (w u : Fin n → ℝ)
 theorem divergence_eq_zero_iff {n : ℕ} (w u : Fin n → ℝ)
     (hw : ∀ i, 0 < w i) (hu : ∀ i, 0 < u i) :
     divergence w u = 0 ↔ w = u := by
+  rw [divergence, Finset.sum_eq_zero_iff_of_nonneg
+    (fun i _ => atomDivergence_nonneg (w i) (u i) (hw i) (hu i))]
   constructor
-  · -- If divergence = 0, then w = u
-    intro h
-    unfold divergence at h
-    -- Sum of non-negative terms equals zero → each term is zero
-    have hall_zero : ∀ i, atomDivergence (w i) (u i) = 0 := by
-      have hsum_nonneg : ∀ i ∈ Finset.univ, 0 ≤ atomDivergence (w i) (u i) := fun i _ =>
-        atomDivergence_nonneg (w i) (u i) (hw i) (hu i)
-      intro i
-      exact (Finset.sum_eq_zero_iff_of_nonneg hsum_nonneg).mp h i (Finset.mem_univ i)
-    ext i
-    exact (atomDivergence_eq_zero_iff (w i) (u i) (hw i) (hu i)).mp (hall_zero i)
-  · -- If w = u, then divergence = 0
-    intro heq
-    unfold divergence
-    simp only [heq]
-    apply Finset.sum_eq_zero
-    intro i _
-    exact atomDivergence_self (u i) (hu i)
+  · intro h
+    funext i
+    exact (atomDivergence_eq_zero_iff (w i) (u i) (hw i) (hu i)).mp (h i (Finset.mem_univ i))
+  · intro heq i _
+    simpa only [heq] using atomDivergence_self (u i) (hu i)
 
 /-! ## Non-Symmetry: Divergence is Not a Metric
 
@@ -275,22 +201,12 @@ theorem divergence_triangle_fails :
   simp only [hlog_quarter, hlog_half, hlog_half']
   linarith
 
-/-! ## Derivational Connection to entropyForm
+/-! ## The variational parameter choice
 
-The divergence formula is NOT arbitrary - it is **uniquely determined** by the K&S variational
-framework. From `Variational/Main.lean`:
-
-1. The variational equation `H'(m_x · m_y) = λ(m_x) + μ(m_y)` forces `H(m) = A + Bm + C(m log m - m)`
-   (this is `variationalEquation_solution`)
-
-2. The parameters `A, B, C` are then **forced** by requirements:
-   - `C > 0`: ensures a minimum (not maximum) — `entropyForm_second_deriv_pos`
-   - `B = -log(u)`: places the minimum at `m = u` — `entropyForm_critical_at_u`
-   - `A = u`: makes the minimum value zero — `entropyForm_minimum_value_zero`
-
-3. These constraints are summarized in `divergence_parameters_forced`.
-
-The theorems below verify the algebraic equivalence and the derivational connection.
+The variational family retains an overall scale. Choosing `C = 1`, setting
+`B = -log u` places the critical point at `u`, and `A = u` fixes its value to
+zero. The following formula bridge verifies this calibrated specialization;
+it does not derive the scale-one choice from positivity alone.
 -/
 
 /-- Divergence as a specialization of entropyForm (algebraic verification).
@@ -355,20 +271,6 @@ This establishes that our K&S-derived divergence coincides with the standard inf
 KL divergence, validating that K&S's axiomatic approach reproduces the correct formula.
 -/
 
-/-- Our `atomDivergence` equals mathlib's `klFun` scaled by `u`.
-
-`atomDivergence w u = u - w + w·log(w/u) = u · klFun(w/u)`
-
-where `klFun t = t·log(t) + 1 - t`. -/
-theorem atomDivergence_eq_mul_klFun (w u : ℝ) (hw : 0 < w) (hu : 0 < u) :
-    atomDivergence w u = u * InformationTheory.klFun (w / u) := by
-  unfold atomDivergence InformationTheory.klFun
-  have hu_ne : u ≠ 0 := ne_of_gt hu
-  have hw_ne : w ≠ 0 := ne_of_gt hw
-  rw [log_div hw_ne hu_ne]
-  field_simp [hu_ne]
-  ring
-
 /-- Corollary: Non-negativity via mathlib's `klFun_nonneg`.
 
 Since `klFun t ≥ 0` for `t ≥ 0`, and `u > 0`, we have `atomDivergence w u ≥ 0`. -/
@@ -403,6 +305,10 @@ theorem atomDivergenceExt_eq_atomDivergence (w u : ℝ) (hw : 0 < w) :
     atomDivergenceExt w u = atomDivergence w u := by
   simp only [atomDivergenceExt, ne_of_gt hw, ↓reduceIte, atomDivergence]
 
+/-- The real boundary branch agrees with the original total-real formula. -/
+theorem atomDivergenceExt_eq (w u : ℝ) : atomDivergenceExt w u = atomDivergence w u := by
+  by_cases h : w = 0 <;> simp [atomDivergenceExt, atomDivergence, h]
+
 /-- `atomDivergenceExt 0 u = u`. -/
 @[simp]
 theorem atomDivergenceExt_zero (u : ℝ) : atomDivergenceExt 0 u = u := by
@@ -425,6 +331,17 @@ theorem atomDivergenceExt_nonneg (w u : ℝ) (hw : 0 ≤ w) (hu : 0 < u) :
     0 ≤ atomDivergenceExt w u := by
   rw [atomDivergenceExt_eq_mul_klFun w u hw hu]
   exact mul_nonneg (le_of_lt hu) (InformationTheory.klFun_nonneg (div_nonneg hw (le_of_lt hu)))
+
+/-- Nonnegativity includes joint zero atoms when support compatibility is supplied. -/
+theorem divergence_nonneg_of_support {n : ℕ} (w u : Fin n → ℝ)
+    (hw : ∀ i, 0 ≤ w i) (hu : ∀ i, 0 ≤ u i)
+    (hSupport : ∀ i, w i ≠ 0 → 0 < u i) : 0 ≤ divergence w u := by
+  apply Finset.sum_nonneg
+  intro i _
+  rw [← atomDivergenceExt_eq]
+  by_cases hwi : w i = 0
+  · simp only [hwi, atomDivergenceExt_zero]; exact hu i
+  · exact atomDivergenceExt_nonneg _ _ (hw i) (hSupport i hwi)
 
 /-- `atomDivergenceExt w u = 0 ↔ w = u` for `w ≥ 0` and `u > 0`. -/
 theorem atomDivergenceExt_eq_zero_iff (w u : ℝ) (hw : 0 ≤ w) (hu : 0 < u) :
@@ -496,45 +413,23 @@ noncomputable def divergenceInf (w u : ℕ → ℝ) : ℝ :=
   ∑' n, atomDivergenceExt (w n) (u n)
 
 /-- Sufficient condition for `divergenceInf` to be well-defined:
-if `w` and `u` are summable with `u` positive, then the divergence sum converges. -/
+summable nonnegative masses, positive reference weights and a summable absolute
+log-ratio contribution give a summable divergence series. -/
 theorem summable_atomDivergenceExt (w u : ℕ → ℝ)
     (hw : ∀ n, 0 ≤ w n) (hu : ∀ n, 0 < u n)
     (hu_sum : Summable u)
     (hw_sum : Summable w)
     (hwu_sum : Summable (fun n => w n * |log (w n / u n)|)) :
     Summable (fun n => atomDivergenceExt (w n) (u n)) := by
-  -- atomDivergenceExt (w n) (u n) = u n - w n + w n * log (w n / u n) for w n > 0
-  -- = u n for w n = 0
-  -- The sum is bounded by u n + w n + w n * |log(w n/u n)| which is summable.
-  have hbound : Summable (fun n => u n + w n + w n * |log (w n / u n)|) :=
-    hu_sum.add hw_sum |>.add hwu_sum
+  have hbound := (hu_sum.add hw_sum).add hwu_sum
   refine Summable.of_norm_bounded hbound (fun n => ?_)
-  -- Need: ‖atomDivergenceExt (w n) (u n)‖ ≤ u n + w n + w n * |log (w n / u n)|
-  -- For ℝ, ‖x‖ = |x|
-  rw [Real.norm_eq_abs]
-  by_cases hwn : w n = 0
-  · -- Case w n = 0: atomDivergenceExt 0 (u n) = u n, and |u n| = u n since u n > 0
-    simp only [hwn, atomDivergenceExt_zero, abs_of_pos (hu n), zero_mul, add_zero]
-    linarith [hu n, hw n]
-  · -- Case w n > 0: atomDivergenceExt (w n) (u n) = u n - w n + w n * log (w n / u n)
-    have hwn_pos : 0 < w n := (hw n).lt_of_ne' hwn
-    simp only [atomDivergenceExt, hwn, ↓reduceIte]
-    have hu_nonneg : 0 ≤ u n := le_of_lt (hu n)
-    have hw_nonneg : 0 ≤ w n := le_of_lt hwn_pos
-    -- |u n - w n + w n * log (w n / u n)| ≤ |u n - w n| + |w n * log (w n / u n)|
-    -- ≤ (u n + w n) + w n * |log (w n / u n)|
-    -- First, prove |a - b| ≤ a + b for nonneg a, b
-    have abs_sub_le_add : |u n - w n| ≤ u n + w n := by
-      have h := abs_add_le (u n) (-(w n))
-      simp only [abs_neg] at h
-      calc |u n - w n| = |u n + -(w n)| := by ring_nf
-        _ ≤ |u n| + |w n| := h
-        _ = u n + w n := by rw [abs_of_nonneg hu_nonneg, abs_of_nonneg hw_nonneg]
-    calc |u n - w n + w n * log (w n / u n)|
+  rw [Real.norm_eq_abs, atomDivergenceExt_eq, atomDivergence]
+  calc
+    |u n - w n + w n * log (w n / u n)|
         ≤ |u n - w n| + |w n * log (w n / u n)| := abs_add_le _ _
-      _ ≤ (u n + w n) + |w n * log (w n / u n)| := by linarith
-      _ = (u n + w n) + |w n| * |log (w n / u n)| := by rw [abs_mul]
-      _ = (u n + w n) + w n * |log (w n / u n)| := by rw [abs_of_pos hwn_pos]
+    _ ≤ (|u n| + |w n|) + |w n * log (w n / u n)| :=
+      add_le_add (abs_sub _ _) le_rfl
+    _ = _ := by rw [abs_of_pos (hu n), abs_mul, abs_of_nonneg (hw n)]
 
 /-- `atomDivergenceExt 0 0 = 0`. This is the natural boundary behavior. -/
 @[simp]
@@ -595,14 +490,8 @@ theorem atomDivergenceExt_is_klDiv_integrand (w u : ℝ) (hw : 0 ≤ w) (hu : 0 
     atomDivergenceExt w u = u * InformationTheory.klFun (w / u) :=
   atomDivergenceExt_eq_mul_klFun w u hw hu
 
-/-- The K&S divergence formula for discrete measures agrees with mathlib's `klDiv`.
-
-For finite discrete measures (represented as `Fin n → ℝ`), our formula
-`divergence w u = Σ_i atomDivergence w_i u_i` equals `klDiv μ_w μ_u`
-where `μ_w` and `μ_u` are the corresponding discrete probability measures.
-
-This theorem states the formula-level equivalence. The full measure-theoretic
-equivalence would require constructing the measures and using mathlib's `klDiv`. -/
+/-- Formula-level equality with the weighted Mathlib KL integrand. The measure-level
+statement, including singular pairs, belongs to `DivergenceMathlib`. -/
 theorem divergence_formula_agrees_with_klDiv {n : ℕ} (w u : Fin n → ℝ)
     (hw : ∀ i, 0 ≤ w i) (hu : ∀ i, 0 < u i) :
     divergence w u = ∑ i, (u i) * InformationTheory.klFun (w i / u i) := by
@@ -760,9 +649,9 @@ This section defines `atomDivergenceENNReal` returning `ℝ≥0∞` to properly 
 
 ### The Absolute Continuity Connection
 
-The condition "divergence is finite" is equivalent to **absolute continuity** in measure theory:
-- `D(μ || ν) < ∞` ⟺ `μ ≪ ν` (μ is absolutely continuous w.r.t. ν)
-- In discrete terms: `w_i > 0 ⟹ u_i > 0` for all i
+For finitely many finite weights, divergence is finite exactly when the source
+is supported by the reference. For countable measures, absolute continuity
+alone is insufficient: logarithmic integrability is also required.
 
 This is the foundation for the measure-theoretic KL divergence in mathlib's
 `InformationTheory.klDiv`.
@@ -817,11 +706,21 @@ theorem atomDivergenceENNReal_eq_atomDivergence {w u : ℝ}
   simp only [ENNReal.toReal_ofReal (le_of_lt hw), ENNReal.toReal_ofReal (le_of_lt hu)]
   rfl
 
+/-- The real formula agrees with extended divergence on its support domain. -/
+theorem atomDivergenceENNReal_ofReal_of_support (w u : ℝ)
+    (hw : 0 ≤ w) (hSupport : w ≠ 0 → 0 < u) :
+    atomDivergenceENNReal (ENNReal.ofReal w) (ENNReal.ofReal u) =
+      ENNReal.ofReal (atomDivergenceExt w u) := by
+  by_cases h : w = 0
+  · simp [h]
+  · rw [atomDivergenceExt_eq_atomDivergence w u (hw.lt_of_ne' h)]
+    exact atomDivergenceENNReal_eq_atomDivergence (hw.lt_of_ne' h) (hSupport h)
+
 /-- Non-negativity: The extended divergence is always non-negative (by definition in ℝ≥0∞).
 
 For the positive finite case, this follows from the log inequality. -/
 theorem atomDivergenceENNReal_nonneg (w u : ℝ≥0∞) : 0 ≤ atomDivergenceENNReal w u := by
-  exact zero_le'
+  exact zero_le
 
 /-! ### Total Extended Divergence -/
 
@@ -839,7 +738,7 @@ theorem divergenceENNReal_eq_top_iff {n : ℕ} (w u : Fin n → ℝ≥0∞)
   · -- If divergence = ⊤, then some term is ⊤
     intro h
     by_contra hne
-    push_neg at hne
+    push Not at hne
     -- All terms are finite, so the sum should be finite
     have hfinite : ∀ i, atomDivergenceENNReal (w i) (u i) ≠ ⊤ := by
       intro i
@@ -895,7 +794,7 @@ theorem divergenceENNReal_eq_zero_iff {n : ℕ} (w u : Fin n → ℝ≥0∞)
       intro i
       -- Sum of nonneg ENNReal terms = 0 implies each term = 0
       have hall : ∀ j ∈ Finset.univ, atomDivergenceENNReal (w j) (u j) = 0 := by
-        rw [Finset.sum_eq_zero_iff_of_nonneg (fun _ _ => zero_le')] at h
+        rw [Finset.sum_eq_zero_iff_of_nonneg (fun _ _ => zero_le)] at h
         exact h
       exact hall i (Finset.mem_univ i)
     ext i

@@ -1,325 +1,181 @@
-/-
-# Necessity of σ-Additivity Axioms
-
-This file provides **counterexamples** demonstrating that each of the three axioms
-for σ-additivity is strictly necessary:
-
-1. **SigmaCompleteEvents**: Without countable joins, σ-additivity is meaningless
-2. **KSScaleComplete**: Without sequential completeness, limits may not exist
-3. **KSScottContinuous**: Without Scott continuity, finite additivity ≠ σ-additivity
-
-## References
-
-- Billingsley, "Probability and Measure" (1995), §1.4
-- Dunford & Schwartz, "Linear Operators" (1958), II.2 for Banach limits
-- Hewitt & Stromberg, "Real and Abstract Analysis" (1965), §10.51
--/
-
-import Mathlib.Order.Lattice
-import Mathlib.Data.Real.Basic
-import Mathlib.Data.Rat.Cast.Order
-import Mathlib.Data.Finset.Basic
-import Mathlib.Data.Set.Finite.Basic
-import Mathlib.Topology.Algebra.InfiniteSum.Real
+import Mathlib.Order.Filter.Ultrafilter.Basic
 import Mathlib.NumberTheory.Real.Irrational
+import Mathlib.Topology.Order.IsLUB
+import Mathlib.Topology.Instances.Rat
+import Mathlib.Topology.Algebra.InfiniteSum.Real
 import Mathlib.Tactic
 
+/-!
+# Boundaries of countable observation
+
+Finite subsets are not closed under countable unions. Rational scales admit
+bounded increasing approximations with unrepresented real limits. A free-ultrafilter
+charge on all subsets of ℕ is normalized and finitely additive, but not countably
+additive. These are separate obstructions, not a proof that every sufficient
+hypothesis in the countable KS theorem is logically necessary for every model.
+The finite/infinite indicator is retained as a weaker discontinuity example;
+it is not finitely additive on the full powerset.
+-/
+
 namespace KnuthSkilling.Counterexamples.SigmaAdditivityNecessity
-
 open scoped Classical
+open Filter
+open scoped Topology
 
-/-! ## Counterexample 1: Without SigmaCompleteEvents
-
-The simplest counterexample: the lattice of FINITE subsets of ℕ has no countable joins
-for infinite families. The statement "μ(⋃ₙ {n}) = Σₙ μ({n})" doesn't even type-check
-because ⋃ₙ {n} = ℕ is not a finite subset.
--/
-
-/-- The lattice of finite subsets of ℕ -/
-def FinSubsets := {A : Set ℕ | A.Finite}
-
-/-- FinSubsets is closed under finite unions -/
-theorem finSubsets_union_closed (A B : Set ℕ) (hA : A.Finite) (hB : B.Finite) :
-    (A ∪ B).Finite := hA.union hB
-
-/-- FinSubsets is NOT closed under countable unions: ⋃ₙ {n} = ℕ is infinite -/
-theorem finSubsets_not_sigma_complete :
-    let f : ℕ → Set ℕ := fun n => {n}
-    (∀ n, (f n).Finite) ∧ ¬(⋃ n, f n).Finite := by
-  constructor
-  · intro n
-    exact Set.finite_singleton n
-  · have h : (⋃ n, ({n} : Set ℕ)) = Set.univ := by
-      ext x
-      simp only [Set.mem_iUnion, Set.mem_singleton_iff, Set.mem_univ, iff_true]
-      exact ⟨x, rfl⟩
-    rw [h]
-    exact Set.infinite_univ
-
-/-- **Key Point**: In FinSubsets, the countable join ⋃ₙ {n} does not exist.
-
-The statement "μ(⋃ₙ Aₙ) = Σₙ μ(Aₙ)" requires ⋃ₙ Aₙ to be in the lattice!
-This shows SigmaCompleteEvents is necessary even to STATE σ-additivity. -/
-theorem sigma_completeness_required_to_state :
-    ∃ (f : ℕ → Set ℕ), (∀ n, (f n).Finite) ∧ ¬(⋃ n, f n).Finite :=
-  ⟨fun n => {n}, fun n => Set.finite_singleton n, by
-    have h : (⋃ n, ({n} : Set ℕ)) = Set.univ := by
-      ext x
-      simp only [Set.mem_iUnion, Set.mem_singleton_iff, Set.mem_univ, iff_true]
-      exact ⟨x, rfl⟩
-    rw [h]
-    exact Set.infinite_univ⟩
-
-/-! ## Counterexample 2: Without KSScaleComplete (ℚ scale)
-
-**Model**: Use ℚ as the scale instead of ℝ.
-- ℚ is Archimedean and satisfies all finite K&S axioms
-- ℚ is NOT sequentially complete: bounded monotone sequences may not have sups in ℚ
-- Result: A sequence of events with Θ-values converging to √2 has no limit in ℚ
-
-This shows KSScaleComplete is necessary even when all other axioms hold.
--/
-
-namespace RationalScale
-
-/-- ℚ satisfies Archimedean property (no infinitesimals).
-This is a standard fact about rationals. -/
-theorem rat_archimedean : ∀ x y : ℚ, 0 < x → ∃ n : ℕ, y < n * x := by
-  intro x y hx
-  obtain ⟨n, hn⟩ := exists_nat_gt (y / x)
-  use n
-  have hdiv : y / x < n := hn
-  have hxne : x ≠ 0 := ne_of_gt hx
-  calc y = (y / x) * x := by field_simp
-       _ < n * x := mul_lt_mul_of_pos_right hdiv hx
-
-/-- A concrete bounded monotone sequence demonstrating incompleteness. -/
-def geometric_partial_sums : ℕ → ℚ := fun n => 2 - (1 : ℚ) / 2^n
-
-/-- The sequence is bounded above by 2 -/
-theorem geometric_bounded : ∀ n, geometric_partial_sums n < 2 := by
-  intro n
-  simp only [geometric_partial_sums]
-  have : (0 : ℚ) < 1 / 2^n := by positivity
-  linarith
-
-/-- **Key incompleteness example**: √2 is not rational.
-
-This is the standard proof that ℚ is not sequentially complete:
-sequences of rationals converging to √2 have no rational limit.
-
-For K&S with ℚ-valued scale: if Θ-values of events converge to √2,
-the measure μ(⋃ₙ Aₙ) cannot be defined.
-
-**Proof**: Uses `Nat.Prime.irrational_sqrt` from mathlib. -/
-theorem sqrt2_irrational : ¬ ∃ q : ℚ, q^2 = 2 := by
-  intro ⟨q, hq⟩
-  -- √2 is irrational via Nat.Prime.irrational_sqrt
-  have hirr : Irrational (Real.sqrt 2) := by
-    simpa using Nat.Prime.irrational_sqrt (p := 2) (by norm_num)
-  -- q² = 2 in ℚ means (q : ℝ)² = 2 in ℝ
-  have hq_sq : (q : ℝ)^2 = 2 := by exact_mod_cast hq
-  -- |q| = √2 via Real.sqrt_sq_eq_abs
-  have habs : |(q : ℝ)| = Real.sqrt 2 := by
-    have h := Real.sqrt_sq_eq_abs (q : ℝ)
-    rw [hq_sq] at h
-    exact h.symm
-  -- Irrational means not in range of Rat.cast
-  rw [Irrational] at hirr
-  simp only [Set.mem_range, not_exists] at hirr
-  -- Either q ≥ 0 (so q = √2) or q < 0 (so -q = √2)
-  rcases le_or_gt 0 q with hq_nn | hq_neg
-  · -- Case q ≥ 0: then |q| = q, so (q : ℝ) = √2
-    have heq : (q : ℝ) = Real.sqrt 2 := by
-      rw [abs_of_nonneg (by exact_mod_cast hq_nn : (0 : ℝ) ≤ q)] at habs
-      exact habs
-    exact hirr q heq
-  · -- Case q < 0: then |q| = -q, so (-q : ℝ) = √2
-    have h : |(q : ℝ)| = -(q : ℝ) := abs_of_neg (by exact_mod_cast hq_neg)
-    rw [h, ← Rat.cast_neg] at habs
-    -- Now habs : ↑(-q) = √2
-    exact hirr (-q) habs
-
-/-- **Incompleteness summary**: ℚ lacks sequential completeness.
-
-Bounded monotone sequences in ℚ may converge (in ℝ) to irrationals,
-which have no representation in ℚ. This breaks KSScaleComplete:
-we cannot define seqSup when the limit is irrational.
-
-**Key point**: The weaker statement is all we need for the counterexample:
-there exist bounded monotone sequences whose "true" limit √2 is not in ℚ. -/
-theorem rational_scale_not_complete :
-    ¬ ∃ q : ℚ, q^2 = 2 := sqrt2_irrational
-
-/-- **The actual incompleteness**: √2 is irrational (alternative formulation).
-
-Same as `sqrt2_irrational` but with `q * q` instead of `q^2`. -/
-theorem sqrt2_not_rational : ¬ ∃ q : ℚ, q * q = 2 := by
-  simp only [← sq]
-  exact sqrt2_irrational
-
-/-- **Consequence**: KSScaleComplete fails for ℚ when limits are irrational.
-
-The continued fraction convergents to √2 form a bounded monotone sequence,
-but no rational satisfies both q² = 2 AND being the LUB of this sequence
-(because no rational satisfies q² = 2 at all). -/
-theorem rational_scale_incomplete_for_irrational_limits :
-    ¬ ∃ s : ℚ, s * s = 2 := sqrt2_not_rational
-
-end RationalScale
-
-/-! ## Counterexample 3: Without KSScottContinuous (Discontinuous Valuation)
-
-**Model**: The classic finitely additive but not σ-additive measure.
-
-- Events E = Set ℕ (power set of naturals) with countable joins
-- Scale S = ℝ (complete)
-- Valuation v: v({n}) = 0 for all n, but v(ℕ) = 1
-
-This satisfies:
-- Finite additivity: v(A ∪ B) = v(A) + v(B) for disjoint finite sets
-- NOT σ-additivity: Σₙ v({n}) = 0 ≠ 1 = v(ℕ)
-
-The failure is exactly that v does NOT preserve the countable join:
-v(⋃ₙ {n}) ≠ supₙ v(⋃ᵢ<ₙ {i})
--/
-
-namespace DiscontinuousValuation
-
-/-- A "diffuse" valuation: 0 on finite sets, 1 on cofinite sets.
-
-This is well-defined and finitely additive but NOT σ-additive. -/
-noncomputable def diffuse : Set ℕ → ℝ := fun A =>
-  if A.Finite then 0 else 1
-
-/-- Singletons have measure 0 -/
-theorem diffuse_singleton (n : ℕ) : diffuse {n} = 0 := by
-  simp only [diffuse, Set.finite_singleton, ↓reduceIte]
-
-/-- ℕ has measure 1 -/
-theorem diffuse_univ : diffuse Set.univ = 1 := by
-  simp only [diffuse]
-  rw [if_neg]
-  exact Set.infinite_univ
-
-/-- Finite sets have measure 0 -/
-theorem diffuse_finite (A : Set ℕ) (hA : A.Finite) : diffuse A = 0 := by
-  simp only [diffuse]
-  rw [if_pos hA]
-
-/-- Cofinite (infinite) sets have measure 1 -/
-theorem diffuse_infinite (A : Set ℕ) (hA : ¬A.Finite) : diffuse A = 1 := by
-  simp only [diffuse]
-  rw [if_neg hA]
-
-/-- The union of singletons is ℕ -/
-theorem union_singletons_eq_univ : (⋃ n, ({n} : Set ℕ)) = Set.univ := by
+private theorem singleton_cover : (⋃ n, ({n} : Set ℕ)) = Set.univ := by
   ext x
   simp only [Set.mem_iUnion, Set.mem_singleton_iff, Set.mem_univ, iff_true]
   exact ⟨x, rfl⟩
 
-/-- The diffuse measure of ⋃ₙ {n} = ℕ is 1 -/
+def FinSubsets := {A : Set ℕ | A.Finite}
+theorem finSubsets_union_closed (A B : Set ℕ) (hA : A.Finite) (hB : B.Finite) :
+    (A ∪ B).Finite := hA.union hB
+
+theorem finSubsets_not_sigma_complete :
+    let f : ℕ → Set ℕ := fun n => {n}
+    (∀ n, (f n).Finite) ∧ ¬(⋃ n, f n).Finite := by
+  constructor
+  · exact Set.finite_singleton
+  · rw [singleton_cover]; exact Set.infinite_univ
+
+theorem sigma_completeness_required_to_state :
+    ∃ f : ℕ → Set ℕ, (∀ n, (f n).Finite) ∧ ¬(⋃ n, f n).Finite :=
+  ⟨fun n => {n}, finSubsets_not_sigma_complete⟩
+
+namespace RationalScale
+
+theorem rat_archimedean : ∀ x y : ℚ, 0 < x → ∃ n : ℕ, y < n * x := by
+  intro x y hx
+  obtain ⟨n, hn⟩ := exists_nat_gt (y / x)
+  exact ⟨n, (div_lt_iff₀ hx).mp hn⟩
+
+/-- A bounded sequence whose limit is rational; not an incompleteness witness. -/
+def geometric_partial_sums : ℕ → ℚ := fun n => 2 - 1 / 2^n
+theorem geometric_bounded : ∀ n, geometric_partial_sums n < 2 := by
+  intro n
+  dsimp [geometric_partial_sums]
+  have h : (0 : ℚ) < 1 / 2^n := by positivity
+  linarith
+
+theorem sqrt2_irrational : ¬∃ q : ℚ, q^2 = 2 := by
+  rintro ⟨q, hq⟩
+  have hs : |(q : ℝ)| = Real.sqrt 2 := by
+    rw [← Real.sqrt_sq_eq_abs, show (q : ℝ)^2 = 2 from by exact_mod_cast hq]
+  rcases le_or_gt 0 (q : ℝ) with h | h
+  · exact irrational_sqrt_two.ne_rat q (by simpa [abs_of_nonneg h] using hs.symm)
+  · exact irrational_sqrt_two.ne_rat (-q) (by simpa [abs_of_neg h] using hs.symm)
+
+theorem rational_scale_not_complete : ¬∃ q : ℚ, q^2 = 2 := sqrt2_irrational
+theorem sqrt2_not_rational : ¬∃ q : ℚ, q * q = 2 := by simpa only [sq] using sqrt2_irrational
+theorem rational_scale_incomplete_for_irrational_limits : ¬∃ s : ℚ, s * s = 2 := sqrt2_not_rational
+
+/-- An actual bounded increasing rational sequence with no rational real limit. -/
+theorem bounded_monotone_without_rational_limit :
+    ∃ u : ℕ → ℚ, StrictMono u ∧ BddAbove (Set.range u) ∧
+      Tendsto (fun n => (u n : ℝ)) atTop (𝓝 (Real.sqrt 2)) ∧
+      ¬∃ q : ℚ, Tendsto (fun n => (u n : ℝ)) atTop (𝓝 (q : ℝ)) := by
+  obtain ⟨u, hu, hb, ht⟩ := Rat.isDenseEmbedding_coe_real.dense.exists_seq_strictMono_tendsto
+    (show Monotone ((↑) : ℚ → ℝ) from fun _ _ h => by exact_mod_cast h) (Real.sqrt 2)
+  refine ⟨u, hu, ⟨2, ?_⟩, ht, ?_⟩
+  · rintro _ ⟨n, rfl⟩
+    have h : (u n : ℝ) ≤ 2 := (hb n).le.trans (by nlinarith [Real.sq_sqrt (show (0 : ℝ) ≤ 2 by norm_num)])
+    exact_mod_cast h
+  · rintro ⟨q, hq⟩
+    exact irrational_sqrt_two.ne_rat q (tendsto_nhds_unique ht hq)
+end RationalScale
+
+namespace DiscontinuousValuation
+
+/-- A monotone finite/infinite indicator, not a finitely additive charge. -/
+noncomputable def diffuse (A : Set ℕ) : ℝ := if A.Finite then 0 else 1
+
+theorem diffuse_singleton (n : ℕ) : diffuse {n} = 0 := by simp [diffuse]
+theorem diffuse_univ : diffuse Set.univ = 1 := if_neg Set.infinite_univ
+theorem diffuse_finite (A : Set ℕ) (hA : A.Finite) : diffuse A = 0 := if_pos hA
+theorem diffuse_infinite (A : Set ℕ) (hA : ¬A.Finite) : diffuse A = 1 := if_neg hA
+
+theorem union_singletons_eq_univ : (⋃ n, ({n} : Set ℕ)) = Set.univ := singleton_cover
+
 theorem diffuse_union_singletons : diffuse (⋃ n, ({n} : Set ℕ)) = 1 := by
-  rw [union_singletons_eq_univ]
-  exact diffuse_univ
+  rw [union_singletons_eq_univ, diffuse_univ]
 
-/-- **The Key Failure**: σ-additivity fails.
-
-The singletons {0}, {1}, {2}, ... are pairwise disjoint.
-Their union is ℕ.
-But: Σₙ diffuse({n}) = 0 ≠ 1 = diffuse(ℕ). -/
 theorem diffuse_not_sigma_additive :
     let f : ℕ → Set ℕ := fun n => {n}
-    (∀ i j, i ≠ j → Disjoint (f i) (f j)) ∧
-    (⋃ n, f n) = Set.univ ∧
-    (∑' n, diffuse (f n)) ≠ diffuse (⋃ n, f n) := by
-  refine ⟨?_, ?_, ?_⟩
-  · -- Pairwise disjoint
-    intro i j hij
-    rw [Set.disjoint_iff]
-    intro x ⟨hi, hj⟩
-    simp only [Set.mem_singleton_iff] at hi hj
-    rw [hi] at hj
-    exact hij hj
-  · -- Union is ℕ
-    exact union_singletons_eq_univ
-  · -- Sum ≠ value of union
-    simp only [diffuse_singleton, tsum_zero]
-    rw [diffuse_union_singletons]
-    norm_num
+    (∀ i j, i ≠ j → Disjoint (f i) (f j)) ∧ (⋃ n, f n) = Set.univ ∧
+      (∑' n, diffuse (f n)) ≠ diffuse (⋃ n, f n) := by
+  refine ⟨fun i j h => Set.disjoint_singleton.mpr h, union_singletons_eq_univ, ?_⟩
+  simp [diffuse_singleton, diffuse_union_singletons]
 
-/-- The union of finite prefixes is ℕ -/
-theorem union_finite_prefixes_eq_univ :
-    (⋃ n, (Finset.range n : Set ℕ)) = Set.univ := by
-  ext x
-  simp only [Set.mem_iUnion, Finset.coe_range, Set.mem_Iio, Set.mem_univ, iff_true]
-  exact ⟨x + 1, Nat.lt_add_one x⟩
-
-/-- The union of finite prefixes is infinite -/
+theorem union_finite_prefixes_eq_univ : (⋃ n, (Finset.range n : Set ℕ)) = Set.univ := by
+  ext x; simp only [Set.mem_iUnion, Finset.mem_coe, Finset.mem_range, Set.mem_univ, iff_true]
+  exact ⟨x+1, Nat.lt_succ_self x⟩
 theorem union_finite_prefixes_infinite : ¬(⋃ n, (Finset.range n : Set ℕ)).Finite := by
-  rw [union_finite_prefixes_eq_univ]
-  exact Set.infinite_univ
+  rw [union_finite_prefixes_eq_univ]; exact Set.infinite_univ
 
-/-- **Interpretation**: The diffuse valuation violates Scott continuity.
-
-The increasing sequence of partial unions:
-  ∅ ⊂ {0} ⊂ {0,1} ⊂ {0,1,2} ⊂ ...
-has valuations 0, 0, 0, ...  (all finite sets)
-
-But the limit ℕ = ⋃ₙ {0,...,n-1} has valuation 1.
-
-So v does NOT preserve the directed supremum:
-  v(⋃ₙ Aₙ) = 1 ≠ sup{v(Aₙ)} = 0
-
-This is exactly the failure of KSScottContinuous. -/
 theorem diffuse_not_scott_continuous :
     let partials : ℕ → Set ℕ := fun n => (Finset.range n : Set ℕ)
-    Monotone partials ∧
-    (⋃ n, partials n) = Set.univ ∧
-    (∀ n, diffuse (partials n) = 0) ∧
-    diffuse (⋃ n, partials n) = 1 := by
-  refine ⟨?_, ?_, ?_, ?_⟩
-  · -- Monotone
-    intro m n hmn
-    simp only [Finset.coe_range]
-    exact Set.Iio_subset_Iio hmn
-  · -- Union is ℕ
-    exact union_finite_prefixes_eq_univ
-  · -- All finite prefixes have measure 0
-    intro n
-    apply diffuse_finite
-    exact Set.finite_coe_iff.mp (Finset.finite_toSet _)
-  · -- Union has measure 1
-    exact diffuse_infinite _ union_finite_prefixes_infinite
+    Monotone partials ∧ (⋃ n, partials n) = Set.univ ∧
+      (∀ n, diffuse (partials n) = 0) ∧ diffuse (⋃ n, partials n) = 1 := by
+  refine ⟨fun _ _ h => by simpa using Set.Iio_subset_Iio h,
+    union_finite_prefixes_eq_univ, fun n => diffuse_finite _ (Finset.finite_toSet _), ?_⟩
+  rw [union_finite_prefixes_eq_univ, diffuse_univ]
 
+/-- Its failure already occurs for a pair of disjoint infinite sets. -/
+theorem diffuse_not_finitely_additive :
+    ∃ A B : Set ℕ, Disjoint A B ∧ diffuse (A ∪ B) ≠ diffuse A + diffuse B := by
+  let A := Set.range (fun n : ℕ => 2*n)
+  let B := Set.range (fun n : ℕ => 2*n+1)
+  have ha : A.Infinite := Set.infinite_range_of_injective (by intro a b h; dsimp at h; omega)
+  have hb : B.Infinite := Set.infinite_range_of_injective (by intro a b h; dsimp at h; omega)
+  refine ⟨A, B, Set.disjoint_left.mpr ?_, ?_⟩
+  · rintro _ ⟨a, rfl⟩ ⟨b, h⟩; dsimp at h; omega
+  · simp [diffuse, ha.not_finite, hb.not_finite, (ha.mono Set.subset_union_left).not_finite]
 end DiscontinuousValuation
 
-/-! ## Summary
+namespace UltrafilterCharge
 
-We have demonstrated three counterexamples:
+/-- Membership in a free ultrafilter defines a normalized 0/1 charge. -/
+noncomputable def charge (A : Set ℕ) : ℝ := by
+  classical
+  exact if A ∈ hyperfilter ℕ then 1 else 0
 
-1. **Without SigmaCompleteEvents**: σ-additivity is meaningless (can't even state it)
-   - Model: Lattice of finite subsets of ℕ
-   - Result: ⋃ₙ {n} = ℕ is not in the lattice (theorem `finSubsets_not_sigma_complete`)
+theorem charge_finite (A : Set ℕ) (h : A.Finite) : charge A = 0 := by
+  simp [charge, h.notMem_hyperfilter]
+@[simp] theorem charge_singleton (n : ℕ) : charge {n} = 0 := charge_finite _ (Set.finite_singleton _)
+@[simp] theorem charge_empty : charge ∅ = 0 := charge_finite _ Set.finite_empty
+@[simp] theorem charge_univ : charge Set.univ = 1 := by
+  classical
+  exact if_pos (show Set.univ ∈ hyperfilter ℕ from Filter.univ_mem)
 
-2. **Without KSScaleComplete**: Bounded monotone sequences may lack suprema
-   - Model: ℚ as scale, sequences converging to irrationals
-   - Result: Cannot define μ(⋃ₙ Aₙ) when limit is irrational (theorem `sqrt2_not_rational`)
+theorem charge_nonneg (A : Set ℕ) : 0 ≤ charge A := by unfold charge; split_ifs <;> norm_num
 
-3. **Without KSScottContinuous**: Finite additivity does NOT imply σ-additivity
-   - Model: Diffuse valuation on 2^ℕ (measure 0 on finite, 1 on infinite)
-   - Result: Σₙ μ({n}) = 0 ≠ 1 = μ(ℕ) (theorem `diffuse_not_sigma_additive`)
+theorem charge_mono : Monotone charge := by
+  classical
+  intro A B hab
+  by_cases ha : A ∈ hyperfilter ℕ
+  · have hb : B ∈ hyperfilter ℕ := mem_of_superset ha hab
+    simp [charge, ha, hb]
+  · simp only [charge, if_neg ha]; split_ifs <;> norm_num
 
-These counterexamples show that ALL THREE axioms are strictly necessary
-for the σ-additivity theorem. None can be derived from the others.
--/
+theorem charge_additive (A B : Set ℕ) (hd : Disjoint A B) : charge (A ∪ B) = charge A + charge B := by
+  classical
+  have hnot : ¬(A ∈ hyperfilter ℕ ∧ B ∈ hyperfilter ℕ) := by
+    rintro ⟨ha, hb⟩
+    have hi := inter_mem ha hb
+    rw [Set.disjoint_iff_inter_eq_empty.mp hd] at hi
+    exact (empty_notMem (hyperfilter ℕ).toFilter) hi
+  by_cases ha : A ∈ hyperfilter ℕ <;> by_cases hb : B ∈ hyperfilter ℕ
+  · exact (hnot ⟨ha, hb⟩).elim
+  all_goals simp [charge, Ultrafilter.union_mem_iff, ha, hb]
 
-/- TODO: Package the three counterexamples into an "axioms are independent" lemma.
+theorem charge_not_sigma_additive :
+    (∑' n, charge {n}) ≠ charge (⋃ n, ({n} : Set ℕ)) := by
+  rw [DiscontinuousValuation.union_singletons_eq_univ]; simp
 
-This file already contains concrete countermodels witnessing that dropping each axiom yields a
-distinct failure mode. A future summary lemma should quantify this as a clean independence result.
-
-We intentionally do not leave a placeholder theorem of type `True`.
--/
-
+/-- The same normalized finitely additive observation fails at increasing prefixes. -/
+theorem charge_not_continuous_from_below :
+    (∀ n, charge (Finset.range n) = 0) ∧ charge (⋃ n, (Finset.range n : Set ℕ)) = 1 := by
+  exact ⟨fun _ => charge_finite _ (Finset.finite_toSet _), by
+    rw [DiscontinuousValuation.union_finite_prefixes_eq_univ, charge_univ]⟩
+end UltrafilterCharge
 end KnuthSkilling.Counterexamples.SigmaAdditivityNecessity

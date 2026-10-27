@@ -1,26 +1,11 @@
 /-
-# Knuth-Skilling Foundations: Basic Definitions
+# Ordered combination and normalized valuations
 
-## K&S Symmetries (from "Foundations of Inference" 2012)
-- Symmetry 0 (Fidelity): x̄ < ȳ ⟹ x < y
-- Symmetry 1 (Monotonicity): x̄ < ȳ ⟹ x̄⊕z̄ < ȳ⊕z̄
-- Symmetry 2 (Associativity): (x̄ ⊕ ȳ) ⊕ z̄ = x̄ ⊕ (ȳ ⊕ z̄)
-- Symmetry 3 (Product Distributivity): formalized at the scalar level in
-  `KnuthSkilling/Multiplicative/Basic.lean`
-  (after Appendix A regrades `⊕` to `+` on `ℝ`).
-- (Lattice-level bookkeeping for direct products lives in
-  `KnuthSkilling/Multiplicative/DirectProduct.lean`.)
-- Symmetry 4 (Product Associativity): used in Appendix B either via an additive order-isomorphism
-  representation `Θ(x ⊗ t) = Θ x + Θ t` (see `.../Multiplicative/Main.lean`), or via the
-  Lean-friendly direct route in `.../Multiplicative/Proofs/Direct/DirectProof.lean` that derives scaled
-  multiplication from distributivity + associativity + regularity (without “Appendix A again”).
-- Symmetry 5 (Chaining Associativity): PARTIAL
-
-## Formalization Notes
-- Symmetries 0+1 merge into `op_strictMono_{left,right}` (equivalent via identity)
-- ⊕ is for DISJOINT events only (violating this breaks monotonicity)
-- LinearOrder required (K&S line 1339: trichotomy assumed)
-- Archimedean is DERIVABLE from KSSeparation (see SandwichSeparation.lean)
+The identity-free semigroup, monoid and minimum-identity profiles retain distinct
+assumptions. Ordinary algebra interpretations install no global instances.
+Positive-natural iteration remains independent of identity. Real-valued event
+bounds reuse the common normalized-valuation laws. Representation existence
+requires the additional hypotheses supplied by the additive development.
 -/
 
 import Mathlib.Order.Lattice
@@ -37,8 +22,6 @@ import ProbabilityTheory.Common.Lattice
 namespace KnuthSkilling
 
 open MeasureTheory Classical
-
-/-! ## PlausibilitySpace and Valuation -/
 
 /-- A `PlausibilitySpace` is a distributive lattice with top and bottom. -/
 class PlausibilitySpace (α : Type*) extends DistribLattice α, BoundedOrder α
@@ -58,11 +41,15 @@ namespace Valuation
 
 variable {α : Type*} [PlausibilitySpace α] (v : Valuation α)
 
-theorem nonneg (a : α) : 0 ≤ v.val a := by
-  have h := v.monotone (bot_le : (⊥ : α) ≤ a); simpa [v.val_bot] using h
+def toNormalizedValuation (v : Valuation α) : ProbabilityTheory.Common.NormalizedValuation α where
+  val := v.val
+  mono := fun _ _ h => v.monotone h
+  val_bot := v.val_bot
+  val_top := v.val_top
 
-theorem le_one (a : α) : v.val a ≤ 1 := by
-  have h := v.monotone (le_top : a ≤ (⊤ : α)); simpa [v.val_top] using h
+theorem nonneg (a : α) : 0 ≤ v.val a := v.toNormalizedValuation.nonneg a
+
+theorem le_one (a : α) : v.val a ≤ 1 := v.toNormalizedValuation.le_one a
 
 theorem bounded (a : α) : 0 ≤ v.val a ∧ v.val a ≤ 1 := ⟨v.nonneg a, v.le_one a⟩
 
@@ -74,8 +61,6 @@ end Valuation
 
 scoped notation "𝕍[" v "](" a ")" => Valuation.val v a
 scoped notation "𝕍[" v "](" a " | " b ")" => Valuation.condVal v a b
-
-/-! ## Boolean cardinality lemmas (for XOR independence example) -/
 
 @[simp] lemma card_A : Fintype.card {x : Bool × Bool | x.1 = true} = 2 := by decide
 @[simp] lemma card_B : Fintype.card {x : Bool × Bool | x.2 = true} = 2 := by decide
@@ -110,8 +95,6 @@ lemma set_inter_setOf {α : Type*} (p q : α → Prop) :
 @[simp] lemma card_inter_fst_snd_ne :
     Fintype.card ↑(({x : Bool × Bool | x.1 = true} ∩ {x | x.2 = true}) ∩ {x | x.1 ≠ x.2} : Set (Bool × Bool)) = 0 := by decide
 
-/-! ## ArchimedeanDensity -/
-
 /-- For any ε > 0, exists n with 1/n < ε. Used for grid density arguments. -/
 class ArchimedeanDensity where
   density : ∀ ε : ℝ, 0 < ε → ∃ n : ℕ, 0 < n ∧ (1 : ℝ) / n < ε
@@ -129,14 +112,6 @@ instance : ArchimedeanDensity where
         _ < 1 / (n : ℝ) := by apply one_div_lt_one_div_of_lt hn_pos; linarith
         _ < 1 / (1 / ε) := by apply one_div_lt_one_div_of_lt (by positivity) hn
         _ = ε := by field_simp
-
-/-! ## Unbundled Axiom Predicates
-
-Following the "unbundled predicates + bundled convenience classes" pattern (à la mathlib),
-we define each axiom as a standalone `def` predicate. This enables:
-- Minimal hypothesis tracking in theorem statements
-- Clear documentation of which axioms are used where
-- Ergonomic bundled classes that reference these predicates -/
 
 /-- Associativity of a binary operation. -/
 def OpAssoc (op : α → α → α) : Prop :=
@@ -162,12 +137,6 @@ def OpIdentRight (op : α → α → α) (e : α) : Prop :=
 def IdentIsMin [LE α] (e : α) : Prop :=
   ∀ x, e ≤ x
 
-/-! ## KSSemigroupBase: Core semigroup structure (identity-free)
-
-The Hölder/Alimov embedding theorem does NOT require identity.
-This class captures the minimal structure needed for the representation theorem.
-Identity is optional - it provides canonical normalization Θ(ident) = 0. -/
-
 /-- Core K&S semigroup structure WITHOUT identity element.
     This is sufficient for the Hölder/Alimov embedding theorem.
     Identity is optional - it provides canonical normalization.
@@ -186,16 +155,14 @@ class KSSemigroupBase (α : Type*) extends LinearOrder α where
   /-- Symmetry 0+1: Right multiplication is strictly monotonic -/
   op_strictMono_right : ∀ x : α, StrictMono (fun y => op x y)
 
-/-! ## Semigroup Monotonicity Lemmas
-
-These lemmas derive non-strict monotonicity from strict monotonicity.
-They work on `KSSemigroupBase` without requiring identity. -/
-
 namespace KSSemigroupBase
 
 variable {α : Type*} [KSSemigroupBase α]
 
-/-! ### Connection to Unbundled Predicates -/
+/-- The given operation, interpreted as an ordinary semigroup. No global instance is installed. -/
+@[instance_reducible] def toSemigroup : Semigroup α where
+  mul := op
+  mul_assoc := op_assoc
 
 /-- The bundled associativity field satisfies the unbundled predicate. -/
 theorem opAssoc : OpAssoc (op (α := α)) := op_assoc
@@ -205,8 +172,6 @@ theorem opStrictMonoLeft : OpStrictMonoLeft (op (α := α)) := fun y => op_stric
 
 /-- The bundled right strict monotonicity field satisfies the unbundled predicate. -/
 theorem opStrictMonoRight : OpStrictMonoRight (op (α := α)) := fun x => op_strictMono_right x
-
-/-! ### Derived Monotonicity Lemmas -/
 
 /-- `op` is monotone in the left argument (derived from strict monotonicity). -/
 theorem op_mono_left (y : α) {x₁ x₂ : α} (h : x₁ ≤ x₂) : op x₁ y ≤ op x₂ y := by
@@ -221,15 +186,6 @@ theorem op_mono_right (x : α) {y₁ y₂ : α} (h : y₁ ≤ y₂) : op x y₁ 
   · rw [heq]
 
 end KSSemigroupBase
-
-/-! ## KnuthSkillingMonoidBase / KnuthSkillingAlgebraBase
-
-We keep `KSSemigroupBase` as the default, identity-free base.
-
-When an identity element is needed, we distinguish:
-- `KnuthSkillingMonoidBase`: identity + left/right identity laws (no `ident_le`)
-- `KnuthSkillingAlgebraBase`: adds `ident_le : ∀ x, ident ≤ x` (probability-theory convenience)
--/
 
 /-- Core K&S structure with an identity element (but **without** assuming the identity is
 the minimum element). -/
@@ -246,14 +202,18 @@ class KnuthSkillingAlgebraBase (α : Type*) extends KnuthSkillingMonoidBase α w
   /-- Positivity: identity is the minimum element -/
   ident_le : ∀ x : α, ident ≤ x
 
--- Re-export semigroup fields so `open KnuthSkillingMonoidBase`/`open KnuthSkillingAlgebraBase`
--- brings them into scope. Also re-export toLinearOrder for backward compatibility.
 namespace KnuthSkillingMonoidBase
 export KSSemigroupBase (op op_assoc op_strictMono_left op_strictMono_right toLinearOrder)
 
 variable {α : Type*} [KnuthSkillingMonoidBase α]
 
-/-! ### Connection to Unbundled Predicates -/
+/-- Ordinary monoid laws for the supplied operation and identity. -/
+@[instance_reducible] def toMonoid : Monoid α where
+  mul := op
+  one := ident
+  mul_assoc := op_assoc
+  one_mul := op_ident_left
+  mul_one := op_ident_right
 
 /-- The bundled left identity field satisfies the unbundled predicate. -/
 theorem opIdentLeft : OpIdentLeft (op (α := α)) ident := op_ident_left
@@ -269,27 +229,12 @@ export KnuthSkillingMonoidBase (ident op_ident_left op_ident_right)
 
 variable {α : Type*} [KnuthSkillingAlgebraBase α]
 
-/-! ### Connection to Unbundled Predicates -/
-
 /-- The bundled identity-is-minimum field satisfies the unbundled predicate. -/
 theorem identIsMin : IdentIsMin (ident (α := α)) := ident_le
 
 end KnuthSkillingAlgebraBase
 
-/-! ## KnuthSkillingAlgebra: Alias for Base
-
-Archimedean is NOT an axiom—it's derivable from KSSeparation (see SandwichSeparation.lean).
-We keep `KnuthSkillingAlgebra` as an alias for backward compatibility. -/
-
 abbrev KnuthSkillingAlgebra := KnuthSkillingAlgebraBase
-
-/-! ## Identity-Free Positivity (Eric Luap's Approach)
-
-Following Eric Luap's OrderedSemigroups library, we define positivity WITHOUT
-reference to an identity element. This is mathematically equivalent to `ident < a`
-when identity exists, but works in the identity-free `KSSemigroupBase` setting.
-
-Reference: github.com/ericluap/OrderedSemigroups/blob/main/OrderedSemigroups/Sign.lean -/
 
 variable {α : Type*}
 
@@ -355,13 +300,6 @@ theorem isOne_iff_eq_ident (a : α) : IsOne a ↔ a = ident := by
 
 end PositivityWithIdentity
 
-/-! ## ℕ+ Iteration (Identity-Free)
-
-Iteration using positive naturals ℕ+ (n ≥ 1) instead of ℕ.
-This avoids the need for identity as a base case.
-
-Reference: github.com/ericluap/OrderedSemigroups -/
-
 /-- Helper: iterate operation n times starting from n=1.
     This is the ℕ-indexed version used internally. -/
 private def iterate_op_pnat_aux [inst : KSSemigroupBase α] (x : α) : ℕ → α
@@ -385,8 +323,6 @@ theorem iterate_op_pnat_one (x : α) : iterate_op_pnat x 1 = x := rfl
 theorem iterate_op_pnat_succ (x : α) (n : ℕ+) :
     iterate_op_pnat x (n + 1) = op x (iterate_op_pnat x n) := by
   simp only [iterate_op_pnat, PNat.add_coe, PNat.val_ofNat, Nat.add_sub_cancel]
-  -- Need to show: iterate_op_pnat_aux x n.val = op x (iterate_op_pnat_aux x (n.val - 1))
-  -- Since n.val ≥ 1, we can write n.val = m + 1 for some m ≥ 0
   obtain ⟨m, hm⟩ : ∃ m, n.val = m + 1 := ⟨n.val - 1, (Nat.sub_add_cancel n.pos).symm⟩
   simp only [hm, Nat.add_sub_cancel, iterate_op_pnat_aux]
 
@@ -395,15 +331,11 @@ theorem iterate_op_pnat_add (x : α) (m n : ℕ+) :
     iterate_op_pnat x (m + n) = op (iterate_op_pnat x m) (iterate_op_pnat x n) := by
   induction m using PNat.recOn with
   | one =>
-    -- Base: x^(1+n) = x ⊕ x^n
-    -- Note: 1 + n = n + 1 for PNat, so this follows from iterate_op_pnat_succ
     rw [iterate_op_pnat_one]
     have h : (1 : ℕ+) + n = n + 1 := by
       apply Subtype.ext; show 1 + n.val = n.val + 1; omega
     rw [h, iterate_op_pnat_succ]
   | succ m ih =>
-    -- Inductive: x^((m+1)+n) = x^(m+1) ⊕ x^n
-    -- (m+1)+n = (m+n)+1, so LHS = x ⊕ x^(m+n) = x ⊕ (x^m ⊕ x^n) = (x ⊕ x^m) ⊕ x^n = x^(m+1) ⊕ x^n
     have h_add : m + 1 + n = m + n + 1 := by
       apply Subtype.ext; show (m + 1).val + n.val = (m + n).val + 1; simp [PNat.add_coe]; omega
     rw [h_add, iterate_op_pnat_succ, ih, ← op_assoc, ← iterate_op_pnat_succ]
@@ -414,8 +346,6 @@ theorem iterate_op_pnat_add (x : α) (m n : ℕ+) :
 theorem iterate_op_pnat_strictMono (x : α) (hx : IsPositive x) :
     StrictMono (iterate_op_pnat x) := by
   intro m n hmn
-  -- Show iterate_op_pnat x m < iterate_op_pnat x n when m < n
-  -- Since m < n, there exists k ≥ 1 such that n = m + k
   obtain ⟨k, hk_pos, hk⟩ : ∃ k : ℕ+, 0 < k.val ∧ n = m + k := by
     have hdiff : m.val < n.val := hmn
     use ⟨n.val - m.val, by omega⟩
@@ -425,17 +355,12 @@ theorem iterate_op_pnat_strictMono (x : α) (hx : IsPositive x) :
       show n.val = m.val + (n.val - m.val)
       omega
   rw [hk]
-  -- Now show iterate_op_pnat x m < iterate_op_pnat x (m + k)
-  -- Use induction on k
   clear hmn hk_pos hk n
   induction k using PNat.recOn with
   | one =>
-    -- Base: show iterate_op_pnat x m < iterate_op_pnat x (m + 1)
     rw [iterate_op_pnat_succ]
     exact hx (iterate_op_pnat x m)
   | succ k ih =>
-    -- Inductive: assume iterate_op_pnat x m < iterate_op_pnat x (m + k)
-    -- show iterate_op_pnat x m < iterate_op_pnat x (m + (k + 1))
     have h1 : m + (k + 1) = (m + k) + 1 := by
       apply Subtype.ext; show m.val + (k + 1).val = (m + k).val + 1; simp [PNat.add_coe]; omega
     rw [h1, iterate_op_pnat_succ]
@@ -458,7 +383,6 @@ theorem iterate_op_pnat_strictMono_base {a b : α} (hab : a < b) (n : ℕ+) :
   | one =>
     simp [iterate_op_pnat_one, hab]
   | succ n ih =>
-    -- a^(n+1) = a ⊕ a^n, b^(n+1) = b ⊕ b^n
     rw [iterate_op_pnat_succ, iterate_op_pnat_succ]
     calc
       op a (iterate_op_pnat a n) < op a (iterate_op_pnat b n) := op_strictMono_right a ih
@@ -476,39 +400,22 @@ theorem iterate_op_pnat_pos (x : α) (hx : IsPositive x) (n : ℕ+) :
     IsPositive (iterate_op_pnat x n) := by
   induction n using PNat.recOn with
   | one =>
-    -- iterate_op_pnat x 1 = x
     simp only [iterate_op_pnat_one]
     exact hx
   | succ n ih =>
-    -- iterate_op_pnat x (n + 1) = op x (iterate_op_pnat x n)
     intro y
     rw [iterate_op_pnat_succ]
-    -- Need: y < op (op x (iterate_op_pnat x n)) y
-    -- By associativity: = op x (op (iterate_op_pnat x n) y)
-    -- Since ih : IsPositive (iterate_op_pnat x n), we have y < op (iterate_op_pnat x n) y
-    -- Since hx : IsPositive x, we have op (iterate_op_pnat x n) y < op x (op (iterate_op_pnat x n) y)
     calc y < op (iterate_op_pnat x n) y := ih y
       _ < op x (op (iterate_op_pnat x n) y) := hx _
       _ = op (op x (iterate_op_pnat x n)) y := (op_assoc x _ y).symm
 
 end IteratePNat
 
-/-! Note: Connection between ℕ+ iteration and ℕ iteration (`iterate_op_pnat_eq_iterate_op`)
-    is proven in `Algebra.lean` where `iterate_op` is defined. -/
-
-/-! ## Connection to Common Infrastructure -/
-
 section CommonFramework
 
 open ProbabilityTheory.Common
 
 variable {α : Type*} [PlausibilitySpace α]
-
-def Valuation.toNormalizedValuation (v : Valuation α) : NormalizedValuation α where
-  val := v.val
-  mono := fun _ _ h => v.monotone h
-  val_bot := v.val_bot
-  val_top := v.val_top
 
 theorem Valuation.bounded_common (v : Valuation α) (a : α) :
     0 ≤ v.val a ∧ v.val a ≤ 1 := v.toNormalizedValuation.bounded a

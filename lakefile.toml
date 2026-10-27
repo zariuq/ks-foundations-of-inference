@@ -2,40 +2,58 @@ name = "ks-foundations-of-inference-lean"
 version = "0.1.0"
 releaseRepo = "https://github.com/zariuq/ks-foundations-of-inference"
 preferReleaseBuild = true
-defaultTargets = ["KnuthSkilling", "Algebra", "Computability", "InformationTheory", "Logic", "ProbabilityTheory", "UniversalAI"]
+defaultTargets = ["KnuthSkilling"]
 
-# Each `lean_lib` uses a recursive glob (`Name.+`) so that `lake build <Name>` builds every module
-# under that directory by name (most libs have no single root module). The `Exploratory/` directory
-# is intentionally NOT a `lean_lib` and is matched by no glob, so its quarantined files are excluded
-# from the build.
-
+# Maintained foundation modules and generic interpretations. Application bridges
+# live in MeTTapedia; undeclared legacy trees are outside the supported build.
 [[lean_lib]]
 name = "KnuthSkilling"
-globs = ["KnuthSkilling", "KnuthSkilling.+"]
+globs = [
+  "KnuthSkilling",
+  "KnuthSkilling.Api",
+  "KnuthSkilling.AppendixA",
+  "KnuthSkilling.Core",
+  "KnuthSkilling.Counterexamples",
+  "KnuthSkilling.FoundationsOfInference",
+  "KnuthSkilling.Literature",
+  "KnuthSkilling.Multiplicative",
+  "KnuthSkilling.Overview",
+  "KnuthSkilling.ShoreJohnson",
+  "KnuthSkilling.Additive.+",
+  "KnuthSkilling.Core.+",
+  "KnuthSkilling.Counterexamples.+",
+  "KnuthSkilling.Examples.+",
+  "KnuthSkilling.Experimental.+",
+  "KnuthSkilling.Heyting.+",
+  "KnuthSkilling.Information.+",
+  "KnuthSkilling.Literature.+",
+  "KnuthSkilling.Multiplicative.+",
+  "KnuthSkilling.Probability.+",
+  "KnuthSkilling.ShoreJohnson.+",
+  "KnuthSkilling.Variational.+",
+  "KnuthSkilling.Bridges.GoertzelGroupFix",
+  "KnuthSkilling.Bridges.MathlibBridge",
+  "KnuthSkilling.Bridges.MathlibProbability",
+  "KnuthSkilling.Bridges.Model",
+  "KnuthSkilling.Bridges.ShoreJohnsonVariationalBridge",
+]
 
 [[lean_lib]]
 name = "Algebra"
-globs = ["Algebra.+"]
-
-[[lean_lib]]
-name = "Computability"
-globs = ["Computability.+"]
+globs = ["Algebra.SplitComplex", "Algebra.TwoDimClassification",
+  "Algebra.QuadraticPresentation", "Algebra.QuadraticPolynomialPresentation"]
 
 [[lean_lib]]
 name = "InformationTheory"
-globs = ["InformationTheory.+"]
-
-[[lean_lib]]
-name = "Logic"
-globs = ["Logic.+"]
+globs = ["InformationTheory.Basic", "InformationTheory.ShannonEntropy.Equivalence",
+  "InformationTheory.ShannonEntropy.Faddeev", "InformationTheory.ShannonEntropy.Properties",
+  "InformationTheory.ShannonEntropy.ShannonKhinchin"]
 
 [[lean_lib]]
 name = "ProbabilityTheory"
-globs = ["ProbabilityTheory.+"]
-
-[[lean_lib]]
-name = "UniversalAI"
-globs = ["UniversalAI.+"]
+globs = ["ProbabilityTheory.Cox", "ProbabilityTheory.Cox.+", "ProbabilityTheory.Common.Lattice",
+  "ProbabilityTheory.Foundations.Distributions.ProbDist", "ProbabilityTheory.Structures.Valuation.Basic",
+  "ProbabilityTheory.Hypercube.Precision"]
 
 [[require]]
 name = "ordered_semigroups"

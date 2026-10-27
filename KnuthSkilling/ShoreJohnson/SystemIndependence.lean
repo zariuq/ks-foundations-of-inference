@@ -1,7 +1,7 @@
 import KnuthSkilling.ShoreJohnson.Proof
 
 /-!
-# Shore–Johnson core lemma (1980): system independence ⇒ log on probabilities
+# Shore–Johnson atom analysis: product additivity implies logarithmic form
 
 This file exports a small but central piece of Shore–Johnson’s 1980 argument:
 
@@ -35,13 +35,9 @@ open KnuthSkilling.Information.InformationEntropy
 open KnuthSkilling.ShoreJohnson.Proof
 open KnuthSkilling.Variational
 
-/-- Shore–Johnson's "system independence" axiom, phrased at the atomic (summand) level.
-
-**CAUTION**: This structure requires additivity for ALL distributions. The KL atom `klAtom`
-does NOT satisfy this property in general—it only holds when the reference distributions
-have strictly positive entries. For `klAtom`, use `SJSystemIndependenceAtomPos` instead.
-
-See `OperatorAtomBridge.lean` for discussion and `klAtom_productAdditiveAtom_pos`. -/
+/-- An atom-level product-additivity profile, distinct from factorization of
+selected posteriors. The unrestricted variant is not satisfied by the total-real
+KL atom; use the positive-reference profile for that application. -/
 structure SJSystemIndependenceAtom (d : ℝ → ℝ → ℝ) : Prop where
   regularAtom : RegularAtom d
   add_over_products :
@@ -49,16 +45,9 @@ structure SJSystemIndependenceAtom (d : ℝ → ℝ → ℝ) : Prop where
       ∑ ij : Fin n × Fin m, d ((P ⊗ R).p ij) ((Q ⊗ S).p ij) =
         (∑ i : Fin n, d (P.p i) (Q.p i)) + (∑ j : Fin m, d (R.p j) (S.p j))
 
-/-- Shore–Johnson's "system independence" axiom with positivity hypotheses on reference distributions.
-
-This is the correct formulation for atoms like `klAtom` where product additivity only holds
-when the reference distributions (Q, S) have strictly positive entries. This matches the
-standard "absolute continuity" requirement in KL divergence theory.
-
-The Dirac extraction argument (used to derive the logarithmic form) only needs the identity
-for positive reference values, so this weaker structure suffices for the Shore–Johnson derivation.
-
-See `klAtom_sjSystemIndependenceAtomPos` for the proof that `klAtom` satisfies this. -/
+/-- Atom product additivity with positive reference distributions. Full support
+is a sufficient support condition. The Dirac/Cauchy theorem below uses this
+profile directly, and KL has a concrete instance. -/
 structure SJSystemIndependenceAtomPos (d : ℝ → ℝ → ℝ) : Prop where
   regularAtom : RegularAtom d
   add_over_products_pos :
@@ -92,5 +81,38 @@ theorem d_one_eq_entropyDerivative_of_measurable
   refine ⟨C, ?_⟩
   intro q hq_pos hq_le1
   simpa [entropyDerivative] using hC q hq_pos hq_le1
+
+
+/-- Positive references suffice for the Dirac/Cauchy argument. Endpoint probability
+one is tested on one state, rather than by an unsupported binary reference. -/
+theorem d_one_mul_cauchy_Ioc_of_pos (d : ℝ → ℝ → ℝ) (h : SJSystemIndependenceAtomPos d) :
+    ∀ x y : ℝ, 0 < x → x ≤ 1 → 0 < y → y ≤ 1 → d 1 (x*y) = d 1 x + d 1 y := by
+  let u : ProbDist 1 := diracDist 0
+  have hu : ∀ i, 0 < u.p i := by intro i; fin_cases i; norm_num [u, diracDist]
+  have h11 := dirac_extraction_at d h.regularAtom (0 : Fin 1) (0 : Fin 1) u u
+    (h.add_over_products_pos u u u u hu hu)
+  have hone : d 1 1 = 0 := by
+    simp only [u, diracDist, ↓reduceIte, mul_one] at h11
+    linarith
+  intro x y hx hx1 hy hy1
+  by_cases hxe : x = 1
+  · simp [hxe, hone]
+  by_cases hye : y = 1
+  · simp [hye, hone]
+  have hxlt : x < 1 := lt_of_le_of_ne hx1 hxe
+  have hylt : y < 1 := lt_of_le_of_ne hy1 hye
+  let q := binaryDist x hx.le hx1
+  let s := binaryDist y hy.le hy1
+  have hq : ∀ i, 0 < q.p i := by
+    intro i; fin_cases i <;> simp [q, binaryDist] <;> linarith
+  have hs : ∀ i, 0 < s.p i := by
+    intro i; fin_cases i <;> simp [s, binaryDist] <;> linarith
+  simpa [q, s, binaryDist] using dirac_extraction_at d h.regularAtom (0 : Fin 2) (0 : Fin 2) q s
+    (h.add_over_products_pos (diracDist 0) q (diracDist 0) s hq hs)
+
+theorem d_one_eq_const_mul_log_of_measurable_pos (d : ℝ → ℝ → ℝ)
+    (h : SJSystemIndependenceAtomPos d) (hm : Measurable (d 1)) :
+    ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 → d 1 x = C*Real.log x :=
+  mul_cauchy_Ioc_eq_const_mul_log (d 1) (d_one_mul_cauchy_Ioc_of_pos d h) hm
 
 end KnuthSkilling.ShoreJohnson.SystemIndependence

@@ -12,7 +12,7 @@ Our project uses Shore–Johnson in two roles:
 
 1. **System-independence ⇒ logarithm on probabilities.**
    In `.../ShoreJohnson/SystemIndependence.lean` we formalize a core lemma ("Dirac extraction") showing that an
-   SJ4-style additivity over product distributions forces a multiplicative Cauchy equation for
+   Explicit atom-level additivity over product distributions forces a multiplicative Cauchy equation for
    `q ↦ d(1,q)` on the probability domain `0 < q ≤ 1`, hence (with a measurability gate) a log form.
 
 2. **KL uniqueness (up to scale) inside a ratio-form class.**
@@ -37,14 +37,14 @@ open KnuthSkilling.ShoreJohnson.SystemIndependence
 open KnuthSkilling.ShoreJohnson.KL
 open KnuthSkilling.ShoreJohnson.Proof
 
-/-! ## (SJ4 core) `q ↦ d(1,q)` is logarithmic on probabilities -/
+/-! ## (Atom-additivity core) `q ↦ d(1,q)` is logarithmic on probabilities -/
 
-theorem d_one_mul_cauchy_Ioc_of_SJ4
+theorem d_one_mul_cauchy_Ioc_of_productAdditivity
     (d : ℝ → ℝ → ℝ) (hSJ : SJSystemIndependenceAtom d) :
     ∀ q₁ q₂ : ℝ, 0 < q₁ → q₁ ≤ 1 → 0 < q₂ → q₂ ≤ 1 → d 1 (q₁ * q₂) = d 1 q₁ + d 1 q₂ :=
   dirac_extraction_cauchy_Ioc d hSJ.regularAtom hSJ.add_over_products
 
-theorem d_one_eq_const_mul_log_of_SJ4
+theorem d_one_eq_const_mul_log_of_productAdditivity
     (d : ℝ → ℝ → ℝ) (hSJ : SJSystemIndependenceAtom d)
     (hMeas : Measurable (d 1)) :
     ∃ C : ℝ, ∀ q : ℝ, 0 < q → q ≤ 1 → d 1 q = C * log q :=
@@ -80,7 +80,7 @@ extraction argument uses both q and 1/q.
 The full extension is not formalized here; we note that `MulCauchyOnPos` is the correct
 hypothesis for the rigidity theorems (log uniqueness). -/
 
-theorem ratioForm_mulCauchyOnIci_of_SJ4
+theorem ratioForm_mulCauchyOnIci_of_productAdditivity
     (d : ℝ → ℝ → ℝ) (hSJ : SJSystemIndependenceAtom d) (h : RatioForm d) :
     MulCauchyOnIci h.g := by
   intro x y hx hy
@@ -103,7 +103,7 @@ theorem ratioForm_mulCauchyOnIci_of_SJ4
       simpa [div_eq_mul_inv, mul_assoc] using (one_div_mul_cancel hy_pos.ne')
     simpa [mul_one, hq₂y] using hle
   have hMul :=
-    d_one_mul_cauchy_Ioc_of_SJ4 (d := d) hSJ q₁ q₂ hq₁_pos hq₁_le1 hq₂_pos hq₂_le1
+    d_one_mul_cauchy_Ioc_of_productAdditivity (d := d) hSJ q₁ q₂ hq₁_pos hq₁_le1 hq₂_pos hq₂_le1
   have h1 : d 1 (q₁ * q₂) = h.g (x * y) := by
     have hq_pos : 0 < q₁ * q₂ := mul_pos hq₁_pos hq₂_pos
     have hq : 1 / (q₁ * q₂) = x * y := by

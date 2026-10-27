@@ -3,59 +3,12 @@ import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 /-!
-# Cox's Theorem: Deriving Probability from Plausibility
+# Supplied plausibility and scalar-rule data
 
-Cox's theorem (1946, 1961) derives the laws of probability from axioms about
-plausible reasoning. The key insight is that commutativity of conjunction
-is DERIVED from functional equations, not assumed.
-
-## Main References
-
-- Cox, R.T. "The Algebra of Probable Inference" (1961)
-- Dupré & Tipler "The Cox Theorem: Unknowns And Plausible Value" (2006)
-- Jaynes "Probability Theory: The Logic of Science" (2003)
-
-## Axioms (informal)
-
-1. **Plausibility is Real-Valued**: The plausibility of proposition A given B
-   is a real number p(A|B) ∈ [0,1].
-
-2. **Ordering Consistency**: If A is more plausible than B (given C), then
-   p(A|C) > p(B|C).
-
-3. **Product Rule**: The plausibility of A ∧ B given C is determined by
-   p(A|C) and p(B|A ∧ C) via some function:
-   p(A ∧ B | C) = F(p(A|C), p(B|A ∧ C))
-
-4. **Negation Rule**: The plausibility of ¬A given B is determined by
-   p(A|B) via some function:
-   p(¬A | B) = G(p(A|B))
-
-## Main Result
-
-Under these axioms, the functions F and G must satisfy functional equations
-that force them to be (up to reparametrization):
-- F(x,y) = x · y  (probability product rule)
-- G(x) = 1 - x    (probability negation)
-
-Crucially: **Commutativity F(x,y) = F(y,x) is DERIVED**, not assumed!
-
-## Formalization Status
-
-This module is a work-in-progress formalization. Key steps:
-1. Define the axiom structure (CoxPlausibility)
-2. State the functional equations
-3. Prove commutativity follows
-4. Derive the probability product rule
-
-## Comparison with Knuth-Skilling
-
-Knuth-Skilling claims to derive probability from a semigroup algebra without
-assuming commutativity. Cox's theorem shows that under plausibility reasoning
-axioms, commutativity MUST hold. This suggests either:
-- K&S axioms are incomplete (they implicitly assume something that gives commutativity)
-- K&S axioms are inconsistent (no model satisfies them without commutativity)
-- K&S and Cox have fundamentally different starting points
+The records package conditional plausibility, conjunction and negation data.
+Functional-equation results require the stronger hypotheses in
+`ProductRuleDerivation`. Rule packaging alone does not construct an event model
+or identify an arbitrary authored operation with ordinary multiplication.
 -/
 
 namespace ProbabilityTheory.Cox
@@ -107,15 +60,7 @@ structure NegationRule where
 def AssociativityEquation (F : ℝ → ℝ → ℝ) : Prop :=
   ∀ x y z : ℝ, F (F x y) z = F x (F y z)
 
-/-!
-## Status / TODO
-
-This file currently provides *only* the basic axiom packaging for Cox-style plausibilities.
-The main functional-equation results (e.g. representation of an associative conjunction rule by
-multiplication after reparameterization) are not yet formalized here.
--/
-
-/-- After reparametrization (x ↦ x^(1/α)), we get the standard product rule. -/
+/-- Ordinary multiplication on the chosen probability scale. -/
 def standardProductRule : ℝ → ℝ → ℝ := fun x y => x * y
 
 /-- The standard negation rule. -/

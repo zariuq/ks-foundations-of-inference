@@ -33,7 +33,7 @@ Shannon-Khinchin explicitly ASSUMES what Faddeev DERIVES:
 | Normalization | ASSUMES | ASSUMES |
 | **Total axioms (in this encoding)** | **5 + relabeling** | **4** |
 
-Faddeev's 1956 system is strictly more minimal. See `Interface.lean` for details.
+Faddeev derives the additional properties from four clauses; their count does not prove minimality.
 
 ## Main Results
 
@@ -46,7 +46,7 @@ Faddeev's 1956 system is strictly more minimal. See `Interface.lean` for details
 
 * Khinchin, A.I. "Mathematical Foundations of Information Theory" (1957)
 * Shannon, C.E. "A Mathematical Theory of Communication" (1948)
-* Faddeev, D.K. "On the concept of entropy" (1956) - The minimal axiomatization
+* Faddeev, D.K. "On the concept of entropy" (1956) - Binary-continuity characterization
 -/
 
 namespace InformationTheory

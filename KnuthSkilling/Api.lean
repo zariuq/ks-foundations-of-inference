@@ -1,54 +1,21 @@
 /-
-# Knuth–Skilling Foundations of Inference — Public Core API
+# Public theorem entry point
 
-This is the single top-level entry point for the *headline results* of the
-Knuth–Skilling formalization. It is **purely additive**: it imports the modules where the
-results are actually proven and re-states each headline theorem verbatim (its proof here is
-just an application of the original), so that an external reader can find every crown-jewel
-statement, the key axioms/definitions, and all three representation routes in one place.
+The wrappers below retain their source conclusions and explicit premises.
+Additive representations are order embeddings; a real order isomorphism is
+additional data required by the inverse-based product route. Calibration
+compares supplied additive maps at a positive anchor, not at an arbitrary zero.
 
-Nothing here changes any statement or moves any proof. For the underlying developments see the
-files cited at each entry, and the narrative map in `KnuthSkilling/Overview.lean`.
+`faddeev_iff_shannonKhinchin` is the existence corollary of the entropy-preserving
+record equivalence `InformationTheory.faddeevShannonKhinchinEquiv`.
+`ks_representation_theorem` packages a supplied normalized representation.
+The three existence routes below discharge their respective representation
+premises. The Grid route selects the maintained strict-separation globalization;
+`zero_anchor_globalization_impossible` rules out mapping a positive anchor to
+zero; `RepresentationResult.calibrate` instead fixes its value at one.
 
-## Headline theorems (re-stated below)
-
-1. `KnuthSkilling.Api.faddeev_iff_shannonKhinchin`
-     — Shannon entropy: Faddeev's axioms ⟺ Shannon–Khinchin axioms.
-     Source: `InformationTheory.faddeev_iff_shannonKhinchin`
-     (`InformationTheory/ShannonEntropy/Equivalence.lean`).
-2. `KnuthSkilling.Api.ks_representation_theorem`
-     — Additive representation: a normalized representation yields a strictly monotone additive
-       `Θ : α → ℝ` with `Θ ident = 0`.
-     Source: `KnuthSkilling.Probability.ks_representation_theorem`
-     (`KnuthSkilling/Probability/ProbabilityDerivation.lean`).
-3. `KnuthSkilling.Api.Psi_is_exp`
-     — Appendix B: the product equation forces `Ψ` to be an exponential.
-     Source: `KnuthSkilling.Multiplicative.Psi_is_exp`
-     (`KnuthSkilling/Multiplicative/Main.lean`).
-4. `KnuthSkilling.Api.op_comm_of_hasRepresentationTheorem`
-     — Commutativity follows from any additive order representation.
-     Source: `KnuthSkilling.Additive.op_comm_of_hasRepresentationTheorem`
-     (`KnuthSkilling/Additive/Main.lean`).
-
-## Key axioms / definitions (re-exported)
-
-- `KSSemigroupBase`, `KnuthSkillingMonoidBase`, `KnuthSkillingAlgebraBase` — the base structures
-  (`KnuthSkilling/Core/Basic.lean`).
-- `KSSeparation`, `KSSeparationStrict` — the sandwich separation axioms
-  (`KnuthSkilling/Core/Algebra.lean`).
-- `HasRepresentationTheorem`, `HasNormalizedRepresentation`, `RepresentationResult` — the
-  representation interfaces (`KnuthSkilling/Additive/Representation.lean`).
-
-## The three additive-representation routes (all proven, all axiom-clean)
-
-- **Hölder / Alimov** (`Api.representation_from_noAnomalousPairs`): `[NoAnomalousPairs α]` ⟹ Θ.
-  Source: `…/OrderedSemigroupEmbedding/HolderEmbedding.lean`.
-- **Dedekind cuts** (`Api.associativity_representation_cuts`):
-  `[KnuthSkillingAlgebraBase α] [KSSeparation α] [KSSeparationStrict α]` ⟹ Θ.
-  Source: `…/DirectCuts/Main.lean`.
-- **Grid / induction** (`Api.grid_representation_of_KSSeparationStrict`):
-  `[KSSeparationStrict α]` ⟹ Θ, via `representationGlobalization_of_KSSeparationStrict`.
-  Source: `…/GridInduction/Globalization.lean`.
+Probability normalization, singular KL and admissible variational inference
+are described in `Overview`; they are distinct interpretation layers.
 -/
 
 -- Information theory (Shannon entropy axiomatics).
@@ -80,8 +47,7 @@ open KnuthSkilling.Additive.Axioms.AnomalousPairs
 /-- **Faddeev ⟺ Shannon–Khinchin** (re-statement of
 `InformationTheory.faddeev_iff_shannonKhinchin`). -/
 theorem faddeev_iff_shannonKhinchin :
-    (∃ (_E : InformationTheory.FaddeevEntropy), True) ↔
-      (∃ (_E : InformationTheory.ShannonKhinchinEntropy), True) :=
+    Nonempty InformationTheory.FaddeevEntropy ↔ Nonempty InformationTheory.ShannonKhinchinEntropy :=
   InformationTheory.faddeev_iff_shannonKhinchin
 
 /-! ## Headline 2 — Additive representation theorem -/
@@ -134,10 +100,10 @@ theorem representation_from_noAnomalousPairs {α : Type*}
   KnuthSkilling.Additive.Proofs.OrderedSemigroupEmbedding.HolderEmbedding.representation_from_noAnomalousPairs
     (α := α)
 
-/-- **Route 2 (Dedekind cuts).** From `[KSSeparation α] [KSSeparationStrict α]` (re-statement of
+/-- **Route 2 (Dedekind cuts).** From `[KSSeparationStrict α]` (re-statement of
 `…DirectCuts.associativity_representation_cuts`). -/
 theorem associativity_representation_cuts (α : Type*)
-    [KnuthSkillingAlgebraBase α] [KSSeparation α] [KSSeparationStrict α] :
+    [KnuthSkillingAlgebraBase α] [KSSeparationStrict α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       Θ ident = 0 ∧
@@ -153,6 +119,9 @@ theorem grid_representation_of_KSSeparationStrict (α : Type*)
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       Θ ident = 0 ∧
       ∀ x y : α, Θ (op x y) = Θ x + Θ y :=
-  KnuthSkilling.Additive.RepresentationGlobalization.exists_Theta (α := α)
+  by
+    let : KnuthSkilling.Additive.RepresentationGlobalization α :=
+      KnuthSkilling.Additive.representationGlobalization_of_KSSeparationStrict
+    exact KnuthSkilling.Additive.RepresentationGlobalization.exists_Theta (α := α)
 
 end KnuthSkilling.Api

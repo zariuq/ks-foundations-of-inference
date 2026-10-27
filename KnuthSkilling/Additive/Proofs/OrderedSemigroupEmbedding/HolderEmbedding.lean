@@ -52,9 +52,7 @@ with `mul := op`.
 -/
 
 /-- The K&S `op` operation viewed as multiplication. -/
-instance KSSemigroupBase_to_Semigroup : Semigroup α where
-  mul := op
-  mul_assoc := op_assoc
+instance KSSemigroupBase_to_Semigroup : Semigroup α := KSSemigroupBase.toSemigroup
 
 /-! ## Section 2: K&S Semigroup is an Ordered Cancel Semigroup -/
 
@@ -62,42 +60,23 @@ instance KSSemigroupBase_to_Semigroup : Semigroup α where
 instance KSSemigroupBase_to_IsLeftOrderedSemigroup : IsLeftOrderedSemigroup α where
   mul_le_mul_left' a b hab c := by
     -- Need: a ≤ b → c * a ≤ c * b, i.e., op c a ≤ op c b
-    rcases hab.lt_or_eq with hlt | heq
-    · exact le_of_lt (op_strictMono_right c hlt)
-    · rw [heq]
+    exact KSSemigroupBase.op_mono_right c hab
 
 /-- K&S semigroup is a right ordered semigroup (right multiplication preserves order). -/
 instance KSSemigroupBase_to_IsRightOrderedSemigroup : IsRightOrderedSemigroup α where
   mul_le_mul_right' a b hab c := by
     -- Need: a ≤ b → a * c ≤ b * c, i.e., op a c ≤ op b c
-    rcases hab.lt_or_eq with hlt | heq
-    · exact le_of_lt (op_strictMono_left c hlt)
-    · rw [heq]
+    exact KSSemigroupBase.op_mono_left c hab
 
 /-! K&S semigroup is a left ordered cancel semigroup. -/
 instance KSSemigroupBase_to_IsLeftOrderedCancelSemigroup : IsLeftOrderedCancelSemigroup α where
   mul_le_mul_left' := IsLeftOrderedSemigroup.mul_le_mul_left'
-  le_of_mul_le_mul_right' a b c hab := by
-    -- Need: a * b ≤ a * c → b ≤ c, i.e., op a b ≤ op a c → b ≤ c
-    by_contra h_not
-    push_neg at h_not
-    have hlt : c < b := h_not
-    have hlt' : op a c < op a b := op_strictMono_right a hlt
-    exact absurd hab (not_le_of_gt hlt')
+  le_of_mul_le_mul_right' a _b _c hab := (op_strictMono_right a).le_iff_le.mp hab
 
 /-! K&S semigroup is a right ordered cancel semigroup. -/
 instance KSSemigroupBase_to_IsRightOrderedCancelSemigroup : IsRightOrderedCancelSemigroup α where
   mul_le_mul_right' := IsRightOrderedSemigroup.mul_le_mul_right'
-  le_of_mul_le_mul_left' a b c hab := by
-    -- Signature: ∀ a b c : α, b * a ≤ c * a → b ≤ c
-    -- hab : b * a ≤ c * a (i.e., op b a ≤ op c a)
-    -- Goal: b ≤ c
-    by_contra h_not
-    push_neg at h_not
-    have hlt : c < b := h_not
-    have hlt' : op c a < op b a := op_strictMono_left a hlt
-    -- hlt' : op c a < op b a, but hab : op b a ≤ op c a - contradiction
-    exact absurd hab (not_le_of_gt hlt')
+  le_of_mul_le_mul_left' a _b _c hab := (op_strictMono_left a).le_iff_le.mp hab
 
 /-- K&S semigroup is an ordered cancel semigroup. -/
 instance KSSemigroupBase_to_IsOrderedCancelSemigroup : IsOrderedCancelSemigroup α where
@@ -129,12 +108,7 @@ Our `AnomalousPair a b` is equivalent to Eric's `anomalous_pair a b`.
 
 /-- Our anomalous pair definition matches Eric's structurally. -/
 theorem anomalousPair_iff_eric (a b : α) :
-    AnomalousPair a b ↔ anomalous_pair a b := by
-  constructor
-  · intro hAnom n
-    exact hAnom n
-  · intro hEric n
-    exact hEric n
+    AnomalousPair a b ↔ anomalous_pair a b := Iff.rfl
 
 /-- No anomalous pairs in our sense ↔ no anomalous pairs in Eric's sense. -/
 theorem noAnomalousPairs_iff_eric [NoAnomalousPairs α] :
@@ -188,63 +162,7 @@ theorem theta_preserves_order [NoAnomalousPairs α]
     (G : Subsemigroup (Multiplicative ℝ)) (iso : α ≃*o G) :
     ∀ a b : α, a ≤ b ↔ theta_from_embedding G iso a ≤ theta_from_embedding G iso b := by
   intro a b
-  simp only [theta_from_embedding]
-  constructor
-  · intro hab
-    have h1 : iso a ≤ iso b := iso.map_le_map_iff'.mpr hab
-    exact h1
-  · intro hθ
-    have h1 : iso a ≤ iso b := hθ
-    exact iso.map_le_map_iff'.mp h1
-
-end Semigroup
-
-section WithIdentity
-
-variable [KnuthSkillingMonoidBase α]
-open KnuthSkillingMonoidBase KnuthSkillingAlgebra
-
-theorem theta_ident [NoAnomalousPairs α]
-    (G : Subsemigroup (Multiplicative ℝ)) (iso : α ≃*o G) :
-    theta_from_embedding G iso ident = 0 := by
-  unfold theta_from_embedding
-  -- We need to show: Multiplicative.toAdd (iso ident : Multiplicative ℝ) = 0
-  -- This is equivalent to: (iso ident : Multiplicative ℝ) = 1
-
-  -- Use the fact that for all x, ident * x = x, so iso(ident * x) = iso(x)
-  -- But iso(ident * x) = iso(ident) * iso(x), so iso(ident) * iso(x) = iso(x)
-  have h_left_id : ∀ x : α, op ident x = x := op_ident_left
-  -- iso preserves multiplication, so iso(ident * x) = iso(ident) * iso(x)
-  have h_map : ∀ x : α, iso (op ident x) = iso ident * iso x := fun x => map_mul iso ident x
-
-  -- Since iso(ident * ident) = iso(ident) and iso(ident * ident) = iso(ident) * iso(ident),
-  -- we have iso(ident) * iso(ident) = iso(ident)
-  have h1 : (iso ident : G) * iso ident = iso ident := by
-    rw [← h_map ident, h_left_id ident]
-
-  -- Coerce to Multiplicative ℝ
-  -- In a subsemigroup, multiplication is inherited: (x * y : G).val = x.val * y.val
-  have h2 : (↑(iso ident) : Multiplicative ℝ) * ↑(iso ident) = ↑(iso ident) := by
-    have h1' := congrArg (·.val) h1
-    convert h1' using 1
-    rfl
-
-  -- Convert to additive form: (x * y).toAdd = x.toAdd + y.toAdd
-  have h3 : (↑(iso ident) : Multiplicative ℝ).toAdd +
-            (↑(iso ident) : Multiplicative ℝ).toAdd =
-            (↑(iso ident) : Multiplicative ℝ).toAdd := by
-    have := congrArg Multiplicative.toAdd h2
-    convert this using 1
-    rfl
-
-  -- From x + x = x, we get x = 0
-  linarith
-
-end WithIdentity
-
-section Semigroup
-
-variable [KSSemigroupBase α]
+  exact iso.map_le_map_iff'.symm
 
 theorem theta_additive [NoAnomalousPairs α]
     (G : Subsemigroup (Multiplicative ℝ)) (iso : α ≃*o G) :
@@ -258,19 +176,41 @@ theorem theta_additive [NoAnomalousPairs α]
   -- In Multiplicative ℝ: toAdd (a * b) = toAdd a + toAdd b
   rfl
 
+end Semigroup
+
+section WithIdentity
+
+variable [KnuthSkillingMonoidBase α]
+open KnuthSkillingMonoidBase KnuthSkillingAlgebra
+
+theorem theta_ident [NoAnomalousPairs α]
+    (G : Subsemigroup (Multiplicative ℝ)) (iso : α ≃*o G) :
+    theta_from_embedding G iso ident = 0 := by
+  let r : RepresentationResult α :=
+    ⟨theta_from_embedding G iso, theta_preserves_order G iso, theta_additive G iso⟩
+  exact r.ident_zero_of_ident
+
+end WithIdentity
+
+section Semigroup
+
+variable [KSSemigroupBase α]
+
+
 /-! ## Section 8: Identity-Free Representation (Semigroup Version)
 
 The Hölder/Alimov embedding does NOT require identity. This section makes that explicit.
 
 **What identity provides:**
-- Canonical normalization: Θ(ident) = 0 pins down the additive constant
-- Without identity, Θ is defined only up to an additive constant
+- An identity necessarily maps to zero by additivity.
+- A positive anchor fixes the remaining multiplicative scale by mapping to one.
+- A nonzero additive shift does not preserve additivity, even without identity.
 
 **K&S reference:** Lines 320, 340-342 of "Foundations of Inference" (2012) state
 that the bottom element (identity) is "optional" in the lattice framework. -/
 
 /-- **Semigroup Representation Theorem**: NoAnomalousPairs implies additive embedding into ℝ.
-    This version does NOT require identity - Θ is defined up to an additive constant. -/
+    This version requires no identity and retains the supplied additive operation. -/
 theorem representation_semigroup [NoAnomalousPairs α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
@@ -314,47 +254,15 @@ Under the Hölder/Alimov embedding into `ℝ`, the real Archimedean property imp
 base `a > ident` and any `x`, some iterate `a^n` bounds `x` from above. -/
 theorem archimedean_of_noAnomalousPairs [NoAnomalousPairs α] (a x : α) (ha : ident < a) :
     ∃ n : ℕ, x ≤ iterate_op a n := by
-  obtain ⟨Θ, hΘ_order, hΘ_ident, hΘ_add⟩ := representation_from_noAnomalousPairs (α := α)
+  let r := (holder_representation (α := α)).toNormalized
+  have hpos : 0 < r.Θ a := by
+    simpa [r.ident_zero] using (r.strict_order_preserving ident a).mp ha
+  obtain ⟨n, hn⟩ := exists_nat_ge (r.Θ x / r.Θ a)
+  refine ⟨n, (r.order_preserving _ _).mpr ?_⟩
+  rw [r.toRepresentationResult.map_iterate]
+  exact (div_le_iff₀ hpos).mp hn
 
-  -- Positivity of Θ(a) from `ident < a`.
-  have hΘa_pos : 0 < Θ a := by
-    have hle : (0 : ℝ) ≤ Θ a := by
-      have : ident ≤ a := le_of_lt ha
-      simpa [hΘ_ident] using (hΘ_order ident a).1 this
-    have hnot : ¬ Θ a ≤ 0 := by
-      intro hle0
-      have : a ≤ ident := (hΘ_order a ident).2 (by simpa [hΘ_ident] using hle0)
-      exact not_lt.mpr this ha
-    have hneq : Θ a ≠ 0 := by
-      intro h0
-      exact hnot (by simp [h0])
-    exact lt_of_le_of_ne hle (Ne.symm hneq)
-
-  -- Iteration in Θ-coordinates: Θ(a^n) = n * Θ(a).
-  have hΘ_iter : ∀ n : ℕ, Θ (iterate_op a n) = (n : ℝ) * Θ a := by
-    intro n
-    induction n with
-    | zero =>
-      simp [iterate_op_zero, hΘ_ident]
-    | succ n ih =>
-      -- Θ(a^(n+1)) = Θ(a ⊕ a^n) = Θ(a) + Θ(a^n) = (n+1) * Θ(a)
-      simp [iterate_op_succ, hΘ_add, ih, Nat.cast_succ, add_mul, add_comm]
-
-  -- Use the Archimedean property of ℝ to choose `n` with Θ(x) ≤ n * Θ(a).
-  obtain ⟨n, hn⟩ := exists_nat_ge (Θ x / Θ a)
-  have hΘx_le : Θ x ≤ (n : ℝ) * Θ a := by
-    -- Multiply `Θ x / Θ a ≤ n` by `Θ a > 0`.
-    exact (div_le_iff₀ hΘa_pos).1 hn
-
-  refine ⟨n, (hΘ_order x (iterate_op a n)).2 ?_⟩
-  -- Rewrite the goal using the iteration lemma.
-  simpa [hΘ_iter n] using hΘx_le
-
-/-- Identity provides canonical normalization: Θ(ident) = 0.
-    Without identity, Θ is defined only up to an additive constant c:
-    if Θ is a valid representation, so is Θ' = Θ + c.
-
-    With identity, we can pin down c = 0 by requiring Θ(ident) = 0. -/
+/-- An identity maps to zero because the representation preserves addition. -/
 theorem identity_gives_canonical_normalization [NoAnomalousPairs α]
     (G : Subsemigroup (Multiplicative ℝ)) (iso : α ≃*o G) :
     theta_from_embedding G iso ident = 0 :=
@@ -382,207 +290,10 @@ theorem representation_uniqueness_structure_of_ref
     (h2_ident : Θ₂ ident = 0)
     (a : α) (ha_pos : ident < a) :
     ∃ c : ℝ, 0 < c ∧ ∀ x : α, Θ₂ x = c * Θ₁ x := by
-  -- Both Θ values are positive for a > ident
-  have hΘ1a_pos : 0 < Θ₁ a := by
-    have h := (h1_ord ident a).mp (le_of_lt ha_pos)
-    rw [h1_ident] at h
-    rcases h.lt_or_eq with hlt | heq
-    · exact hlt
-    · exfalso
-      have : a ≤ ident :=
-        (h1_ord a ident).mpr (by rw [h1_ident]; exact le_of_eq heq.symm)
-      exact not_lt.mpr this ha_pos
-  have hΘ2a_pos : 0 < Θ₂ a := by
-    have h := (h2_ord ident a).mp (le_of_lt ha_pos)
-    rw [h2_ident] at h
-    rcases h.lt_or_eq with hlt | heq
-    · exact hlt
-    · exfalso
-      have : a ≤ ident :=
-        (h2_ord a ident).mpr (by rw [h2_ident]; exact le_of_eq heq.symm)
-      exact not_lt.mpr this ha_pos
-
-  -- Define the scaling factor
-  let c : ℝ := Θ₂ a / Θ₁ a
-  have hc_pos : 0 < c := div_pos hΘ2a_pos hΘ1a_pos
-  refine ⟨c, hc_pos, fun x => ?_⟩
-
-  -- Iteration lemmas
-  have h_iter_Θ1 : ∀ y : α, ∀ n : ℕ, Θ₁ (iterate_op y n) = n * Θ₁ y := fun y n => by
-    induction n with
-    | zero => simp [iterate_op_zero, h1_ident]
-    | succ n ih =>
-      rw [iterate_op_succ, h1_add, ih]
-      simp only [Nat.cast_succ]; ring
-  have h_iter_Θ2 : ∀ y : α, ∀ n : ℕ, Θ₂ (iterate_op y n) = n * Θ₂ y := fun y n => by
-    induction n with
-    | zero => simp [iterate_op_zero, h2_ident]
-    | succ n ih =>
-      rw [iterate_op_succ, h2_add, ih]
-      simp only [Nat.cast_succ]; ring
-
-  -- For positive y, the ratios Θ₁(y)/Θ₁(a) and Θ₂(y)/Θ₂(a) are equal
-  -- because both embeddings see the same order on a^m vs y^n
-  have h_ratio_pos : ∀ y : α, ident < y → Θ₁ y / Θ₁ a = Θ₂ y / Θ₂ a := fun y hy => by
-    have hΘ1y_pos : 0 < Θ₁ y := by
-      have h := (h1_ord ident y).mp (le_of_lt hy)
-      rw [h1_ident] at h
-      rcases h.lt_or_eq with hlt | heq
-      · exact hlt
-      · exfalso
-        have : y ≤ ident :=
-          (h1_ord y ident).mpr (by rw [h1_ident]; exact le_of_eq heq.symm)
-        exact not_lt.mpr this hy
-    have hΘ2y_pos : 0 < Θ₂ y := by
-      have h := (h2_ord ident y).mp (le_of_lt hy)
-      rw [h2_ident] at h
-      rcases h.lt_or_eq with hlt | heq
-      · exact hlt
-      · exfalso
-        have : y ≤ ident :=
-          (h2_ord y ident).mpr (by rw [h2_ident]; exact le_of_eq heq.symm)
-        exact not_lt.mpr this hy
-
-    by_contra hne
-    have hne' : Θ₁ y / Θ₁ a ≠ Θ₂ y / Θ₂ a := hne
-    rcases hne'.lt_or_gt with hlt | hlt
-    · -- Case 1: Θ₁(y)/Θ₁(a) < Θ₂(y)/Θ₂(a)
-      obtain ⟨q, hq_lo, hq_hi⟩ := exists_rat_btwn hlt
-      have hq_pos : 0 < q := by
-        have : (0 : ℝ) < Θ₁ y / Θ₁ a := div_pos hΘ1y_pos hΘ1a_pos
-        exact_mod_cast lt_trans this hq_lo
-      have hn_pos : 0 < q.den := q.den_pos
-      have hm_pos : 0 < q.num := Rat.num_pos.mpr hq_pos
-      let m := q.num.toNat
-      let n := q.den
-      have hn_pos' : (0 : ℝ) < n := Nat.cast_pos.mpr hn_pos
-      -- Cast q to ℝ: q = (q.num : ℝ) / q.den
-      have hq_lo' : Θ₁ y / Θ₁ a < (q.num : ℝ) / q.den := by
-        rw [Rat.cast_def] at hq_lo; exact hq_lo
-      have hq_hi' : (q.num : ℝ) / q.den < Θ₂ y / Θ₂ a := by
-        rw [Rat.cast_def] at hq_hi; exact hq_hi
-      -- Key: (m : ℝ) = (q.num : ℝ) since m = q.num.toNat and q.num > 0
-      have hm_eq : (m : ℝ) = (q.num : ℝ) := by
-        have : (m : ℤ) = q.num := Int.toNat_of_nonneg (le_of_lt hm_pos)
-        exact_mod_cast this
-      -- From Θ₁(y)/Θ₁(a) < q.num/n: y^n < a^m via Θ₁
-      have h_order_1 : iterate_op y n < iterate_op a m := by
-        rw [lt_iff_not_ge]; intro hle  -- hle : a^m ≤ y^n
-        have hmΘ := (h1_ord (iterate_op a m) (iterate_op y n)).mp hle
-        rw [h_iter_Θ1, h_iter_Θ1] at hmΘ  -- hmΘ : m * Θ₁ a ≤ n * Θ₁ y
-        -- From Θ₁(y)/Θ₁(a) < m/n: n * Θ₁ y < m * Θ₁ a
-        have hnΘ : (n : ℝ) * Θ₁ y < (m : ℝ) * Θ₁ a := by
-          have h := mul_lt_mul_of_pos_right hq_lo' (mul_pos hn_pos' hΘ1a_pos)
-          field_simp at h; rw [hm_eq]; linarith
-        linarith
-      -- From q.num/n < Θ₂(y)/Θ₂(a): a^m < y^n via Θ₂
-      have h_order_2 : iterate_op a m < iterate_op y n := by
-        rw [lt_iff_not_ge]; intro hle  -- hle : y^n ≤ a^m
-        have hnΘ := (h2_ord (iterate_op y n) (iterate_op a m)).mp hle
-        rw [h_iter_Θ2, h_iter_Θ2] at hnΘ  -- hnΘ : n * Θ₂ y ≤ m * Θ₂ a
-        -- From m/n < Θ₂(y)/Θ₂(a): m * Θ₂ a < n * Θ₂ y
-        have hmΘ : (m : ℝ) * Θ₂ a < (n : ℝ) * Θ₂ y := by
-          have h := mul_lt_mul_of_pos_right hq_hi' (mul_pos hn_pos' hΘ2a_pos)
-          field_simp at h; rw [hm_eq]; linarith
-        linarith
-      exact absurd h_order_2 (not_lt.mpr (le_of_lt h_order_1))
-    · -- Case 2: Θ₂(y)/Θ₂(a) < Θ₁(y)/Θ₁(a) (symmetric)
-      obtain ⟨q, hq_lo, hq_hi⟩ := exists_rat_btwn hlt
-      have hq_pos : 0 < q := by
-        have : (0 : ℝ) < Θ₂ y / Θ₂ a := div_pos hΘ2y_pos hΘ2a_pos
-        exact_mod_cast lt_trans this hq_lo
-      have hn_pos : 0 < q.den := q.den_pos
-      have hm_pos : 0 < q.num := Rat.num_pos.mpr hq_pos
-      let m := q.num.toNat
-      let n := q.den
-      have hn_pos' : (0 : ℝ) < n := Nat.cast_pos.mpr hn_pos
-      have hq_lo' : Θ₂ y / Θ₂ a < (q.num : ℝ) / q.den := by
-        rw [Rat.cast_def] at hq_lo; exact hq_lo
-      have hq_hi' : (q.num : ℝ) / q.den < Θ₁ y / Θ₁ a := by
-        rw [Rat.cast_def] at hq_hi; exact hq_hi
-      -- Key: (m : ℝ) = (q.num : ℝ) since m = q.num.toNat and q.num > 0
-      have hm_eq : (m : ℝ) = (q.num : ℝ) := by
-        have : (m : ℤ) = q.num := Int.toNat_of_nonneg (le_of_lt hm_pos)
-        exact_mod_cast this
-      -- From Θ₂(y)/Θ₂(a) < q.num/n: y^n < a^m via Θ₂
-      have h_order_1 : iterate_op y n < iterate_op a m := by
-        rw [lt_iff_not_ge]; intro hle  -- hle : a^m ≤ y^n
-        have hmΘ := (h2_ord (iterate_op a m) (iterate_op y n)).mp hle
-        rw [h_iter_Θ2, h_iter_Θ2] at hmΘ  -- hmΘ : m * Θ₂ a ≤ n * Θ₂ y
-        -- From Θ₂(y)/Θ₂(a) < m/n: n * Θ₂ y < m * Θ₂ a
-        have hnΘ : (n : ℝ) * Θ₂ y < (m : ℝ) * Θ₂ a := by
-          have h := mul_lt_mul_of_pos_right hq_lo' (mul_pos hn_pos' hΘ2a_pos)
-          field_simp at h; rw [hm_eq]; linarith
-        linarith
-      -- From q.num/n < Θ₁(y)/Θ₁(a): a^m < y^n via Θ₁
-      have h_order_2 : iterate_op a m < iterate_op y n := by
-        rw [lt_iff_not_ge]; intro hle  -- hle : y^n ≤ a^m
-        have hnΘ := (h1_ord (iterate_op y n) (iterate_op a m)).mp hle
-        rw [h_iter_Θ1, h_iter_Θ1] at hnΘ  -- hnΘ : n * Θ₁ y ≤ m * Θ₁ a
-        -- From m/n < Θ₁(y)/Θ₁(a): m * Θ₁ a < n * Θ₁ y
-        have hmΘ : (m : ℝ) * Θ₁ a < (n : ℝ) * Θ₁ y := by
-          have h := mul_lt_mul_of_pos_right hq_hi' (mul_pos hn_pos' hΘ1a_pos)
-          field_simp at h; rw [hm_eq]; linarith
-        linarith
-      exact absurd h_order_2 (not_lt.mpr (le_of_lt h_order_1))
-
-  -- Main proof by cases on x
-  rcases lt_trichotomy x ident with hx_lt | hx_eq | hx_gt
-  · -- Case x < ident: shift by a sufficiently large iterate of a to enter the positive cone.
-    have hΘ1x_neg : Θ₁ x < 0 := by
-      have h := (h1_ord x ident).mp (le_of_lt hx_lt)
-      rw [h1_ident] at h
-      rcases h.lt_or_eq with hlt | heq
-      · exact hlt
-      · exfalso
-        have : ident ≤ x :=
-          (h1_ord ident x).mpr (by rw [h1_ident]; exact le_of_eq heq.symm)
-        exact not_lt.mpr this hx_lt
-    -- Find n such that Θ₁(x ⊕ a^n) > 0.
-    have h_exists : ∃ n : ℕ, 0 < Θ₁ x + n * Θ₁ a := by
-      use Nat.ceil ((-Θ₁ x) / Θ₁ a) + 1
-      have hceil : (-Θ₁ x) / Θ₁ a ≤ Nat.ceil ((-Θ₁ x) / Θ₁ a) := Nat.le_ceil _
-      have hM_gt : ((Nat.ceil ((-Θ₁ x) / Θ₁ a) + 1 : ℕ) : ℝ) > (-Θ₁ x) / Θ₁ a := by
-        have : (Nat.ceil ((-Θ₁ x) / Θ₁ a) : ℝ) + 1 > (-Θ₁ x) / Θ₁ a := by linarith
-        convert this using 1
-        simp only [Nat.cast_add, Nat.cast_one]
-      have hMa :
-          ((Nat.ceil ((-Θ₁ x) / Θ₁ a) + 1 : ℕ) : ℝ) * Θ₁ a > -Θ₁ x := by
-        have h := mul_lt_mul_of_pos_right hM_gt hΘ1a_pos
-        rwa [div_mul_cancel₀ _ (ne_of_gt hΘ1a_pos)] at h
-      linarith
-    obtain ⟨n, hn⟩ := h_exists
-    have hsum_pos : ident < op x (iterate_op a n) := by
-      rw [lt_iff_not_ge]
-      intro hle
-      have := (h1_ord (op x (iterate_op a n)) ident).mp hle
-      rw [h1_add, h_iter_Θ1, h1_ident] at this
-      linarith
-    have h_sum_ratio := h_ratio_pos (op x (iterate_op a n)) hsum_pos
-    rw [h1_add, h2_add, h_iter_Θ1, h_iter_Θ2] at h_sum_ratio
-    have hΘ1a_ne : Θ₁ a ≠ 0 := ne_of_gt hΘ1a_pos
-    have hΘ2a_ne : Θ₂ a ≠ 0 := ne_of_gt hΘ2a_pos
-    have h_x_ratio : Θ₁ x / Θ₁ a = Θ₂ x / Θ₂ a := by
-      have h1 : (Θ₁ x + ↑n * Θ₁ a) / Θ₁ a = Θ₁ x / Θ₁ a + n := by
-        field_simp [hΘ1a_ne]
-      have h2 : (Θ₂ x + ↑n * Θ₂ a) / Θ₂ a = Θ₂ x / Θ₂ a + n := by
-        field_simp [hΘ2a_ne]
-      rw [h1, h2] at h_sum_ratio
-      linarith
-    have : Θ₂ x = Θ₂ a / Θ₁ a * Θ₁ x := by
-      have := congr_arg (· * Θ₂ a) h_x_ratio
-      field_simp [hΘ1a_ne, hΘ2a_ne] at this ⊢
-      linarith
-    simpa [c] using this
-  · -- Case x = ident
-    simp [hx_eq, h1_ident, h2_ident]
-  · -- Case ident < x
-    have h_x_ratio := h_ratio_pos x hx_gt
-    have : Θ₂ x = Θ₂ a / Θ₁ a * Θ₁ x := by
-      have := congr_arg (· * Θ₂ a) h_x_ratio
-      field_simp at this ⊢
-      linarith
-    simpa [c] using this
+  let r : NormalizedRepresentationResult α := ⟨⟨Θ₁, h1_ord, h1_add⟩, h1_ident⟩
+  let t : NormalizedRepresentationResult α := ⟨⟨Θ₂, h2_ord, h2_add⟩, h2_ident⟩
+  exact r.toRepresentationResult.unique_up_to_posScale t.toRepresentationResult a
+    ((isPositive_iff_ident_lt a).mpr ha_pos)
 
 end WithIdentity
 
@@ -592,8 +303,7 @@ variable [KnuthSkillingAlgebraBase α]
 open KnuthSkillingAlgebraBase KnuthSkillingAlgebra
 
 /-- The representation is unique up to positive scaling.
-    Identity pins down the additive constant (Θ(ident) = 0).
-    A scale convention (e.g., choosing a reference element) pins down the scale.
+    Additivity forces Θ(ident) = 0; a positive reference fixes the scale.
 
     Proof strategy: Both embeddings respect the same order structure on iterates, so
     a^m ≤ x^n ↔ m·Θ₁(a) ≤ n·Θ₁(x) ↔ m·Θ₂(a) ≤ n·Θ₂(x).
@@ -611,7 +321,7 @@ theorem representation_uniqueness_structure [NoAnomalousPairs α]
   by_cases htriv : ∀ x : α, x = ident
   · refine ⟨1, one_pos, fun x => ?_⟩
     simp only [htriv x, h1_ident, h2_ident, mul_zero]
-  push_neg at htriv
+  push Not at htriv
   obtain ⟨a, ha_ne⟩ := htriv
   have ha_pos : ident < a := lt_of_le_of_ne (ident_le a) (Ne.symm ha_ne)
   exact
@@ -623,11 +333,7 @@ theorem representation_uniqueness_structure [NoAnomalousPairs α]
 /-- Hölder path produces a NormalizedRepresentationResult (with identity). -/
 noncomputable def holder_normalized_representation [NoAnomalousPairs α] :
     NormalizedRepresentationResult α :=
-  let h := representation_from_noAnomalousPairs (α := α)
-  { Θ := Classical.choose h
-    order_preserving := (Classical.choose_spec h).1
-    additive := (Classical.choose_spec h).2.2
-    ident_zero := (Classical.choose_spec h).2.1 }
+  (holder_representation (α := α)).toNormalized
 
 /-! ## Unified Representation Interface
 
@@ -691,29 +397,15 @@ noncomputable def grid_representation {α : Type*}
 
 end GridPath
 
-/-! ## Path Comparison
+/-! ## Comparing supplied routes
 
-**Hölder Path** (`NoAnomalousPairs`):
-- Works on `KSSemigroupBase` (identity-free) → `RepresentationResult`
-- With an identity (and `ident` as minimum) → `NormalizedRepresentationResult`
-- Uses Eric Luap's OrderedSemigroups library
-
-**Grid Path** (`KSSeparation` or `KSSeparationSemigroup`):
-- Construction uses an identity, packaged as `RepresentationGlobalization` on `KnuthSkillingMonoidBase`.
-- Forgetting normalization gives the identity-free interface `RepresentationGlobalizationSemigroup`.
-- With identity: `KSSeparation ↔ KSSeparationSemigroup` (via `Core/Algebra.lean`).
-
-**Cuts Path** (`KSSeparationStrict`):
-- Requires `KnuthSkillingAlgebraBase` (with identity) → `RepresentationResult` / `NormalizedRepresentationResult`
-- Uses Dedekind cuts construction (DirectCuts.lean)
-- Identity-free infrastructure: `cutSet_pnat`, `Θ_cuts_pnat`, Archimedean from separation
-
-**Separation Classes**:
-- `KSSeparation`: Uses `ident < a` (requires identity)
-- `KSSeparationSemigroup`: Uses `IsPositive a` (identity-free definition, but construction needs identity)
-
-**Uniqueness**: All paths produce representations unique up to positive scale
-(see `representation_uniqueness_structure`). -/
+Hölder consumes an identity-free no-anomalous-pairs profile. Grid consumes a
+normalized globalization witness. Ordinary cuts consume minimum identity and
+strict separation; positive-only cuts retain explicit commutativity.
+On a common carrier their resulting additive order embeddings agree after
+calibration. Ordered event histories remain separate data: equal calibrated endpoints can
+come from different authored orders and different intermediate observations.
+-/
 
 section PathEquivalence
 

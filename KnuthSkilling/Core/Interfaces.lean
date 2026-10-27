@@ -4,50 +4,14 @@ import KnuthSkilling.Multiplicative.FunctionalEquation
 import KnuthSkilling.Multiplicative.StrictMonoSolution
 
 /-!
-# K&S Interfaces: Single Source of Truth for Reusable Results
+# Stable additive and multiplicative interfaces
 
-This file exports the **central abstractions and key theorems** from the K&S formalization.
-All downstream code should import this file rather than reaching into implementation details.
-
-## What This File Provides
-
-### From Appendix A (Representation Theorem)
-- `Additive.RepresentationResult α`: identity-free representation package (`Θ : α → ℝ`,
-  order-embedding + additivity)
-- `Additive.HasRepresentationTheorem α`: proof-agnostic identity-free interface (∃ such Θ)
-- `Additive.HasNormalizedRepresentation α`: identity-based convenience interface (also gives Θ(ident)=0)
-
-**Note**: `AdditiveOrderIsoRep α op` is a *stronger* “order isomorphism to ℝ” form used mainly when
-we need an explicit inverse `Ψ := Θ⁻¹` (Appendix B). The core Appendix A story produces an
-order-embedding into ℝ, not necessarily a global order isomorphism onto all of ℝ.
-
-### From Appendix B (Product Theorem)
-- `ProductEquation Ψ ζ`: The functional equation Ψ(τ + ξ) + Ψ(τ + η) = Ψ(τ + ζ(ξ,η))
-- `productEquation_strictMono_pos_continuous`: **KEY** - Continuity is DERIVED, not assumed!
-- `productEquation_solution_of_strictMono`: The main Appendix B theorem (fully proven)
-
-**Note**: The optional historical module
-`KnuthSkilling.Multiplicative.Proofs.Direct.FibonacciProof` imports heavy
-number-theory dependencies; it is intentionally not imported here.
-
-## Design Principle
-
-**One interface, many realizers**: Multiple proof routes (Grid, Cuts, Alimov) all produce
-the same *Appendix A output interface* (`Additive.RepresentationResult` / `Additive.HasRepresentationTheorem`).
-Downstream theorems should depend only on this interface.
-
-```
-  Appendix A proofs ──► HasRepresentationTheorem / RepresentationResult ──► Downstream theorems
-                │                       │
-                │                       └──► (optional upgrade) AdditiveOrderIsoRep
-                │                                   (when an explicit inverse Θ⁻¹ is needed)
-                └──────────────────────────────────────────────► Appendix B pipeline
-```
+Appendix A provides an additive order embedding. `AdditiveOrderIsoRep` is
+stronger: it supplies an inverse on every real. The Appendix B product equation,
+strict monotonicity and positivity imply continuity and an exponential form.
 -/
 
 namespace KnuthSkilling
-
-/-! ## Re-export: AdditiveOrderIsoRep (The Central Interface) -/
 
 /-- A *strong* additive representation: an operation `op` is conjugate to real addition
 by an order isomorphism `Θ : α ≃o ℝ`.
@@ -64,14 +28,10 @@ export Literature.AdditiveOrderIsoRep (Θ map_op op_comm op_assoc strictMono_lef
 
 end AdditiveOrderIsoRep
 
-/-! ## Re-export: ProductEquation (Appendix B Functional Equation) -/
-
 /-- The Appendix B product equation: Ψ(τ + ξ) + Ψ(τ + η) = Ψ(τ + ζ(ξ,η)).
 
 This equation arises from distributivity (Axiom 3) when ⊗ has an additive representation. -/
 abbrev ProductEquation := Multiplicative.ProductEquation
-
-/-! ## Key Appendix B Results -/
 
 /-- **KEY THEOREM**: Continuity is DERIVED from ProductEquation + StrictMono + Positivity.
 
@@ -108,15 +68,5 @@ theorem appendixB_exponential_strictAnti
     (hAnti : StrictAnti Ψ) :
     ∃ C A : ℝ, 0 < C ∧ ∀ x : ℝ, Ψ x = C * Real.exp (A * x) :=
   Multiplicative.productEquation_solution_of_strictAnti Ψ ζ hProd hPos hAnti
-
-/-! ## Corollary: Tensor is Scaled Multiplication
-
-When we have an additive order-isomorphism representation of ⊗ (from Appendix A)
-plus distributivity (Axiom 3), we can conclude ⊗ = scaled multiplication.
-
-**Note**: For the full tensor theorems, import `Multiplicative.Main` (K&S path) or
-`Multiplicative/Proofs/Direct/DirectProof.lean` (alternative path). This file focuses on the
-most commonly-used results.
--/
 
 end KnuthSkilling

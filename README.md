@@ -4,6 +4,10 @@ Lean 4 formalization of Knuth & Skilling's "Foundations of Inference" (2012).
 This standalone repository was filtered from the larger project history so the
 K&S development can be built and reviewed directly.
 
+The `v4.28.0` tag preserves the frozen review snapshot. Current development uses
+the version pinned in `lean-toolchain` and the declared dependencies in
+`lakefile.toml`.
+
 ## Overview
 
 The **Knuth-Skilling representation theorem** shows that any algebraic structure
@@ -78,9 +82,9 @@ more economical: separation implies both.
 ### Why Separation is Necessary
 
 `KSSeparation` is **not derivable** from the base axioms alone. Counterexamples:
-- `Counterexamples/SemidirectNoSeparation.lean`: Archimedean ordered associative monoid
+- `Additive/Counterexamples/SemidirectNoSeparation.lean`: Archimedean ordered associative monoid
   that is noncommutative and fails separation
-- `Counterexamples/ProductFailsSeparation.lean`: Commutative ordered monoid with
+- `Additive/Counterexamples/ProductFailsSeparation.lean`: Commutative ordered monoid with
   infinitesimals (ℕ×ℕ lexicographic) that fails separation
 
 ```lean
@@ -114,9 +118,9 @@ class KSSeparation (α : Type*) [KnuthSkillingAlgebraBase α] : Prop where
 │   ├── Examples/                   # Concrete examples
 │   ├── Counterexamples/            # Why hypotheses matter
 │   └── Literature/                 # Reference/formal literature interfaces
-├── InformationTheory/              # Shannon/Faddeev/Khinchin entropy and KL bridges
-├── ProbabilityTheory/              # Shared probability support modules
-├── Algebra/                        # Small algebraic support modules
+├── InformationTheory/              # Finite probability vectors and entropy axiom equivalences
+├── ProbabilityTheory/              # Cox derivation, valuations and probability support
+├── Algebra/                        # Quadratic algebras and their presentations
 └── papers/                         # Companion papers and generated PDFs
 ```
 
@@ -152,42 +156,47 @@ The hypercube organizes probability theories by axes:
 
 K&S sits at: (commutative, distributive, precise, linear, derived-additive).
 
-The standalone repository keeps the hypercube support modules used by the K&S
-papers:
+The grounded example uses the small precision vocabulary in
+`ProbabilityTheory/Hypercube/Precision.lean`. The broader comparisons are maintained
+in MeTTapedia:
 
-- `ProbabilityTheory/Hypercube/Basic.lean`
-- `ProbabilityTheory/Hypercube/NovelTheories.lean`
-- `ProbabilityTheory/Hypercube/NeighborTheories.lean`
+- [Hypercube basics](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/Hypercube/Basic.lean)
+- [Novel theories](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/Hypercube/NovelTheories.lean)
+- [Neighbor theories](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/Hypercube/NeighborTheories.lean)
 
-More speculative hypercube neighbor-analysis files remain outside the curated
-standalone K&S artifact.
+## Application Bridges
+
+MeTTapedia maintains integrations with its application types:
+
+- [Algorithmic probability](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/UniversalAI/KnuthSkilling/AlgorithmicProbability.lean)
+- [PLN evidence](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/PLN/Bridges/KnuthSkilling.lean)
+- [Bayesian-network valuations](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/ProbabilityTheory/BayesianNetworks/KSValuation.lean)
+
+The standalone foundation depends only on its declared externals.
 
 ## Build
 
 ```bash
 lake exe cache get
-export LAKE_JOBS=4
+lake build
 lake build +KnuthSkilling.FoundationsOfInference
-lake build +KnuthSkilling
-lake build +InformationTheory.EntropyKL
+lake build +InformationTheory.ShannonEntropy.Equivalence
 ```
 
 ## Status
 
-The main standalone entrypoints build on Lean 4.28.0:
+Supported standalone entrypoints use the pinned toolchain:
 
 - `KnuthSkilling.FoundationsOfInference`: reviewer-facing K&S core.
 - `KnuthSkilling`: default K&S library entrypoint.
-- `InformationTheory.EntropyKL`: Shannon/Faddeev/Khinchin entropy and KL bridges.
+- `InformationTheory.ShannonEntropy.Equivalence`: entropy-preserving equivalence
+  of supplied Faddeev and Shannon–Khinchin records.
+- `ProbabilityTheory.Cox`: the canonical Cox derivation.
 
-The repository also preserves exploratory and scratch files that contain explicit
-`sorry`s, notably:
-
-- `KnuthSkilling/Exploration/OpenIntervalLattice.lean`
-- `KnuthSkilling/Multiplicative/Scratch/FibonacciProofScratch.lean`
-
-Those files are intentionally visible rather than disguised as completed proofs.
-The reviewer-facing entrypoint does not depend on them.
+The supplementary entropy/KL comparisons are maintained in
+[MeTTapedia's entropy entrypoint](https://github.com/zariuq/MeTTapedia/blob/main/lean/mettapedia/Mettapedia/InformationTheory/EntropyKL.lean).
+The recovered noncommutation controls are in
+`KnuthSkilling/Additive/Counterexamples/NewAtomCommutesNotDerivable.lean`.
 
 ## Examples
 
@@ -205,7 +214,8 @@ The reviewer-facing entrypoint does not depend on them.
   infinitesimals (lexicographic product), failing the sandwich separation axiom `KSSeparation`
   even though addition is commutative (and in particular it is not Archimedean, so it is not a
   `KnuthSkillingAlgebra`).
-- `KnuthSkilling/Additive/Counterexamples/KSSeparationNotDerivable.lean`: proves NAP must be postulated, not derived.
+- `KnuthSkilling/Additive/Counterexamples/KSSeparationNotDerivable.lean`: separates
+  the ordered algebraic base from the additional separation assumption.
 
 ## References
 

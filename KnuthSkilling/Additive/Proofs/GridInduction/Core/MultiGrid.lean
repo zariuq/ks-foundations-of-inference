@@ -13,25 +13,16 @@ section WithIdentity
 
 variable {α : Type*} [KnuthSkillingMonoidBase α] [KSSeparation α]
 
-/-! ## Phase 2: A/B/C Partition for New Types
+/-!
+# Finite grids and faithful additive observations
 
-**Reference**: K&S Appendix A, Section A.3.2 "Separation"
+An ordered fold builds a grid state from coordinate multiplicities. A supplied
+`MultiGridRep` observes these states faithfully and adds multiplicity contributions.
+Its additive observation is distinct from the algebraic composition law `GridComm`.
+`GridBridge` connects scaling multiplicities to powers of the represented state.
 
-The A/B/C partition is used to extend the representation from k types to k+1 types.
-Given an existing grid of values μ(r,...,t) = ra + ... + tc for k atom types,
-and a new type d, we partition old values relative to new targets:
-
-- **Set A**: Old values that lie below new targets: μ(r,...,t) < μ(r₀,...,t₀; u)
-- **Set B**: Old values that equal new targets: μ(r,...,t) = μ(r₀,...,t₀; u)
-- **Set C**: Old values that lie above new targets: μ(r,...,t) > μ(r₀,...,t₀; u)
-
-The repetition lemma shows these partitions are consistent across multiplicities.
-
-**Case B non-empty**: The new type's value d is rationally related to existing values.
-All members of B share a common statistic ((r-r₀)a+...+(t-t₀)c)/u = d.
-
-**Case B empty**: The new type's value is determined as a limit δ via the Archimedean
-property. The accuracy lemma shows δ can be found to arbitrary precision.
+A/B/C comparisons and positive-denominator statistics reuse these explicit laws.
+Seeded ℕ-folds below retain an identity; the final ℕ+-fold development is identity-free.
 -/
 
 /-- Multiset valuation: value of "r of a and s of b and ... " using iterate_op.
@@ -57,6 +48,7 @@ def setA (a x : α) : Set ℕ := {n | iterate_op a n < x}
 def setB (a x : α) : Set ℕ := {n | iterate_op a n = x}
 def setC (a x : α) : Set ℕ := {n | x < iterate_op a n}
 
+omit [KSSeparation α] in
 /-- The A/B/C sets partition ℕ -/
 lemma abc_partition (a x : α) : ∀ n : ℕ, n ∈ setA a x ∨ n ∈ setB a x ∨ n ∈ setC a x := by
   intro n
@@ -65,24 +57,31 @@ lemma abc_partition (a x : α) : ∀ n : ℕ, n ∈ setA a x ∨ n ∈ setB a x 
   · right; left; exact heq
   · right; right; exact hgt
 
+private lemma comparison_unique {β : Type*} [LinearOrder β] (a b : β) :
+    (a < b ∧ a ≠ b ∧ ¬ b < a) ∨ (¬ a < b ∧ a = b ∧ ¬ b < a) ∨
+      (¬ a < b ∧ a ≠ b ∧ b < a) := by
+  rcases lt_trichotomy a b with h | h | h
+  · exact Or.inl ⟨h, ne_of_lt h, not_lt.mpr h.le⟩
+  · exact Or.inr (Or.inl ⟨not_lt.mpr h.ge, h, not_lt.mpr h.le⟩)
+  · exact Or.inr (Or.inr ⟨not_lt.mpr h.le, ne_of_gt h, h⟩)
+
+private lemma comparison_disjoint {ι β : Type*} [LinearOrder β] (f : ι → β) (b : β) :
+    ({i | f i < b} ∩ {i | f i = b} = ∅) ∧
+    ({i | f i = b} ∩ {i | b < f i} = ∅) ∧ ({i | f i < b} ∩ {i | b < f i} = ∅) := by
+  refine ⟨Set.eq_empty_iff_forall_notMem.mpr ?_, Set.eq_empty_iff_forall_notMem.mpr ?_,
+    Set.eq_empty_iff_forall_notMem.mpr ?_⟩
+  · intro i ⟨hl, he⟩; exact ne_of_lt hl he
+  · intro i ⟨he, hg⟩; exact ne_of_gt hg he
+  · intro i ⟨hl, hg⟩; exact lt_asymm hl hg
+
+omit [KSSeparation α] in
 /-- The A/B/C sets are mutually exclusive -/
 lemma abc_disjoint (a x : α) :
     (setA a x ∩ setB a x = ∅) ∧
     (setB a x ∩ setC a x = ∅) ∧
     (setA a x ∩ setC a x = ∅) := by
-  constructor
-  · ext n; simp only [setA, setB, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_empty_iff_false,
-                      iff_false, not_and]
-    intro hlt heq; exact absurd heq (ne_of_lt hlt)
-  constructor
-  · ext n; simp only [setB, setC, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_empty_iff_false,
-                      iff_false, not_and]
-    intro heq hgt; exact absurd heq (ne_of_gt hgt)
-  · ext n; simp only [setA, setC, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_empty_iff_false,
-                      iff_false, not_and]
-    intro hlt hgt
-    have h : iterate_op a n < iterate_op a n := lt_trans hlt hgt
-    exact absurd h (lt_irrefl _)
+  exact comparison_disjoint (iterate_op a) x
+
 
 /-- If x is itself on the grid, setA is bounded above by that index. -/
 lemma setA_bddAbove_of_setB_nonempty (a : α) (ha : ident < a) (x : α)
@@ -100,46 +99,14 @@ lemma setA_bddAbove_of_setB_nonempty (a : α) (ha : ident < a) (x : α)
   have hltNat : n < N := lt_of_not_ge hnot
   exact le_of_lt hltNat
 
+omit [KSSeparation α] in
 /-- Each n belongs to exactly one of A, B, or C for a fixed target x. -/
 lemma mem_A_or_B_or_C_unique (a x : α) (n : ℕ) :
     (n ∈ setA a x ∧ n ∉ setB a x ∧ n ∉ setC a x) ∨
     (n ∉ setA a x ∧ n ∈ setB a x ∧ n ∉ setC a x) ∨
     (n ∉ setA a x ∧ n ∉ setB a x ∧ n ∈ setC a x) := by
-  classical
-  rcases lt_trichotomy (iterate_op a n) x with hlt | heq | hgt
-  · left
-    refine ⟨hlt, ?_, ?_⟩
-    · have hB : iterate_op a n ≠ x := ne_of_lt hlt
-      simpa [setB] using hB
-    · have hC : ¬ x < iterate_op a n := by
-        intro hcontr
-        exact (lt_asymm hlt hcontr).elim
-      simpa [setC] using hC
-  · right
-    left
-    refine ⟨?_, ?_, ?_⟩
-    · simp [setA, heq]
-    · simp [setB, heq]
-    · simp [setC, heq]
-  · right
-    right
-    refine ⟨?_, ?_, ?_⟩
-    · have hA : ¬ iterate_op a n < x := by
-        intro hcontr
-        exact (lt_asymm hcontr hgt).elim
-      simpa [setA] using hA
-    · have hB : iterate_op a n ≠ x := ne_of_gt hgt
-      simpa [setB] using hB
-    · exact hgt
+  exact comparison_unique (iterate_op a n) x
 
-/-! ## Phase 3 (scaffolding): Multi-type grid skeleton
-
-Following Appendix A, we package the “k atom types with multiplicities”
-construction into a small reusable API. This is intentionally lean: it only
-provides the data structures and a canonical fold-based evaluator `mu`.
-The heavy separation and accuracy arguments will build on top of this. -/
-
-open Finset
 
 /-- A family of `k` atom types, each strictly above `ident`. -/
 structure AtomFamily (α : Type*) [KnuthSkillingMonoidBase α] (k : ℕ) where
@@ -163,6 +130,7 @@ def singletonAtomFamily (a : α) (ha : ident < a) : AtomFamily α 1 :=
   { atoms := fun _ => a
     pos := by intro _; exact ha }
 
+omit [KSSeparation α] in
 /-- For the singleton atom family, `mu` reduces to the usual one-type iterate. -/
 lemma mu_singleton (a : α) (ha : ident < a) (n : ℕ) :
     mu (singletonAtomFamily (α:=α) a ha) (fun _ => n) = iterate_op a n := by
@@ -183,31 +151,12 @@ lemma updateMulti_other {k : ℕ} (r : Multi k) (i : Fin k) (n : ℕ) {j : Fin k
 /-- `mu` is coordinatewise monotone in the multiplicity vector. -/
 lemma mu_mono (F : AtomFamily α k) {r s : Multi k} (h : ∀ i, r i ≤ s i) :
     mu F r ≤ mu F s := by
-  classical
-  let l : List (Fin k) := List.finRange k
-  -- Generalize to arbitrary starting accumulators to induct over the list.
-  have aux :
-      ∀ (l : List (Fin k)) (acc₁ acc₂ : α), acc₁ ≤ acc₂ →
-        List.foldl (fun acc i => op acc (iterate_op (F.atoms i) (r i))) acc₁ l ≤
-        List.foldl (fun acc i => op acc (iterate_op (F.atoms i) (s i))) acc₂ l := by
-    intro l
-    induction l with
-    | nil =>
-      intro acc₁ acc₂ hacc
-      simpa [List.foldl] using hacc
-    | cons i t ih =>
-      intro acc₁ acc₂ hacc
-      have h_iter_le : iterate_op (F.atoms i) (r i) ≤ iterate_op (F.atoms i) (s i) :=
-        (grid_strictMono (F.atoms i) (F.pos i)).monotone (h i)
-      have h_acc_step :
-          op acc₁ (iterate_op (F.atoms i) (r i)) ≤
-          op acc₂ (iterate_op (F.atoms i) (s i)) := by
-        have h_left := op_mono_left (iterate_op (F.atoms i) (r i)) hacc
-        have h_right := op_mono_right acc₂ h_iter_le
-        exact le_trans h_left h_right
-      simpa [List.foldl, List.foldl_cons] using ih _ _ h_acc_step
-  have h_base := aux l ident ident (le_rfl : (ident : α) ≤ ident)
-  simpa [mu, l] using h_base
+  unfold mu
+  apply List.foldl_rel le_rfl
+  intro i _ a b hab
+  exact (op_mono_left _ hab).trans
+    (op_mono_right _ ((grid_strictMono (F.atoms i) (F.pos i)).monotone (h i)))
+
 
 /-- Monotonicity in a single coordinate, keeping others fixed. -/
 lemma mu_mono_coord (F : AtomFamily α k) (i : Fin k) (r : Multi k) :
@@ -219,57 +168,36 @@ lemma mu_mono_coord (F : AtomFamily α k) (i : Fin k) (r : Multi k) :
   · subst hj; simpa [updateMulti] using hmn
   · simp [updateMulti, hj]
 
+omit [KSSeparation α] in
 /-- Folding with fixed right arguments is strictly monotone in the accumulator. -/
 lemma fold_strictMono_left (F : AtomFamily α k) (vals : Multi k)
-    (l : List (Fin k)) (hnd : l.Nodup) :
+    (l : List (Fin k)) (_hnd : l.Nodup) :
     StrictMono (fun acc : α =>
       List.foldl (fun a j => op a (iterate_op (F.atoms j) (vals j))) acc l) := by
-  classical
-  induction l with
-  | nil =>
-    -- identity function is strictly monotone (`List.foldl _ acc [] = acc`)
-    exact fun a b h => h
-  | cons j t ih =>
-    have hstep : StrictMono (fun acc : α => op acc (iterate_op (F.atoms j) (vals j))) :=
-      op_strictMono_left _
-    have htail : StrictMono (fun acc : α =>
-      List.foldl (fun a j => op a (iterate_op (F.atoms j) (vals j))) acc t) :=
-      ih (List.nodup_cons.mp hnd).2
-    -- composition preserves strictness
-    exact htail.comp hstep
+  clear _hnd
+  exact List.foldl_strictMono (fun _ => op_strictMono_left _) l
 
+
+omit [KnuthSkillingMonoidBase α] [KSSeparation α] in
 /-- Foldl congr: if functions agree on list elements, foldls are equal. -/
 lemma foldl_congr_on_list {β : Type*} (f g : α → β → α) (init : α) (l : List β)
     (h : ∀ x ∈ l, ∀ acc, f acc x = g acc x) :
     List.foldl f init l = List.foldl g init l := by
-  induction l generalizing init with
-  | nil => rfl
-  | cons x t ih =>
-    simp only [List.foldl_cons]
-    have hx_mem : x ∈ x :: t := List.mem_cons_self
-    rw [h x hx_mem init]
-    have h_tail : ∀ y ∈ t, ∀ acc, f acc y = g acc y := fun y hy acc =>
-      h y (List.mem_cons_of_mem x hy) acc
-    exact ih (g init x) h_tail
+  exact List.foldl_rel rfl (fun x hx a b hab => hab ▸ h x hx b)
 
+
+omit [KSSeparation α] in
 /-- μ of the all-zero multiplicity vector evaluates to `ident`. -/
 lemma mu_zero {k : ℕ} (F : AtomFamily α k) :
     mu F (fun _ => 0) = ident := by
-  classical
-  have hfold :
-      ∀ l : List (Fin k),
-        List.foldl (fun acc j => op acc (iterate_op (F.atoms j) 0)) ident l = ident := by
-    intro l
-    induction l with
-    | nil => simp
-    | cons j tl ih =>
-        simp [iterate_op_zero, op_ident_right, ih]
-  simpa [mu] using hfold (List.finRange k)
+  simp [mu, iterate_op_zero, op_ident_right]
+
 
 /-- Unit vector: n in position i, 0 elsewhere. -/
 def unitMulti {k : ℕ} (i : Fin k) (n : ℕ) : Multi k :=
   fun j => if j = i then n else 0
 
+omit [KSSeparation α] in
 /-- Helper: fold over indices with unitMulti evaluates to the target iterate.
     This tracks the accumulator through the fold.
 
@@ -315,12 +243,13 @@ private lemma foldl_unitMulti_aux {k : ℕ} (F : AtomFamily α k) (i : Fin k) (n
       have hne_symm : i ≠ hd := Ne.symm hne
       by_cases h_in_tl : i ∈ tl
       · -- i ∈ tl: both conditions are true
-        simp only [h_in_tl, ↓reduceIte, Or.inr h_in_tl, hne_symm, false_or]
+        simp only [h_in_tl, ↓reduceIte, hne_symm, false_or]
       · -- i ∉ tl: since i ≠ hd, i = hd ∨ i ∈ tl is false
         simp only [h_in_tl, ↓reduceIte, or_false]
         -- Goal: acc = if i = hd then op acc ... else acc
         rw [if_neg hne_symm]
 
+omit [KSSeparation α] in
 /-- μ of a unit vector equals the corresponding iterate.
     This is key for reducing multi-type to single-type arguments.
 
@@ -483,17 +412,20 @@ lemma mu_strictMono_coord (F : AtomFamily α k) (i : Fin k) (r : Multi k) :
 /-- Grid generated by an atom family: values reachable as μ(F, r). -/
 def kGrid {k : ℕ} (F : AtomFamily α k) : Set α := {x | ∃ r : Multi k, x = mu F r}
 
+omit [KSSeparation α] in
 /-- Every μ-value lies on the k-grid. -/
 lemma mu_mem_kGrid {k : ℕ} (F : AtomFamily α k) (r : Multi k) : mu F r ∈ kGrid F :=
   ⟨r, rfl⟩
 
+omit [KSSeparation α] in
 /-- `ident` is always on the k-grid (take the zero multiplicity vector). -/
 lemma ident_mem_kGrid {k : ℕ} (F : AtomFamily α k) : ident ∈ kGrid F := by
   have hmem : mu F (fun _ => 0) ∈ kGrid F := mu_mem_kGrid (F:=F) (r:=fun _ => 0)
   simpa [mu_zero (F:=F)] using hmem
 
+omit [KSSeparation α] in
 /-- Representation data restricted to the μ-grid of an atom family. -/
-structure MultiGridRep {k : ℕ} (F : AtomFamily α k) where
+structure MultiGridRep [KSSeparation α] {k : ℕ} (F : AtomFamily α k) where
   /-- Representation on grid points μ(F, r). -/
   Θ_grid : {x // x ∈ kGrid F} → ℝ
   /-- Strict monotonicity on the grid. -/
@@ -507,20 +439,43 @@ structure MultiGridRep {k : ℕ} (F : AtomFamily α k) where
   ident_eq_zero :
     Θ_grid ⟨ident, ident_mem_kGrid (F:=F)⟩ = 0
 
-/-- Commutativity on the μ-grid generated by an atom family F.
+/-- The supplied observation, bundled with its multiplicity-addition laws. -/
+noncomputable def MultiGridRep.multiplicityReadout {k : ℕ} {F : AtomFamily α k}
+    (R : MultiGridRep F) : Multi k →+ ℝ where
+  toFun r := R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩
+  map_zero' := by
+    change R.Θ_grid ⟨mu F (fun _ => 0), _⟩ = 0
+    simpa only [mu_zero] using R.ident_eq_zero
+  map_add' r s := R.add r s
 
-This is the **key inductive hypothesis** in the K&S Appendix A proof structure:
-- Base (k=1): Single atom type, commutativity trivial (op a^m ⊕ a^n = a^{m+n} = a^n ⊕ a^m)
-- Step (k→k+1): ASSUME k-grid is commutative, prove (k+1)-grid has representation,
-                 then DERIVE (k+1)-grid commutativity from Θ' additivity + injectivity
+/-- Ordered update occurrences contribute additively to the final observation. -/
+lemma MultiGridRep.readout_updates {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
+    (r : Multi k) (us : List (Multi k)) :
+    R.multiplicityReadout (us.foldl (· + ·) r) =
+      R.multiplicityReadout r + (us.map R.multiplicityReadout).sum := by
+  induction us generalizing r with
+  | nil => simp
+  | cons u us ih => simp only [List.foldl_cons, ih, List.map_cons, List.sum_cons, map_add]; ring
 
-Once GridComm F is established, we can prove the crucial bridge lemma:
-  mu F (scaleMult n r) = iterate_op (mu F r) n
-which enables all the separation/shift/strict-mono arguments. -/
+lemma MultiGridRep.readout_lt_iff {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
+    (r s : Multi k) : R.multiplicityReadout r < R.multiplicityReadout s ↔ mu F r < mu F s :=
+  R.strictMono.lt_iff_lt (a := ⟨mu F r, mu_mem_kGrid F r⟩) (b := ⟨mu F s, mu_mem_kGrid F s⟩)
+
+lemma MultiGridRep.readout_eq_iff {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
+    (r s : Multi k) : R.multiplicityReadout r = R.multiplicityReadout s ↔ mu F r = mu F s := by
+  exact ⟨fun h => congrArg Subtype.val (R.strictMono.injective h),
+    fun h => congrArg R.Θ_grid (Subtype.ext h)⟩
+
+/-- Actual algebraic commutation of grid states. This is separate from the
+multiplicity-addition law in `MultiGridRep`: that observation law does not by itself
+identify `mu F (r + s)` with `op (mu F r) (mu F s)`. A supplied `GridComm` proves
+that identification and hence the scaling bridge. Extending the commuting family
+also requires commutation with the new atom. -/
 structure GridComm {k : ℕ} (F : AtomFamily α k) : Prop where
   /-- Grid elements commute under op. -/
   comm : ∀ r s : Multi k, op (mu F r) (mu F s) = op (mu F s) (mu F r)
 
+omit [KSSeparation α] in
 /-- For k=1 (single atom), the grid is trivially commutative.
 The grid is {a^n : n ∈ ℕ}, and a^m ⊕ a^n = a^{m+n} = a^n ⊕ a^m. -/
 lemma gridComm_of_k_eq_one {F : AtomFamily α 1} : GridComm F := ⟨by
@@ -528,7 +483,7 @@ lemma gridComm_of_k_eq_one {F : AtomFamily α 1} : GridComm F := ⟨by
   -- For k=1, mu F r = a^{r 0} for the single atom a = F.atoms 0
   -- Use calc to prove commutativity step by step
   unfold mu
-  simp only [List.finRange_succ, List.finRange_zero, List.foldl_cons, List.foldl_nil, op_ident_left]
+  simp only [List.finRange_succ, List.finRange_zero, List.foldl_cons, op_ident_left]
   -- Goal: iterate_op (F.atoms i) (r i) ⊕ iterate_op (F.atoms j) (s j) = iterate_op (F.atoms j) (s j) ⊕ iterate_op (F.atoms i) (r i)
   -- Both i and j are the unique element of Fin 1, so they equal each other
   let i₀ : Fin 1 := ⟨0, by decide⟩
@@ -555,6 +510,7 @@ def multiSetB (F : AtomFamily α k) (x : α) : Set (Multi k) := {r | mu F r = x}
 /-- Set C for multi-type grid: multiplicities whose value is above the target x. -/
 def multiSetC (F : AtomFamily α k) (x : α) : Set (Multi k) := {r | x < mu F r}
 
+omit [KSSeparation α] in
 /-- The multi-type A/B/C sets partition the multiplicity grid. -/
 lemma multi_abc_partition (F : AtomFamily α k) (x : α) (r : Multi k) :
     r ∈ multiSetA F x ∨ r ∈ multiSetB F x ∨ r ∈ multiSetC F x := by
@@ -564,93 +520,30 @@ lemma multi_abc_partition (F : AtomFamily α k) (x : α) (r : Multi k) :
   · exact Or.inr (Or.inl heq)
   · exact Or.inr (Or.inr hgt)
 
+omit [KSSeparation α] in
 /-- The multi-type A/B/C sets are pairwise disjoint. -/
 lemma multi_abc_disjoint (F : AtomFamily α k) (x : α) :
     (multiSetA F x ∩ multiSetB F x = ∅) ∧
     (multiSetB F x ∩ multiSetC F x = ∅) ∧
     (multiSetA F x ∩ multiSetC F x = ∅) := by
-  constructor
-  · ext r; constructor
-    · intro h; rcases h with ⟨hA, hB⟩
-      have hlt' : mu F r < mu F r := by
-        have hlt : mu F r < x := by simpa [multiSetA] using hA
-        have heq : mu F r = x := by simpa [multiSetB] using hB
-        simpa [heq] using hlt
-      exact (lt_irrefl _ hlt').elim
-    · intro h; cases h
-  constructor
-  · ext r; constructor
-    · intro h; rcases h with ⟨hB, hC⟩
-      have hlt' : mu F r < mu F r := by
-        have heq : mu F r = x := by simpa [multiSetB] using hB
-        have hgt : x < mu F r := by simpa [multiSetC] using hC
-        simpa [heq] using hgt
-      exact (lt_irrefl _ hlt').elim
-    · intro h; cases h
-  · ext r; constructor
-    · intro h; rcases h with ⟨hA, hC⟩
-      have hlt : mu F r < mu F r := by
-        have hltA : mu F r < x := by simpa [multiSetA] using hA
-        have hgtC : x < mu F r := by simpa [multiSetC] using hC
-        exact lt_trans hltA hgtC
-      exact (lt_irrefl _ hlt).elim
-    · intro h; cases h
+  exact comparison_disjoint (mu F) x
 
+
+omit [KSSeparation α] in
 /-- Each multiplicity vector belongs to exactly one of A, B, or C. -/
 lemma multi_mem_A_or_B_or_C_unique (F : AtomFamily α k) (x : α) (r : Multi k) :
     (r ∈ multiSetA F x ∧ r ∉ multiSetB F x ∧ r ∉ multiSetC F x) ∨
     (r ∉ multiSetA F x ∧ r ∈ multiSetB F x ∧ r ∉ multiSetC F x) ∨
     (r ∉ multiSetA F x ∧ r ∉ multiSetB F x ∧ r ∈ multiSetC F x) := by
-  classical
-  rcases multi_abc_partition (F:=F) x r with hA | hB | hC
-  · left
-    refine ⟨hA, ?_, ?_⟩
-    · intro hB'
-      have := multi_abc_disjoint (F:=F) x
-      have hABempty := this.1
-      have : r ∈ (multiSetA F x ∩ multiSetB F x) := ⟨hA, hB'⟩
-      have : r ∈ (∅ : Set (Multi k)) := by simpa [hABempty] using this
-      simpa using this
-    · intro hC'
-      have := multi_abc_disjoint (F:=F) x
-      have hACempty := this.2.2
-      have : r ∈ (multiSetA F x ∩ multiSetC F x) := ⟨hA, hC'⟩
-      have : r ∈ (∅ : Set (Multi k)) := by simpa [hACempty] using this
-      simpa using this
-  · right; left
-    refine ⟨?_, hB, ?_⟩
-    · intro hA
-      have := multi_abc_disjoint (F:=F) x
-      have hABempty := this.1
-      have : r ∈ (multiSetA F x ∩ multiSetB F x) := ⟨hA, hB⟩
-      have : r ∈ (∅ : Set (Multi k)) := by simpa [hABempty] using this
-      simpa using this
-    · intro hC'
-      have := multi_abc_disjoint (F:=F) x
-      have hBCempty := this.2.1
-      have : r ∈ (multiSetB F x ∩ multiSetC F x) := ⟨hB, hC'⟩
-      have : r ∈ (∅ : Set (Multi k)) := by simpa [hBCempty] using this
-      simpa using this
-  · right; right
-    refine ⟨?_, ?_, hC⟩
-    · intro hA
-      have := multi_abc_disjoint (F:=F) x
-      have hACempty := this.2.2
-      have : r ∈ (multiSetA F x ∩ multiSetC F x) := ⟨hA, hC⟩
-      have : r ∈ (∅ : Set (Multi k)) := by simpa [hACempty] using this
-      simpa using this
-    · intro hB
-      have := multi_abc_disjoint (F:=F) x
-      have hBCempty := this.2.1
-      have : r ∈ (multiSetB F x ∩ multiSetC F x) := ⟨hB, hC⟩
-      have : r ∈ (∅ : Set (Multi k)) := by simpa [hBCempty] using this
-      simpa using this
+  exact comparison_unique (mu F r) x
+
 
 /-! ### k = 1 specialization
 
 Relate the k-type grid back to the one-type grid to reuse the base case.
 -/
 
+omit [KSSeparation α] in
 /-- Evaluate μ for the singleton atom family directly as an iterate. -/
 lemma mu_singleton_eval (a : α) (ha : ident < a) (r : Multi 1) :
     mu (singletonAtomFamily (α:=α) a ha) r = iterate_op a (r ⟨0, by decide⟩) := by
@@ -663,6 +556,7 @@ lemma mu_singleton_eval (a : α) (ha : ident < a) (r : Multi 1) :
   conv_lhs => rw [hfun]
   simp [mu_singleton]
 
+omit [KSSeparation α] in
 /-- For a singleton atom family, the k-grid coincides with the one-type grid. -/
 lemma kGrid_singleton_eq_grid (a : α) (ha : ident < a) :
     kGrid (singletonAtomFamily (α:=α) a ha) = grid a := by
@@ -728,7 +622,7 @@ noncomputable def OneTypeGridRep.toMulti (a : α) (ha : ident < a) (R : OneTypeG
           (fun x => R.Θ_grid (toGrid x)) ⟨mu F s, hmem_s⟩ := by
             simp [toGrid, hset, hr, hs]
   · -- ident corresponds to the zero multiplicity vector on the k-grid
-    simp [toGrid, hset, ident_mem_kGrid, R.ident_eq_zero]
+    simp [toGrid, R.ident_eq_zero]
 
 /-! ## Phase 3: Separation Statistic and Case B Non-Empty
 
@@ -764,6 +658,7 @@ lemma scaleMult_succ {k : ℕ} (n : ℕ) (r : Multi k) :
     scaleMult (n + 1) r = fun i => scaleMult n r i + r i := by
   ext i; simp [scaleMult, Nat.add_mul, Nat.add_comm]
 
+omit [KSSeparation α] in
 /-- For singleton atom family (k=1), scaling multiplicities equals iterating.
     This is the key lemma that doesn't require commutativity for k=1. -/
 lemma mu_scaleMult_eq_iterate_singleton (a : α) (ha : ident < a) (r : Multi 1) (n : ℕ) :
@@ -804,45 +699,18 @@ lemma Theta_scaleMult {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (r : Multi k) (n : ℕ) :
     R.Θ_grid ⟨mu F (scaleMult n r), mu_mem_kGrid F (scaleMult n r)⟩ =
     n * R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ := by
-  induction n with
-  | zero =>
-    simp only [scaleMult_zero, Nat.zero_eq, Nat.cast_zero, zero_mul]
-    have h0 : mu F (fun _ => 0) = ident := mu_zero (F := F)
-    have hmem : mu F (fun _ => 0) ∈ kGrid F := mu_mem_kGrid F _
-    calc R.Θ_grid ⟨mu F (fun _ => 0), hmem⟩
-        = R.Θ_grid ⟨ident, by rw [← h0]; exact hmem⟩ := by
-            simp only [h0]
-      _ = 0 := R.ident_eq_zero
-  | succ n ih =>
-    have h_sum : scaleMult (n + 1) r = fun i => scaleMult n r i + r i := scaleMult_succ n r
-    have hmem_sum := mu_mem_kGrid F (scaleMult (n + 1) r)
-    have hmem_n := mu_mem_kGrid F (scaleMult n r)
-    have hmem_r := mu_mem_kGrid F r
-    -- The key fact is that mu F (scaleMult (n + 1) r) = mu F (fun i => scaleMult n r i + r i)
-    have h_mu_eq : mu F (scaleMult (n + 1) r) = mu F (fun i => scaleMult n r i + r i) := by
-      congr 1
-    -- Use R.add to split into sum
-    have hadd := R.add (scaleMult n r) r
-    -- Show mu F (scaleMult (n + 1) r) = mu F (scaleMult n r) + mu F r via hadd
-    calc R.Θ_grid ⟨mu F (scaleMult (n + 1) r), hmem_sum⟩
-        = R.Θ_grid ⟨mu F (fun i => scaleMult n r i + r i), mu_mem_kGrid F _⟩ := by
-            simp only [h_mu_eq]
-      _ = R.Θ_grid ⟨mu F (scaleMult n r), hmem_n⟩ + R.Θ_grid ⟨mu F r, hmem_r⟩ := by
-            convert hadd using 2
-      _ = n * R.Θ_grid ⟨mu F r, hmem_r⟩ + R.Θ_grid ⟨mu F r, hmem_r⟩ := by rw [ih]
-      _ = (n + 1 : ℕ) * R.Θ_grid ⟨mu F r, hmem_r⟩ := by
-            simp only [Nat.cast_add, Nat.cast_one]; ring
+  change R.multiplicityReadout (scaleMult n r) = (n : ℝ) * R.multiplicityReadout r
+  have hs : scaleMult n r = n • r := by ext i; simp [scaleMult]
+  rw [hs, map_nsmul, nsmul_eq_mul]
+
 
 /-- Θ on a unit vector scales linearly with the multiplicity. -/
 lemma Theta_unitMulti {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (i : Fin k) (n : ℕ) :
     R.Θ_grid ⟨mu F (unitMulti i n), mu_mem_kGrid F (unitMulti i n)⟩ =
       n * R.Θ_grid ⟨mu F (unitMulti i 1), mu_mem_kGrid F (unitMulti i 1)⟩ := by
-  have h := Theta_scaleMult (R := R) (r := unitMulti i 1) n
-  have hμ :
-      mu F (scaleMult n (unitMulti i 1)) = mu F (unitMulti i n) := by
-    simpa [scaleMult_unitMulti_one] using rfl
-  simpa [hμ] using h
+  simpa only [scaleMult_unitMulti_one] using Theta_scaleMult R (unitMulti i 1) n
+
 
 /-! ### Θ as a finite linear combination of atom-values -/
 
@@ -866,7 +734,7 @@ lemma restrictMulti_insert {k : ℕ} (r : Multi k) (S : Finset (Fin k)) (i : Fin
   · subst hj
     simp [restrictMulti, unitMulti, hi]
   · have : j ∈ insert i S ↔ j ∈ S := by
-      simp [hj, hi]
+      simp [hj]
     simp [restrictMulti, unitMulti, hj, this]
 
 /-- Θ on the μ-grid is a finite linear combination of the atom Θ-values. -/
@@ -874,73 +742,18 @@ lemma Theta_eq_sum_mul_thetaAtom {k : ℕ} {F : AtomFamily α k} (R : MultiGridR
     R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ =
       ∑ i : Fin k, (r i : ℝ) * thetaAtom (F := F) R i := by
   classical
-  let target : Finset (Fin k) → ℝ :=
-    fun S =>
-      R.Θ_grid ⟨mu F (restrictMulti r S), mu_mem_kGrid F (restrictMulti r S)⟩
-  have hstep :
-      ∀ S : Finset (Fin k),
-        target S = ∑ i ∈ S, (r i : ℝ) * thetaAtom (F := F) R i := by
-    intro S
-    refine Finset.induction_on S ?base ?step
-    · -- `restrictMulti r ∅` is the zero multiplicity, so `μ = ident` and `Θ = 0`.
-      have hrestrict : restrictMulti r (∅ : Finset (Fin k)) = (fun _ : Fin k => 0) := by
-        ext i
-        simp [restrictMulti]
-      have hμ : mu F (restrictMulti r (∅ : Finset (Fin k))) = ident := by
-        simpa [hrestrict] using (mu_zero (F := F))
-      have hsub :
-          (⟨mu F (restrictMulti r (∅ : Finset (Fin k))),
-              mu_mem_kGrid F (restrictMulti r (∅ : Finset (Fin k)))⟩ :
-              {x // x ∈ kGrid F}) =
-            ⟨ident, ident_mem_kGrid (F := F)⟩ := by
-        ext
-        simpa [hμ]
-      simpa [target, thetaAtom, hsub] using R.ident_eq_zero
-    · intro i S hi hIH
-      have hrestrict := restrictMulti_insert (r := r) S i hi
-      have hadd := R.add (restrictMulti r S) (unitMulti i (r i))
-      have hmu :
-          mu F (fun j => restrictMulti r S j + unitMulti i (r i) j) =
-            mu F (restrictMulti r (insert i S)) := by
-        congr 1
-        simpa [hrestrict]
-      have hθ_unit :
-          R.Θ_grid ⟨mu F (unitMulti i (r i)), mu_mem_kGrid F (unitMulti i (r i))⟩ =
-            (r i : ℝ) * thetaAtom (F := F) R i := by
-        have h := Theta_unitMulti (R := R) (F := F) i (r i)
-        simpa [thetaAtom, mul_comm, mul_left_comm, mul_assoc] using h
-      have :
-          target (insert i S) =
-            target S + (r i : ℝ) * thetaAtom (F := F) R i := by
-        have hadd' :
-            R.Θ_grid ⟨mu F (fun j => restrictMulti r S j + unitMulti i (r i) j), mu_mem_kGrid F _⟩ =
-              R.Θ_grid ⟨mu F (restrictMulti r S), mu_mem_kGrid F _⟩ +
-                R.Θ_grid ⟨mu F (unitMulti i (r i)), mu_mem_kGrid F _⟩ := by
-          simpa [Pi.add_apply] using hadd
-        simpa [target, hmu, hrestrict, hθ_unit] using hadd'
-      simpa [Finset.sum_insert, hi, hIH, this, add_comm, add_left_comm, add_assoc] using this
-  have := hstep Finset.univ
-  simpa [target, restrictMulti_univ, Finset.sum_sigma'] using this
+  change R.multiplicityReadout r = _
+  have he : r = ∑ i, unitMulti i (r i) := by ext j; simp [unitMulti]
+  conv_lhs => rw [he]
+  rw [map_sum]
+  apply Finset.sum_congr rfl
+  intro i _
+  exact Theta_unitMulti R i (r i)
 
-/-- **IMPORTANT CAVEAT** (per GPT-5.1 Pro):
 
-The global identity μ(F, n·r) = (μ(F, r))^n is **FALSE in GENERAL** without commutativity!
-
-For multi-type families with k > 1:
-  - μ(F, n·r) = a^{n·r₁} ⊕ b^{n·r₂} ⊕ ... (direct evaluation)
-  - (μ(F, r))^n = (a^{r₁} ⊕ b^{r₂} ⊕ ...)^n (iterate the combined value)
-
-These need NOT be equal in a non-commutative algebra!
-
-**Where it DOES hold:**
-1. k=0: Both sides are ident (proven below)
-2. k=1: Trivial via `mu_scaleMult_eq_iterate_singleton`
-3. **B-case** (k>1): When μ(F, r) = d^u for external d, the order/Θ structure forces
-   equality (see `mu_scaleMult_iterate_B` below)
-
-This lemma keeps the k=0 case for completeness. The k≥1 general case is REMOVED
-because it's mathematically false. Use `mu_scaleMult_iterate_B` for B-case proofs.
--/
+omit [KSSeparation α] in
+/-- The empty family satisfies the scaling bridge directly. For larger families,
+`GridComm` suffices; no general noncommutative scaling law is asserted. -/
 lemma mu_scaleMult_iterate_k0 (F : AtomFamily α 0) (r : Multi 0) (n : ℕ) :
     mu F (scaleMult n r) = iterate_op (mu F r) n := by
   -- Fin 0 is empty, so all multiplicities are zero and both sides are ident.
@@ -972,22 +785,25 @@ structure GridBridge {k : ℕ} (F : AtomFamily α k) : Prop where
   bridge : ∀ (r : Multi k) (n : ℕ),
     mu F (scaleMult n r) = iterate_op (mu F r) n
 
+omit [KSSeparation α] in
 /-- GridBridge for k=0 is trivial (both sides are ident since Fin 0 is empty).
 
 `GridBridge` is a `Prop`-valued structure, not a class, so this is a plain `def`
 (referenced only by name, never via instance synthesis). -/
-def gridBridge_k0 (F : AtomFamily α 0) : GridBridge F :=
+theorem gridBridge_k0 (F : AtomFamily α 0) : GridBridge F :=
   ⟨fun r n => mu_scaleMult_iterate_k0 F r n⟩
 
+omit [KSSeparation α] in
 /-- GridBridge for singleton atom family (k=1).
     This doesn't require commutativity - it's the base case for induction.
 
 `GridBridge` is a `Prop`-valued structure, not a class, so this is a plain `def`
 (referenced only by name, never via instance synthesis). -/
-def gridBridge_singleton (a : α) (ha : ident < a) :
+theorem gridBridge_singleton (a : α) (ha : ident < a) :
     GridBridge (singletonAtomFamily (α := α) a ha) :=
   ⟨fun r n => mu_scaleMult_eq_iterate_singleton a ha r n⟩
 
+omit [KSSeparation α] in
 /-- GridBridge for any k=1 family.
     For k=1, all multiplicities reduce to a single atom, making the bridge trivial.
     The proof mirrors mu_scaleMult_eq_iterate_singleton using F.atoms 0. -/
@@ -1031,7 +847,7 @@ lemma gridBridge_of_k_eq_one {F : AtomFamily α 1} : GridBridge F := by
 /-- The separation statistic for a witness (r, u).
     This is the "candidate value" for Θ(d) if μ(F, r) = d^u. -/
 noncomputable def separationStatistic {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (r : Multi k) (u : ℕ) (hu : 0 < u) : ℝ :=
+    (r : Multi k) (u : ℕ) (_hu : 0 < u) : ℝ :=
   R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ / u
 
 /-- B-set for the extension: old multiplicities r such that μ(F, r) = d^u. -/
@@ -1083,6 +899,7 @@ Since `iterate_op d u` is strictly increasing in `u` when `ident < d`, the bound
 
 These are small but frequently useful facts when coordinating arguments across different levels. -/
 
+omit [KSSeparation α] in
 lemma extensionSetA_base_subset_of_le {k : ℕ} {F : AtomFamily α k} {d : α} (hd : ident < d)
     (r0 : Multi k) {u v : ℕ} (huv : u ≤ v) :
     extensionSetA_base F d r0 u ⊆ extensionSetA_base F d r0 v := by
@@ -1092,9 +909,10 @@ lemma extensionSetA_base_subset_of_le {k : ℕ} {F : AtomFamily α k} {d : α} (
   have hbd : op (mu F r0) (iterate_op d u) ≤ op (mu F r0) (iterate_op d v) :=
     (op_strictMono_right (mu F r0)).monotone h_iter
   have : mu F r < op (mu F r0) (iterate_op d v) := lt_of_lt_of_le (by
-    simpa [extensionSetA_base, Set.mem_setOf_eq] using hr) hbd
-  simpa [extensionSetA_base, Set.mem_setOf_eq] using this
+    simpa [extensionSetA_base, Set.mem_ofPred_eq] using hr) hbd
+  simpa [extensionSetA_base, Set.mem_ofPred_eq] using this
 
+omit [KSSeparation α] in
 lemma extensionSetC_base_subset_of_le {k : ℕ} {F : AtomFamily α k} {d : α} (hd : ident < d)
     (r0 : Multi k) {u v : ℕ} (huv : u ≤ v) :
     extensionSetC_base F d r0 v ⊆ extensionSetC_base F d r0 u := by
@@ -1104,51 +922,24 @@ lemma extensionSetC_base_subset_of_le {k : ℕ} {F : AtomFamily α k} {d : α} (
   have hbd : op (mu F r0) (iterate_op d u) ≤ op (mu F r0) (iterate_op d v) :=
     (op_strictMono_right (mu F r0)).monotone h_iter
   have : op (mu F r0) (iterate_op d u) < mu F r :=
-    lt_of_le_of_lt hbd (by simpa [extensionSetC_base, Set.mem_setOf_eq] using hr)
-  simpa [extensionSetC_base, Set.mem_setOf_eq] using this
+    lt_of_le_of_lt hbd (by simpa [extensionSetC_base, Set.mem_ofPred_eq] using hr)
+  simpa [extensionSetC_base, Set.mem_ofPred_eq] using this
 
 /-- Base-indexed statistic: slope candidate `(Θ(r) - Θ(r0)) / u`. -/
 noncomputable def separationStatistic_base {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (r0 r : Multi k) (u : ℕ) (hu : 0 < u) : ℝ :=
+    (r0 r : Multi k) (u : ℕ) (_hu : 0 < u) : ℝ :=
   (R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ - R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩) / u
 
 lemma separationStatistic_base_scaleMult {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (r0 r : Multi k) (u m : ℕ) (hu : 0 < u) (hm : 0 < m) :
     separationStatistic_base R (scaleMult m r0) (scaleMult m r) (u * m) (Nat.mul_pos hu hm) =
       separationStatistic_base R r0 r u hu := by
-  classical
-  have hθr :
-      R.Θ_grid ⟨mu F (scaleMult m r), mu_mem_kGrid F (scaleMult m r)⟩ =
-        m * R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ :=
-    Theta_scaleMult (R := R) (r := r) m
-  have hθr0 :
-      R.Θ_grid ⟨mu F (scaleMult m r0), mu_mem_kGrid F (scaleMult m r0)⟩ =
-        m * R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ :=
-    Theta_scaleMult (R := R) (r := r0) m
-  have hm0 : (m : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_zero_of_lt hm)
-  simp [separationStatistic_base, hθr, hθr0, Nat.cast_mul]
-  have hfactor :
-      ((m : ℝ) * R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ -
-            (m : ℝ) * R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩) =
-        (m : ℝ) *
-          (R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ -
-            R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩) := by
-    ring
-  rw [hfactor]
-  have : ((u : ℝ) * (m : ℝ)) = (m : ℝ) * (u : ℝ) := by ring
-  rw [this]
-  simpa [mul_assoc, mul_comm, mul_left_comm] using
-    (mul_div_mul_left
-      (R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ -
-        R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩)
-      (u : ℝ)
-      hm0)
+  simp only [separationStatistic_base, Theta_scaleMult, Nat.cast_mul, ← mul_sub]
+  rw [mul_comm (u : ℝ) (m : ℝ), mul_div_mul_left _ _ (ne_of_gt (Nat.cast_pos.mpr hm))]
 
-/-- A scale-sensitive “size” for a base-indexed problem: `Θ(r0)/u^2`.
 
-This is motivated by the (currently incomplete) idea of proving base-indexed strict-gap bounds
-by a strong-induction argument where one passes from `(r0,u)` to `(scaleMult m r0, u*m)` with `m>1`,
-which decreases this quantity by a factor of `1/m`. -/
+/-- The real statistic `Θ(r0)/u²` scales by `1/m`. This scaling identity alone
+is not a well-founded termination argument. -/
 noncomputable def baseGapMeasure {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (r0 : Multi k) (u : ℕ) : ℝ :=
   R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ / ((u : ℝ) ^ 2)
@@ -1162,7 +953,7 @@ lemma baseGapMeasure_scaleMult {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep
         m * R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ :=
     Theta_scaleMult (R := R) (r := r0) m
   have hm0 : (m : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_zero_of_lt hm)
-  simp [baseGapMeasure, hθ, Nat.cast_mul, pow_two, mul_assoc, mul_left_comm, mul_comm, hm0]
+  simp [baseGapMeasure, hθ, Nat.cast_mul, pow_two, mul_left_comm, mul_comm]
   -- normalize denominators and cancel one factor of `m`
   field_simp
 
@@ -1179,6 +970,7 @@ Important: this yields a **base-indexed** `B`-witness for base `X₀`; it does *
 absolute witness of the form `Y = d^n` unless `X₀ = ident`.
 -/
 
+omit [KSSeparation α] in
 lemma cancel_right_iterate_eq
     {k : ℕ} (F : AtomFamily α k) (d : α)
     (r0 ry : Multi k) (u v : ℕ) (huv : v ≤ u)
@@ -1209,6 +1001,7 @@ lemma cancel_right_iterate_eq
     (op_strictMono_left (iterate_op d v)).injective hEq'
   exact hcancel.symm
 
+omit [KSSeparation α] in
 lemma extensionSetB_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) :
     extensionSetB_base F d (0 : Multi k) u = extensionSetB F d u := by
   ext r
@@ -1216,18 +1009,21 @@ lemma extensionSetB_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ)
   have h0 : (0 : Multi k) = (fun _ : Fin k => 0) := rfl
   simp [extensionSetB_base, extensionSetB, h0, mu_zero (F := F), op_ident_left]
 
+omit [KSSeparation α] in
 lemma extensionSetA_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) :
     extensionSetA_base F d (0 : Multi k) u = extensionSetA F d u := by
   ext r
   have h0 : (0 : Multi k) = (fun _ : Fin k => 0) := rfl
   simp [extensionSetA_base, extensionSetA, h0, mu_zero (F := F), op_ident_left]
 
+omit [KSSeparation α] in
 lemma extensionSetC_base_zero {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) :
     extensionSetC_base F d (0 : Multi k) u = extensionSetC F d u := by
   ext r
   have h0 : (0 : Multi k) = (fun _ : Fin k => 0) := rfl
   simp [extensionSetC_base, extensionSetC, h0, mu_zero (F := F), op_ident_left]
 
+omit [KSSeparation α] in
 /-- The A/B/C sets partition the space of multiplicities. -/
 lemma extension_abc_partition {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ) (r : Multi k) :
     r ∈ extensionSetA F d u ∨ r ∈ extensionSetB F d u ∨ r ∈ extensionSetC F d u := by
@@ -1236,31 +1032,16 @@ lemma extension_abc_partition {k : ℕ} (F : AtomFamily α k) (d : α) (u : ℕ)
   · right; left; exact heq
   · right; right; exact hgt
 
-/-! ### Key Lemma: Repetition preserves B-membership
+/-! Repetition of B-witnesses uses the singleton power law or an explicitly
+supplied `GridBridge`. B-membership alone does not establish that bridge. -/
 
-If μ(F, r) = d^u (i.e., r ∈ B(u)), then μ(F, n·r) = d^{nu} (i.e., n·r ∈ B(nu)).
-
-**Proof strategy** (from K&S Appendix A, Section A.3.2):
-
-For k=1 (singleton family): This is trivial via `iterate_op_mul`.
-  μ(F, r) = a^r, so μ(F, n·r) = a^{nr} = (a^r)^n = (μ(F, r))^n = (d^u)^n = d^{nu}.
-
-For k > 1: The proof uses the ORDER STRUCTURE. We show that μ(F, n·r) and d^{nu}
-cannot be different by using the Θ representation:
-- Θ(μ(F, n·r)) = n * Θ(μ(F, r)) (by Theta_scaleMult)
-- d^{nu} = (d^u)^n = (μ(F, r))^n (by iterate_op_mul and hr)
-- If μ(F, n·r) ≠ (μ(F, r))^n, the Archimedean property + repetition lemma give contradiction.
-
-The deep insight: even though μ(F, n·r) ≠ (μ(F, r))^n in general without commutativity,
-when μ(F, r) = d^u for some EXTERNAL element d, the equality IS forced by the order structure.
--/
-
+omit [KSSeparation α] in
 /-- Repetition lemma for k=1: direct proof via iterate_op_mul. -/
 theorem repetition_preserves_B_singleton (a : α) (ha : ident < a)
-    (d : α) (hd : ident < d) (r : Multi 1) (u : ℕ) (hu : 0 < u)
-    (hr : r ∈ extensionSetB (singletonAtomFamily (α := α) a ha) d u) (n : ℕ) (hn : 0 < n) :
+    (d : α) (_hd : ident < d) (r : Multi 1) (u : ℕ) (_hu : 0 < u)
+    (hr : r ∈ extensionSetB (singletonAtomFamily (α := α) a ha) d u) (n : ℕ) (_hn : 0 < n) :
     scaleMult n r ∈ extensionSetB (singletonAtomFamily (α := α) a ha) d (n * u) := by
-  simp only [extensionSetB, Set.mem_setOf_eq] at hr ⊢
+  simp only [extensionSetB, Set.mem_ofPred_eq] at hr ⊢
   -- hr : mu F r = iterate_op d u
   -- goal: mu F (scaleMult n r) = iterate_op d (n * u)
   let F := singletonAtomFamily (α := α) a ha
@@ -1274,50 +1055,26 @@ theorem repetition_preserves_B_singleton (a : α) (ha : ident < a)
     ring_nf
   rw [h1, h2]
 
-/-- **B-case scaling lemma**: When μ(F, r) = d^u (i.e., r ∈ B), the equality
-    μ(F, n·r) = (μ(F, r))^n holds due to the order/Θ structure.
-
-    **Mathematical argument** (per GPT-5.1 Pro § 4.2):
-    1. Let x = μ(F, r) = d^u and y = d^{nu} = x^n (by iterate_op_mul).
-    2. Want to show: μ(F, n·r) = y.
-    3. Θ(μ(F, n·r)) = n * Θ(μ(F, r)) = n * Θ(x) (by Theta_scaleMult).
-    4. Θ(x^n) = n * Θ(x) (by iterate additivity on Θ).
-    5. So μ(F, n·r) and x^n have the same Θ-value.
-    6. Since Θ is strictly monotone (order isomorphism), they are equal.
-
-    This is a **deep consequence** of the Appendix A order/representation machinery,
-    NOT a primitive algebraic law. The key restriction: μ(F, r) must be a pure power
-    d^u of an external element d.
-
-    TODO: Complete the proof using Theta_scaleMult + strict monotonicity + trichotomy.
-          This requires the full Θ construction from associativity_representation. -/
+/-- Compatibility projection of a supplied `GridBridge`. The historical B-premises
+are retained; this wrapper does not derive the bridge from B-membership. -/
 lemma mu_scaleMult_iterate_B
-    {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F) (IH : GridBridge F)
-    (d : α) (hd : ident < d) (r : Multi k) (u : ℕ) (hu : 0 < u)
-    (hr : r ∈ extensionSetB F d u) (n : ℕ) (hn : 0 < n) :
+    {k : ℕ} {F : AtomFamily α k} (_R : MultiGridRep F) (IH : GridBridge F)
+    (d : α) (_hd : ident < d) (r : Multi k) (u : ℕ) (_hu : 0 < u)
+    (_hr : r ∈ extensionSetB F d u) (n : ℕ) (_hn : 0 < n) :
     mu F (scaleMult n r) = iterate_op (mu F r) n := by
   -- In the B-case we can appeal directly to the inductive grid bridge.
   -- The bridge already states the desired scaling identity for every r,n.
   simpa using IH.bridge r n
 
-/-- Repetition lemma (general k): If r ∈ B(u), then (n·r) ∈ B(nu).
-
-    For general k > 1, this uses the B-case scaling lemma `mu_scaleMult_iterate_B`.
-    The key is that μ(F, n·r) and (μ(F, r))^n have the same Θ-value in the B-case,
-    and therefore must be equal by the order structure.
-
-    **Mathematical argument** (from K&S Appendix A):
-    1. hr gives: μ(F, r) = d^u
-    2. By `mu_scaleMult_iterate_B`: μ(F, n·r) = (μ(F, r))^n = (d^u)^n
-    3. By `iterate_op_mul`: (d^u)^n = d^{n*u}
-    4. Therefore: μ(F, n·r) = d^{n*u}, i.e., (n·r) ∈ B(n*u)
--/
+/-- A supplied grid bridge transports B-witnesses to repeated multiplicities.
+The proof uses the original witness equality and multiplication of iterate counts;
+it does not obtain the bridge from B-membership or from observation additivity. -/
 theorem repetition_preserves_B {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (IH : GridBridge F)
     (d : α) (hd : ident < d) (r : Multi k) (u : ℕ) (hu : 0 < u)
     (hr : r ∈ extensionSetB F d u) (n : ℕ) (hn : 0 < n) :
     scaleMult n r ∈ extensionSetB F d (n * u) := by
-  simp only [extensionSetB, Set.mem_setOf_eq] at hr ⊢
+  simp only [extensionSetB, Set.mem_ofPred_eq] at hr ⊢
   -- hr : mu F r = iterate_op d u
   -- goal: mu F (scaleMult n r) = iterate_op d (n * u)
   -- Use the B-case scaling lemma
@@ -1353,64 +1110,50 @@ This pins down Θ(d) uniquely: Θ(d) = σ(r, u) for ANY witness (r, u) ∈ B.
 4. Apply Θ and use Theta_scaleMult to get the equality.
 -/
 
+/-- Positive-denominator statistics compare exactly as their common-power grid states. -/
+lemma separationStatistic_lt_iff_iterate {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
+    (IH : GridBridge F) (r s : Multi k) (u v : ℕ) (hu : 0 < u) (hv : 0 < v) :
+    separationStatistic R r u hu < separationStatistic R s v hv ↔
+      iterate_op (mu F r) v < iterate_op (mu F s) u := by
+  have h := R.readout_lt_iff (scaleMult v r) (scaleMult u s)
+  change (R.Θ_grid ⟨mu F (scaleMult v r), mu_mem_kGrid F _⟩ <
+    R.Θ_grid ⟨mu F (scaleMult u s), mu_mem_kGrid F _⟩ ↔ _) at h
+  rw [Theta_scaleMult, Theta_scaleMult, IH.bridge, IH.bridge] at h
+  unfold separationStatistic
+  rw [div_lt_div_iff₀ (Nat.cast_pos.mpr hu) (Nat.cast_pos.mpr hv)]
+  simpa only [mul_comm] using h
+
+lemma separationStatistic_eq_iff_iterate {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
+    (IH : GridBridge F) (r s : Multi k) (u v : ℕ) (hu : 0 < u) (hv : 0 < v) :
+    separationStatistic R r u hu = separationStatistic R s v hv ↔
+      iterate_op (mu F r) v = iterate_op (mu F s) u := by
+  have h := R.readout_eq_iff (scaleMult v r) (scaleMult u s)
+  change (R.Θ_grid ⟨mu F (scaleMult v r), mu_mem_kGrid F _⟩ =
+    R.Θ_grid ⟨mu F (scaleMult u s), mu_mem_kGrid F _⟩ ↔ _) at h
+  rw [Theta_scaleMult, Theta_scaleMult, IH.bridge, IH.bridge] at h
+  unfold separationStatistic
+  rw [div_eq_div_iff (ne_of_gt (Nat.cast_pos.mpr hu)) (ne_of_gt (Nat.cast_pos.mpr hv))]
+  simpa only [mul_comm] using h
+
 /-- If two witnesses are in B, their separation statistics are equal.
     This is the key uniqueness result for Case B non-empty. -/
 theorem B_witnesses_same_statistic {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (IH : GridBridge F)
-    (d : α) (hd : ident < d)
+    (d : α) (_hd : ident < d)
     (r : Multi k) (u : ℕ) (hu : 0 < u) (hr : r ∈ extensionSetB F d u)
     (r' : Multi k) (u' : ℕ) (hu' : 0 < u') (hr' : r' ∈ extensionSetB F d u') :
     separationStatistic R r u hu = separationStatistic R r' u' hu' := by
-  unfold separationStatistic
-  -- We need: Θ(μ(F, r)) / u = Θ(μ(F, r')) / u'
-  -- Equivalently: u' * Θ(μ(F, r)) = u * Θ(μ(F, r'))
+  clear _hd
+  apply (separationStatistic_eq_iff_iterate R IH r r' u u' hu hu').mpr
+  change mu F r = iterate_op d u at hr
+  change mu F r' = iterate_op d u' at hr'
+  rw [hr, hr', iterate_op_mul, iterate_op_mul, Nat.mul_comm]
 
-  -- Scale (r, u) by u' to get (u'·r, u'*u) in B(u'*u)
-  have hr_scaled : scaleMult u' r ∈ extensionSetB F d (u' * u) :=
-    repetition_preserves_B R IH d hd r u hu hr u' hu'
-
-  -- Scale (r', u') by u to get (u·r', u*u') in B(u*u')
-  have hr'_scaled : scaleMult u r' ∈ extensionSetB F d (u * u') :=
-    repetition_preserves_B R IH d hd r' u' hu' hr' u hu
-
-  -- Both have the same target: d^{u'*u} = d^{u*u'}
-  simp only [extensionSetB, Set.mem_setOf_eq] at hr_scaled hr'_scaled
-  -- hr_scaled : mu F (scaleMult u' r) = iterate_op d (u' * u)
-  -- hr'_scaled : mu F (scaleMult u r') = iterate_op d (u * u')
-
-  -- Since u' * u = u * u', the targets are equal
-  have h_targets_eq : iterate_op d (u' * u) = iterate_op d (u * u') := by
-    congr 1; ring
-
-  -- Therefore μ(F, u'·r) = μ(F, u·r')
-  have h_mu_eq : mu F (scaleMult u' r) = mu F (scaleMult u r') := by
-    rw [hr_scaled, h_targets_eq, ← hr'_scaled]
-
-  -- Apply Θ to both sides
-  have h_Theta_eq : R.Θ_grid ⟨mu F (scaleMult u' r), mu_mem_kGrid F _⟩ =
-                    R.Θ_grid ⟨mu F (scaleMult u r'), mu_mem_kGrid F _⟩ := by
-    congr 1; ext; exact h_mu_eq
-
-  -- Use Theta_scaleMult on both sides
-  have h_lhs : R.Θ_grid ⟨mu F (scaleMult u' r), mu_mem_kGrid F _⟩ =
-               u' * R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ :=
-    Theta_scaleMult R r u'
-
-  have h_rhs : R.Θ_grid ⟨mu F (scaleMult u r'), mu_mem_kGrid F _⟩ =
-               u * R.Θ_grid ⟨mu F r', mu_mem_kGrid F r'⟩ :=
-    Theta_scaleMult R r' u
-
-  -- Combine: u' * Θ(μ(F, r)) = u * Θ(μ(F, r'))
-  rw [h_lhs, h_rhs] at h_Theta_eq
-
-  -- Convert to division form: Θ(μ(F, r)) / u = Θ(μ(F, r')) / u'
-  field_simp
-  linarith [h_Theta_eq]
 
 /-- The common statistic value for all B-witnesses.
     When B is non-empty, this is the value we assign to Θ(d). -/
 noncomputable def B_common_statistic {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (d : α) (hd : ident < d)
+    (d : α) (_hd : ident < d)
     (hB_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetB F d u) : ℝ :=
   -- Use Classical.choose to extract witness from existential
   let r := Classical.choose hB_nonempty
@@ -1474,13 +1217,11 @@ This uses the Archimedean property to find arbitrarily fine comparisons.
 /-- When B is empty, A and C partition the witnesses with a gap.
     We can choose δ in the gap as Θ(d). -/
 noncomputable def B_empty_delta {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (d : α) (hd : ident < d)
-    (hB_empty : ∀ r u, 0 < u → r ∉ extensionSetB F d u)
-    (hA_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetA F d u)
-    (hC_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetC F d u) : ℝ :=
-  -- The supremum of A-statistics is a valid choice for δ
-  -- In a complete construction, we'd define this as a Dedekind cut
-  -- For now, we use sSup of the A-statistics (using Θ-values directly)
+    (d : α) (_hd : ident < d)
+    (_hB_empty : ∀ r u, 0 < u → r ∉ extensionSetB F d u)
+    (_hA_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetA F d u)
+    (_hC_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetC F d u) : ℝ :=
+  -- The cut is the supremum of the supplied A-statistics; its endpoint laws are proved below.
   sSup {s : ℝ | ∃ r u, 0 < u ∧ r ∈ extensionSetA F d u ∧
                 s = R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ / u}
 
@@ -1504,6 +1245,7 @@ lemma lt_floor_succ_bracket (δ θ : ℝ) (hδ : 0 < δ) (hθ : 0 ≤ θ) :
       apply mul_lt_mul_of_pos_right h_lt hδ
     _ = ((Nat.floor (θ / δ) + 1 : ℕ) : ℝ) * δ := by norm_cast
 
+omit [KSSeparation α] in
 /-- **Helper Lemma 0 (GPT-5 Pro)**: Swap middle elements using grid commutativity.
 Given multi-index witnesses for grid membership, we can swap using associativity + commutativity. -/
 lemma op_swap_right_on_grid {k : ℕ} {F : AtomFamily α k}
@@ -1516,12 +1258,14 @@ lemma op_swap_right_on_grid {k : ℕ} {F : AtomFamily α k}
     _ = op (mu F r_x) (op (mu F r_z) (mu F r_y)) := by rw [H.comm r_y r_z]
     _ = op (op (mu F r_x) (mu F r_z)) (mu F r_y) := (op_assoc _ _ _).symm
 
+omit [KSSeparation α] in
 /-- **Helper**: Iterates of atoms are grid members. -/
 lemma iterate_atom_mem_kGrid {k : ℕ} (F : AtomFamily α k) (i : Fin k) (n : ℕ) :
     iterate_op (F.atoms i) n ∈ kGrid F := by
   use unitMulti i n
   exact (mu_unitMulti F i n).symm
 
+omit [KSSeparation α] in
 /-- **Helper**: Folds with contributions from a multiplicity vector.
 Two folds over the same list with the same function are equal. -/
 private lemma mu_foldl_eq {k : ℕ} (F : AtomFamily α k) (r : Multi k)
@@ -1529,6 +1273,7 @@ private lemma mu_foldl_eq {k : ℕ} (F : AtomFamily α k) (r : Multi k)
     List.foldl (fun a i => op a (iterate_op (F.atoms i) (r i))) acc l =
     List.foldl (fun a i => op a (iterate_op (F.atoms i) (r i))) acc l := rfl
 
+omit [KSSeparation α] in
 /-- **Helper**: Pull an iterate contribution past another using GridComm.
 This is the core swap operation that enables reordering. -/
 private lemma op_iterate_comm {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
@@ -1539,6 +1284,7 @@ private lemma op_iterate_comm {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
   have hj : iterate_op (F.atoms j) n = mu F (unitMulti j n) := (mu_unitMulti F j n).symm
   rw [hi, hj, H.comm (unitMulti i m) (unitMulti j n)]
 
+omit [KSSeparation α] in
 /-- **Helper**: Pull an iterate contribution to the right of accumulator.
 Key: op (op acc x) y = op (op acc y) x when x, y are grid elements. -/
 private lemma op_op_comm_grid {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
@@ -1551,6 +1297,7 @@ private lemma op_op_comm_grid {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
         rw [op_iterate_comm H i j m n]
     _ = op (op acc (iterate_op (F.atoms j) n)) (iterate_op (F.atoms i) m) := (op_assoc _ _ _).symm
 
+omit [KSSeparation α] in
 /-- **Helper**: Pull one s-contribution through an r-fold using commutativity.
 After folding r-contributions, we can move a single s-contribution past. -/
 private lemma foldl_r_then_s {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
@@ -1578,6 +1325,7 @@ private lemma foldl_r_then_s {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
                (op (op acc (iterate_op (F.atoms j) n)) (iterate_op (F.atoms i) (r i))) tl := by
           rw [hswap]
 
+omit [KSSeparation α] in
 /-- **Carry lemma**: Starting the fold with an extra `j`-iterate is the same as
 bumping the `j`-coordinate by `n`.
 
@@ -1586,22 +1334,22 @@ iterate across the fold one head at a time, merge exponents when we hit j,
 then use foldl_congr_on_list for the tail (since j can't appear again by nodup). -/
 private lemma foldl_carry_unit {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
     (r : Multi k) (j : Fin k) (n : ℕ) :
-    ∀ (l : List (Fin k)) (hnd : l.Nodup) (hj : j ∈ l) (acc : α),
+    ∀ (l : List (Fin k)) (_hnd : l.Nodup) (_hj : j ∈ l) (acc : α),
       List.foldl (fun a i => op a (iterate_op (F.atoms i) (r i)))
         (op acc (iterate_op (F.atoms j) n)) l
       =
       List.foldl (fun a i => op a (iterate_op (F.atoms i) ((r + unitMulti j n) i)))
         acc l := by
-  intro l hnd hj acc
+  intro l _hnd _hj acc
   induction l generalizing acc with
   | nil =>
-    simp at hj  -- j ∈ [] is impossible
+    simp at _hj  -- j ∈ [] is impossible
   | cons i tl ih =>
-    have hi_not_in_tl : i ∉ tl := (List.nodup_cons.mp hnd).1
-    have hnd_tl : tl.Nodup := (List.nodup_cons.mp hnd).2
-    have hj' : j = i ∨ j ∈ tl := by
-      simpa [List.mem_cons] using hj
-    cases hj' with
+    have hi_not_in_tl : i ∉ tl := (List.nodup_cons.mp _hnd).1
+    have hnd_tl : tl.Nodup := (List.nodup_cons.mp _hnd).2
+    have _hj' : j = i ∨ j ∈ tl := by
+      simpa [List.mem_cons] using _hj
+    cases _hj' with
     | inl hji =>
       subst hji
       -- Now j is the head, and j ∉ tl by nodup
@@ -1645,9 +1393,10 @@ private lemma foldl_carry_unit {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
       -- RHS head uses (r + unitMulti j n) i = r i since i ≠ j
       have hi_eq : (r + unitMulti j n) i = r i := by
         simp [Pi.add_apply, unitMulti, hij_ne]
-      simp only [List.foldl_cons, hi_eq]
+      simp only [hi_eq]
       exact hih
 
+omit [KSSeparation α] in
 /-- **Helper**: Adding a unit contribution to mu using GridComm.
 The key insight is that mu F (r + unitMulti j n) has contribution r_j + n at index j,
 which equals op (iter_j^{r_j}) (iter_j^n) = iter_j^{r_j + n} by iterate_op_add.
@@ -1682,6 +1431,7 @@ private lemma mu_add_unitMulti {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
           simpa [l, op_ident_left] using
             (foldl_carry_unit (H := H) (r := r) (j := j) (n := n) l hnd hj ident)
 
+omit [KSSeparation α] in
 /-- **Generalized Distribution Lemma**: When starting from op (mu F r_acc) (mu F s_acc),
 the combined fold distributes into separate r and s folds.
 This requires witness tracking for commutativity.
@@ -1729,6 +1479,7 @@ private lemma foldl_op_distrib_gen {k : ℕ} {F : AtomFamily α k} (H : GridComm
     rw [hr_new, hs_new]
     exact ih (r_acc + unitMulti j (r j)) (s_acc + unitMulti j (s j))
 
+omit [KSSeparation α] in
 /-- **Key Distribution Lemma**: Foldl of "op-pair" distributes as op of two foldls.
 When all contributions commute pairwise (via GridComm), we can separate the fold of
 (a^r ⊕ a^s) into op (fold of a^r) (fold of a^s).
@@ -1751,22 +1502,9 @@ private lemma foldl_op_distrib {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
   simp only [h0, op_ident_left] at hgen
   exact hgen
 
-/-- **Helper: mu is additive if the grid commutes.**
-
-This is the key algebraic property: when GridComm holds, mu preserves addition.
-The proof requires reordering the foldl terms using commutativity.
-
-**Proof Strategy** (per GPT-5 Pro):
-For F' = extendAtomFamily F d hd with k+1 atoms:
-1. Use splitMulti/joinMulti to decompose multiplicities
-2. Apply mu_extend_last to separate old and new parts
-3. Get GridComm F from H' via gridComm_of_extended (Lemma 2)
-4. Apply IH (mu_add_of_comm on F) for the old grid part
-5. Use iterate_op_add for the new atom's contribution
-6. Reorder using op_swap_right_on_grid (Lemma 0)
-
-**Dependencies**: Blocks mu_scale_eq_iterate_of_comm, delta_shift_equiv (pure A/C),
-and h_strictMono (t_x ≠ t_y cases). -/
+omit [KSSeparation α] in
+/-- Actual grid composition agrees with multiplicity addition under `GridComm`.
+The fold proof reorders only contributions certified to commute. -/
 lemma mu_add_of_comm {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
     (r s : Multi k) : mu F (r + s) = op (mu F r) (mu F s) := by
   -- Strategy: Rewrite mu F (r+s) using iterate_op_add, then apply foldl_op_distrib.
@@ -1796,38 +1534,6 @@ lemma mu_add_of_comm {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
 
   -- Now apply foldl_op_distrib
   exact foldl_op_distrib H (List.finRange k) r s
-
-/-!
-### GridBridge derived from GridComm
-
-In a commutative μ-grid, the “bridge” identity
-
-`μ(F, n·r) = (μ(F, r))^n`
-
-holds by a simple induction using `mu_add_of_comm`.
-
-This lemma is useful to avoid threading `GridBridge` as an independent hypothesis in situations
-where `GridComm` is already available.
--/
-
-/-- If the μ-grid is commutative (`GridComm`), then it satisfies the bridge identity. -/
-theorem gridBridge_of_gridComm {k : ℕ} {F : AtomFamily α k} (H : GridComm F) : GridBridge F := by
-  refine ⟨?_⟩
-  intro r n
-  induction n with
-  | zero =>
-      simp [GridBridge, scaleMult, mu_zero, iterate_op_zero]
-  | succ n ih =>
-      calc
-        mu F (scaleMult (n + 1) r)
-            = mu F (r + scaleMult n r) := by
-                have hscale : scaleMult (n + 1) r = r + scaleMult n r := by
-                  ext i
-                  simp [scaleMult, Nat.succ_mul, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
-                simpa [hscale]
-        _ = op (mu F r) (mu F (scaleMult n r)) := mu_add_of_comm (F := F) H r (scaleMult n r)
-        _ = op (mu F r) (iterate_op (mu F r) n) := by rw [ih]
-        _ = iterate_op (mu F r) (n + 1) := rfl
 
 /-!
 ### Cancelling a common multiplicity prefix (base-indexed A/B/C and statistics)
@@ -1872,7 +1578,7 @@ lemma commonMulti_scaleMult_eq_zero {k : ℕ} (r0 r : Multi k) (m : ℕ)
     _ = (0 : Multi k) := by
       -- scaleMult m 0 = 0
       ext i
-      simpa [h, scaleMult]
+      simp [h, scaleMult]
 
 /-- Remove the `commonMulti r s` prefix from `r`. -/
 def remMultiLeft {k : ℕ} (r s : Multi k) : Multi k := fun i => r i - commonMulti r s i
@@ -1886,188 +1592,82 @@ lemma commonMulti_remMultiLeft_remMultiRight_eq_zero {k : ℕ} (r s : Multi k) :
   by_cases h : r i ≤ s i
   · have hmin : Nat.min (r i) (s i) = r i := Nat.min_eq_left h
     -- Then `remMultiLeft r s i = 0`, so the min is 0.
-    simp [commonMulti, remMultiLeft, remMultiRight, hmin, Nat.min_eq_left (Nat.zero_le _)]
+    simp [commonMulti, remMultiLeft, remMultiRight, hmin]
   · have h' : s i ≤ r i := le_of_not_ge h
     have hmin : Nat.min (r i) (s i) = s i := Nat.min_eq_right h'
-    simp [commonMulti, remMultiLeft, remMultiRight, hmin, Nat.min_eq_right (Nat.zero_le _)]
+    simp [commonMulti, remMultiLeft, remMultiRight, hmin]
 
 lemma commonMulti_add_remMultiLeft {k : ℕ} (r s : Multi k) : commonMulti r s + remMultiLeft r s = r := by
   ext i
-  have hle : commonMulti r s i ≤ r i := Nat.min_le_left _ _
-  -- `Nat.sub_add_cancel` gives `(r - c) + c = r`; commute the summands to match our goal.
-  simpa [commonMulti, remMultiLeft, Pi.add_apply, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
-    (Nat.sub_add_cancel hle).symm
+  change commonMulti r s i + (r i - commonMulti r s i) = r i
+  exact Nat.add_sub_of_le (Nat.min_le_left _ _)
+
 
 lemma commonMulti_add_remMultiRight {k : ℕ} (r s : Multi k) : commonMulti r s + remMultiRight r s = s := by
   ext i
-  have hle : commonMulti r s i ≤ s i := Nat.min_le_right _ _
-  simpa [commonMulti, remMultiRight, Pi.add_apply, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
-    (Nat.sub_add_cancel hle).symm
+  change commonMulti r s i + (s i - commonMulti r s i) = s i
+  exact Nat.add_sub_of_le (Nat.min_le_right _ _)
 
+
+omit [KSSeparation α] in
+private lemma mu_common_factor {k : ℕ} {F : AtomFamily α k} (H : GridComm F)
+    (r0 r : Multi k) :
+    mu F r0 = op (mu F (commonMulti r0 r)) (mu F (remMultiLeft r0 r)) ∧
+    mu F r = op (mu F (commonMulti r0 r)) (mu F (remMultiRight r0 r)) := by
+  constructor
+  · rw [← mu_add_of_comm H, commonMulti_add_remMultiLeft]
+  · rw [← mu_add_of_comm H, commonMulti_add_remMultiRight]
+
+omit [KSSeparation α] in
 lemma extensionSetA_base_iff_remMulti {k : ℕ} {F : AtomFamily α k} (H : GridComm F) (d : α)
     (r0 r : Multi k) (u : ℕ) :
     r ∈ extensionSetA_base F d r0 u ↔
       remMultiRight r0 r ∈ extensionSetA_base F d (remMultiLeft r0 r) u := by
-  classical
-  -- Abbreviate the common part and remainders.
-  let c : Multi k := commonMulti r0 r
-  let r0' : Multi k := remMultiLeft r0 r
-  let r' : Multi k := remMultiRight r0 r
-  have hr0 : r0 = c + r0' := (commonMulti_add_remMultiLeft r0 r).symm
-  have hr : r = c + r' := (commonMulti_add_remMultiRight r0 r).symm
-  -- Rewrite the defining inequality and cancel the common left prefix `μ(c)`.
-  constructor
-  · intro hrA
-    have hμr : mu F r < op (mu F r0) (iterate_op d u) := by
-      simpa [extensionSetA_base, Set.mem_setOf_eq] using hrA
-    have hμr' : op (mu F c) (mu F r') < op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      -- Expand μ(r) and μ(r0) using additivity on the commutative μ-grid.
-      have hμr_eq : mu F r = op (mu F c) (mu F r') := by
-        simpa [hr] using (mu_add_of_comm H c r')
-      have hμr0_eq : mu F r0 = op (mu F c) (mu F r0') := by
-        simpa [hr0] using (mu_add_of_comm H c r0')
-      -- Reassociate the boundary so the common prefix is `op (mu F c) _`.
-      have hbd :
-          op (mu F r0) (iterate_op d u) = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-        simpa [hμr0_eq, op_assoc]
-      simpa [hμr_eq, hbd] using hμr
-    have hcancel :
-        mu F r' < op (mu F r0') (iterate_op d u) := by
-      have hmono : StrictMono (fun x : α => op (mu F c) x) := op_strictMono_right (mu F c)
-      exact (hmono.lt_iff_lt).1 hμr'
-    simpa [extensionSetA_base, Set.mem_setOf_eq, c, r0', r', remMultiLeft, remMultiRight] using hcancel
-  · intro hrA'
-    have hμr' : mu F r' < op (mu F r0') (iterate_op d u) := by
-      simpa [extensionSetA_base, Set.mem_setOf_eq] using hrA'
-    have hμr : op (mu F c) (mu F r') < op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      exact (op_strictMono_right (mu F c)) hμr'
-    have hμr_eq : mu F r = op (mu F c) (mu F r') := by
-      simpa [hr] using (mu_add_of_comm H c r')
-    have hμr0_eq : mu F r0 = op (mu F c) (mu F r0') := by
-      simpa [hr0] using (mu_add_of_comm H c r0')
-    have hbd :
-        op (mu F r0) (iterate_op d u) = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      simpa [hμr0_eq, op_assoc]
-    have : mu F r < op (mu F r0) (iterate_op d u) := by
-      simpa [hμr_eq, hbd] using hμr
-    simpa [extensionSetA_base, Set.mem_setOf_eq] using this
+  obtain ⟨hl, hr⟩ := mu_common_factor H r0 r
+  change mu F r < op (mu F r0) (iterate_op d u) ↔ _
+  rw [hl, hr, op_assoc]
+  exact (op_strictMono_right (mu F (commonMulti r0 r))).lt_iff_lt
 
+
+omit [KSSeparation α] in
 lemma extensionSetB_base_iff_remMulti {k : ℕ} {F : AtomFamily α k} (H : GridComm F) (d : α)
     (r0 r : Multi k) (u : ℕ) :
     r ∈ extensionSetB_base F d r0 u ↔
       remMultiRight r0 r ∈ extensionSetB_base F d (remMultiLeft r0 r) u := by
-  classical
-  let c : Multi k := commonMulti r0 r
-  let r0' : Multi k := remMultiLeft r0 r
-  let r' : Multi k := remMultiRight r0 r
-  have hr0 : r0 = c + r0' := (commonMulti_add_remMultiLeft r0 r).symm
-  have hr : r = c + r' := (commonMulti_add_remMultiRight r0 r).symm
-  constructor
-  · intro hrB
-    have hμr : mu F r = op (mu F r0) (iterate_op d u) := by
-      simpa [extensionSetB_base, Set.mem_setOf_eq] using hrB
-    have hμr_eq : mu F r = op (mu F c) (mu F r') := by
-      simpa [hr] using (mu_add_of_comm H c r')
-    have hμr0_eq : mu F r0 = op (mu F c) (mu F r0') := by
-      simpa [hr0] using (mu_add_of_comm H c r0')
-    have hbd :
-        op (mu F r0) (iterate_op d u) = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      simpa [hμr0_eq, op_assoc]
-    have hEq' : op (mu F c) (mu F r') = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      simpa [hμr_eq, hbd] using hμr
-    have hcancel :
-        mu F r' = op (mu F r0') (iterate_op d u) := by
-      exact (op_strictMono_right (mu F c)).injective hEq'
-    simpa [extensionSetB_base, Set.mem_setOf_eq, c, r0', r', remMultiLeft, remMultiRight] using hcancel
-  · intro hrB'
-    have hμr' : mu F r' = op (mu F r0') (iterate_op d u) := by
-      simpa [extensionSetB_base, Set.mem_setOf_eq] using hrB'
-    have hμr_eq : mu F r = op (mu F c) (mu F r') := by
-      simpa [hr] using (mu_add_of_comm H c r')
-    have hμr0_eq : mu F r0 = op (mu F c) (mu F r0') := by
-      simpa [hr0] using (mu_add_of_comm H c r0')
-    have hbd :
-        op (mu F r0) (iterate_op d u) = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      simpa [hμr0_eq, op_assoc]
-    have : mu F r = op (mu F r0) (iterate_op d u) := by
-      -- Reassociate the RHS to match the common prefix.
-      have : op (mu F c) (mu F r') = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-        simpa [hμr']
-      simpa [hμr_eq, hbd] using this
-    simpa [extensionSetB_base, Set.mem_setOf_eq] using this
+  obtain ⟨hl, hr⟩ := mu_common_factor H r0 r
+  change mu F r = op (mu F r0) (iterate_op d u) ↔ _
+  rw [hl, hr, op_assoc]
+  exact (op_strictMono_right (mu F (commonMulti r0 r))).injective.eq_iff
 
+
+omit [KSSeparation α] in
 lemma extensionSetC_base_iff_remMulti {k : ℕ} {F : AtomFamily α k} (H : GridComm F) (d : α)
     (r0 r : Multi k) (u : ℕ) :
     r ∈ extensionSetC_base F d r0 u ↔
       remMultiRight r0 r ∈ extensionSetC_base F d (remMultiLeft r0 r) u := by
-  classical
-  let c : Multi k := commonMulti r0 r
-  let r0' : Multi k := remMultiLeft r0 r
-  let r' : Multi k := remMultiRight r0 r
-  have hr0 : r0 = c + r0' := (commonMulti_add_remMultiLeft r0 r).symm
-  have hr : r = c + r' := (commonMulti_add_remMultiRight r0 r).symm
-  constructor
-  · intro hrC
-    have hμr : op (mu F r0) (iterate_op d u) < mu F r := by
-      simpa [extensionSetC_base, Set.mem_setOf_eq] using hrC
-    have hμr_eq : mu F r = op (mu F c) (mu F r') := by
-      simpa [hr] using (mu_add_of_comm H c r')
-    have hμr0_eq : mu F r0 = op (mu F c) (mu F r0') := by
-      simpa [hr0] using (mu_add_of_comm H c r0')
-    have hbd :
-        op (mu F r0) (iterate_op d u) = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      simpa [hμr0_eq, op_assoc]
-    have hμr' :
-        op (mu F c) (op (mu F r0') (iterate_op d u)) < op (mu F c) (mu F r') := by
-      simpa [hbd, hμr_eq] using hμr
-    have hcancel :
-        op (mu F r0') (iterate_op d u) < mu F r' := by
-      have hmono : StrictMono (fun x : α => op (mu F c) x) := op_strictMono_right (mu F c)
-      exact (hmono.lt_iff_lt).1 hμr'
-    simpa [extensionSetC_base, Set.mem_setOf_eq, c, r0', r', remMultiLeft, remMultiRight] using hcancel
-  · intro hrC'
-    have hμr' : op (mu F r0') (iterate_op d u) < mu F r' := by
-      simpa [extensionSetC_base, Set.mem_setOf_eq] using hrC'
-    have hμr_eq : mu F r = op (mu F c) (mu F r') := by
-      simpa [hr] using (mu_add_of_comm H c r')
-    have hμr0_eq : mu F r0 = op (mu F c) (mu F r0') := by
-      simpa [hr0] using (mu_add_of_comm H c r0')
-    have hbd :
-        op (mu F r0) (iterate_op d u) = op (mu F c) (op (mu F r0') (iterate_op d u)) := by
-      simpa [hμr0_eq, op_assoc]
-    have : op (mu F c) (op (mu F r0') (iterate_op d u)) < op (mu F c) (mu F r') :=
-      (op_strictMono_right (mu F c)) hμr'
-    have : op (mu F r0) (iterate_op d u) < mu F r := by
-      simpa [hbd, hμr_eq] using this
-    simpa [extensionSetC_base, Set.mem_setOf_eq] using this
+  obtain ⟨hl, hr⟩ := mu_common_factor H r0 r
+  change op (mu F r0) (iterate_op d u) < mu F r ↔ _
+  rw [hl, hr, op_assoc]
+  exact (op_strictMono_right (mu F (commonMulti r0 r))).lt_iff_lt
+
 
 lemma separationStatistic_base_eq_remMulti {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (r0 r : Multi k) (u : ℕ) (hu : 0 < u) :
     separationStatistic_base R r0 r u hu =
       separationStatistic_base R (remMultiLeft r0 r) (remMultiRight r0 r) u hu := by
-  classical
-  let c : Multi k := commonMulti r0 r
-  let r0' : Multi k := remMultiLeft r0 r
-  let r' : Multi k := remMultiRight r0 r
-  have hr0 : r0 = c + r0' := (commonMulti_add_remMultiLeft r0 r).symm
-  have hr : r = c + r' := (commonMulti_add_remMultiRight r0 r).symm
-  -- Expand the Θ-values of `r0` and `r` using additivity, then cancel the common part.
-  have hθ_r :
-      R.Θ_grid ⟨mu F r, mu_mem_kGrid F r⟩ =
-        R.Θ_grid ⟨mu F c, mu_mem_kGrid F c⟩ +
-          R.Θ_grid ⟨mu F r', mu_mem_kGrid F r'⟩ := by
-    -- `R.add` is stated for `mu F (c + r')`; rewrite `r = c + r'` and close.
-    -- (`c + r'` is defeq to `fun i => c i + r' i`, so `R.add` applies directly.)
-    rw [hr]; exact R.add c r'
-  have hθ_r0 :
-      R.Θ_grid ⟨mu F r0, mu_mem_kGrid F r0⟩ =
-        R.Θ_grid ⟨mu F c, mu_mem_kGrid F c⟩ +
-          R.Θ_grid ⟨mu F r0', mu_mem_kGrid F r0'⟩ := by
-    rw [hr0]; exact R.add c r0'
-  -- Now cancel the common Θ(c) term.
-  simp [separationStatistic_base, hθ_r, hθ_r0, c, r0', r', remMultiLeft, remMultiRight, sub_eq_add_neg,
-    add_assoc, add_left_comm, add_comm]
+  change (R.multiplicityReadout r - R.multiplicityReadout r0) / u =
+    (R.multiplicityReadout (remMultiRight r0 r) - R.multiplicityReadout (remMultiLeft r0 r)) / u
+  have hr : R.multiplicityReadout r = R.multiplicityReadout (commonMulti r0 r) +
+      R.multiplicityReadout (remMultiRight r0 r) := by
+    rw [← map_add, commonMulti_add_remMultiRight]
+  have hl : R.multiplicityReadout r0 = R.multiplicityReadout (commonMulti r0 r) +
+      R.multiplicityReadout (remMultiLeft r0 r) := by
+    rw [← map_add, commonMulti_add_remMultiLeft]
+  rw [hr, hl]
+  ring
 
+
+omit [KSSeparation α] in
 /-- **Grid Bridge Lemma (with GridComm)**: μ(F, n·r) equals (μ(F, r))^n.
 
 This is the KEY lemma that enables all separation/shift/strict-mono arguments.
@@ -2078,72 +1678,27 @@ lemma mu_scale_eq_iterate_of_comm {k : ℕ} {F : AtomFamily α k}
     (H : GridComm F) (r : Multi k) (n : ℕ) :
     mu F (scaleMult n r) = iterate_op (mu F r) n := by
   induction n with
-  | zero =>
-    -- Base: μ(0·r) = ident = (μ r)^0
-    simp only [scaleMult_zero, mu_zero, iterate_op_zero]
+  | zero => simp only [scaleMult_zero, mu_zero, iterate_op_zero]
   | succ n ih =>
-    -- Step: scaleMult (n+1) r = scaleMult n r + r
-    have h_split : scaleMult (n + 1) r = scaleMult n r + r := by
-      ext i
-      simp only [scaleMult, Pi.add_apply]
-      ring
-    rw [h_split, mu_add_of_comm H, ih]
-    -- Goal: op (iterate_op (mu F r) n) (mu F r) = iterate_op (mu F r) (n + 1)
-    -- Use iterate_op_add with m=n, n=1: op (iterate_op a n) (iterate_op a 1) = iterate_op a (n+1)
-    calc op (iterate_op (mu F r) n) (mu F r)
-        = op (iterate_op (mu F r) n) (iterate_op (mu F r) 1) := by rw [iterate_op_one]
-      _ = iterate_op (mu F r) (n + 1) := iterate_op_add (mu F r) n 1
+    rw [scaleMult_succ]
+    change mu F (scaleMult n r + r) = _
+    rw [mu_add_of_comm H, ih]
+    simpa only [iterate_op_one] using iterate_op_add (mu F r) n 1
 
-/-- **Grid Bridge Lemma (legacy)**: μ(F, n·r) equals (μ(F, r))^n.
-    For k=1, this is proven via `mu_scaleMult_eq_iterate_singleton`.
-    For k>1, this follows from the existence of the representation R,
-    which implies commutativity on the grid.
-    This is the inductive bootstrap step - the representation theorem ensures
-    this equality holds on the grid. -/
+
+
+omit [KSSeparation α] in
+/-- The proved commutative-grid scaling law supplies the inductive bridge. -/
+theorem gridBridge_of_gridComm {k : ℕ} {F : AtomFamily α k} (H : GridComm F) : GridBridge F :=
+  ⟨mu_scale_eq_iterate_of_comm H⟩
+
+/-- Historical wrapper for the commutative-grid scaling law. The supplied `GridComm`
+is sufficient; the representation argument is retained for compatibility. -/
 lemma mu_scale_eq_iterate {k : ℕ} {F : AtomFamily α k} (_R : MultiGridRep F)
     (H : GridComm F) (r : Multi k) (n : ℕ) :
     mu F (scaleMult n r) = iterate_op (mu F r) n := by
-  -- Case split on k
-  match k with
-  | 0 =>
-    -- k=0: Both sides equal ident (empty grid)
-    have h_lhs : mu F (scaleMult n r) = ident := by
-      unfold mu
-      simp [List.finRange_zero]
-    have h_rhs : iterate_op (mu F r) n = ident := by
-      have hmu : mu F r = ident := by unfold mu; simp [List.finRange_zero]
-      rw [hmu]
-      -- Now need: iterate_op ident n = ident
-      -- Use a helper lemma to avoid context pollution in induction
-      suffices h : ∀ m, iterate_op ident m = ident from h n
-      intro m
-      induction m with
-      | zero => rfl
-      | succ k hk => simp only [iterate_op, hk, op_ident_left]
-    rw [h_lhs, h_rhs]
-  | 1 =>
-    -- k=1: Use mu_scaleMult_eq_iterate_singleton
-    -- Extract the single atom
-    let a := F.atoms ⟨0, by decide⟩
-    have ha : ident < a := F.pos ⟨0, by decide⟩
-    -- Show F equals singletonAtomFamily a
-    have hF_eq : ∀ i : Fin 1, F.atoms i = a := fun i => by simp [a, Fin.eq_zero i]
-    -- The result follows from the singleton case
-    -- We need to connect F to singletonAtomFamily
-    have hr : mu F r = iterate_op a (r ⟨0, by decide⟩) := by
-      unfold mu
-      simp [List.finRange_succ, List.finRange_zero, hF_eq, op_ident_left]
-    have hscale : mu F (scaleMult n r) = iterate_op a (n * r ⟨0, by decide⟩) := by
-      unfold mu
-      simp [List.finRange_succ, List.finRange_zero, hF_eq, op_ident_left, scaleMult]
-    have hiter : iterate_op (mu F r) n = iterate_op a (n * r ⟨0, by decide⟩) := by
-      rw [hr, iterate_op_mul]
-      ring_nf
-    rw [hscale, hiter]
-  | k + 2 =>
-    -- k≥2: Use GridComm hypothesis which provides commutativity.
-    -- This is the INDUCTIVE HYPOTHESIS from the k→k+1 induction.
-    exact mu_scale_eq_iterate_of_comm H r n
+  exact mu_scale_eq_iterate_of_comm H r n
+
 
 /-- **Separation Property**: For any A-witness and C-witness, the A-statistic is strictly less than the C-statistic.
 
@@ -2163,254 +1718,49 @@ Mathematical sketch:
 - Divide to get: Θ(mu F rA)/uA < Θ(mu F rC)/uC
 -/
 lemma separation_property {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (H : GridComm F) (IH : GridBridge F) {d : α} (hd : ident < d)
+    (_H : GridComm F) (IH : GridBridge F) {d : α} (_hd : ident < d)
     {rA : Multi k} {uA : ℕ} (huA : 0 < uA) (hrA : rA ∈ extensionSetA F d uA)
     {rC : Multi k} {uC : ℕ} (huC : 0 < uC) (hrC : rC ∈ extensionSetC F d uC) :
     separationStatistic R rA uA huA < separationStatistic R rC uC huC := by
-  unfold separationStatistic extensionSetA extensionSetC at *
-  -- Extract the key inequalities
-  have hA_lt : mu F rA < iterate_op d uA := hrA
-  have hC_gt : mu F rC > iterate_op d uC := hrC
+  clear _H _hd
+  apply (separationStatistic_lt_iff_iterate R IH rA rC uA uC huA huC).mpr
+  have hA := iterate_op_strictMono_base uC huC _ _ hrA
+  have hC := iterate_op_strictMono_base uA huA _ _ hrC
+  rw [iterate_op_mul] at hA hC
+  exact hA.trans (by simpa only [Nat.mul_comm] using hC)
 
-  -- Use repetition to scale to common denominator Δ = uA * uC
-  -- Key: compare scaled grid points, not iterate equality
-  let Δ := uA * uC
-  have hΔ_pos : 0 < Δ := Nat.mul_pos huA huC
-  let mA := uC  -- Δ / uA = (uA * uC) / uA = uC
-  let mC := uA  -- Δ / uC = (uA * uC) / uC = uA
-
-  -- Step 1: Scale the inequalities using repetition_lemma_lt
-  -- From μ(F,rA) < d^uA, get (μ(F,rA))^mA < d^(uA*mA) = d^Δ
-  have hA_scaled : iterate_op (mu F rA) mA < iterate_op d Δ := by
-    have : iterate_op (mu F rA) (1 * mA) < iterate_op d (uA * mA) :=
-      repetition_lemma_lt (mu F rA) d 1 uA mA huC (by rwa [iterate_op_one])
-    simpa [Nat.one_mul] using this
-
-  -- From d^uC < μ(F,rC), get d^Δ < (μ(F,rC))^mC
-  have hC_scaled : iterate_op d Δ < iterate_op (mu F rC) mC := by
-    have : iterate_op d (uC * mC) < iterate_op (mu F rC) (1 * mC) :=
-      repetition_lemma_lt d (mu F rC) uC 1 mC huA (by rwa [iterate_op_one])
-    simp only [Nat.one_mul] at this
-    convert this using 2
-    ring  -- Δ = uA * uC = uC * uA = uC * mC
-
-  -- Step 2: Transitivity gives (μ(F,rA))^mA < (μ(F,rC))^mC
-  have h_iter_lt : iterate_op (mu F rA) mA < iterate_op (mu F rC) mC :=
-    lt_trans hA_scaled hC_scaled
-
-  -- Step 3: Use Theta_scaleMult to connect to grid points
-  -- Θ(μ(F, mA · rA)) = mA · Θ(μ(F,rA))
-  have hA_theta : R.Θ_grid ⟨mu F (scaleMult mA rA), mu_mem_kGrid F _⟩ =
-                  mA * R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ :=
-    Theta_scaleMult R rA mA
-
-  have hC_theta : R.Θ_grid ⟨mu F (scaleMult mC rC), mu_mem_kGrid F _⟩ =
-                  mC * R.Θ_grid ⟨mu F rC, mu_mem_kGrid F rC⟩ :=
-    Theta_scaleMult R rC mC
-
-  -- Step 4: Show mu F (scaleMult mA rA) < mu F (scaleMult mC rC)
-  -- We need this to apply R.strictMono and get the Θ inequality
-
-  have h_grid_lt : mu F (scaleMult mA rA) < mu F (scaleMult mC rC) := by
-    -- Use GridBridge (the inductive hypothesis) directly!
-    -- This is the key change per GPT-5.1 Pro: we ASSUME the bridge as IH,
-    -- not derive it here. The IH is threaded from the k-grid to the (k+1)-grid.
-    have hA_bridge : mu F (scaleMult mA rA) = iterate_op (mu F rA) mA :=
-      IH.bridge rA mA
-    have hC_bridge : mu F (scaleMult mC rC) = iterate_op (mu F rC) mC :=
-      IH.bridge rC mC
-
-    -- Rewrite grid points as iterates and apply h_iter_lt
-    rw [hA_bridge, hC_bridge]
-    exact h_iter_lt
-
-  -- Step 5: Apply R.strictMono to get Θ inequality
-  have h_Theta_lt : R.Θ_grid ⟨mu F (scaleMult mA rA), mu_mem_kGrid F _⟩ <
-                    R.Θ_grid ⟨mu F (scaleMult mC rC), mu_mem_kGrid F _⟩ :=
-    R.strictMono h_grid_lt
-
-  -- Step 6: Substitute Theta_scaleMult and simplify
-  rw [hA_theta, hC_theta] at h_Theta_lt
-  -- Now have: mA * R.Θ_grid ⟨mu F rA, ...⟩ < mC * R.Θ_grid ⟨mu F rC, ...⟩
-  -- which is: uC * Θ(rA) < uA * Θ(rC)
-
-  -- Step 7: Divide both sides to get separation statistic inequality
-  -- Note: separationStatistic was already unfolded at line 1338
-  -- We have: mA * Θ(rA) < mC * Θ(rC) where mA = uC, mC = uA
-  -- Dividing by (uA * uC): Θ(rA)/uA < Θ(rC)/uC
-  have huA_pos_real : (0 : ℝ) < uA := Nat.cast_pos.mpr huA
-  have huC_pos_real : (0 : ℝ) < uC := Nat.cast_pos.mpr huC
-
-  -- Goal: Θ(rA)/uA < Θ(rC)/uC
-  -- Using div_lt_div_iff₀: a/b < c/d ↔ a*d < c*b (for positive b, d)
-  rw [div_lt_div_iff₀ huA_pos_real huC_pos_real]
-  -- Goal is now: Θ(rA) * uC < Θ(rC) * uA
-  -- h_Theta_lt is: mA * Θ(rA) < mC * Θ(rC) where mA = uC, mC = uA
-  -- So h_Theta_lt is: uC * Θ(rA) < uA * Θ(rC)
-  -- Use ring to reorder multiplication
-  have h_rewrite : R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ * ↑uC =
-                   (uC : ℝ) * R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ := by ring
-  have h_rewrite' : R.Θ_grid ⟨mu F rC, mu_mem_kGrid F rC⟩ * ↑uA =
-                    (uA : ℝ) * R.Θ_grid ⟨mu F rC, mu_mem_kGrid F rC⟩ := by ring
-  rw [h_rewrite, h_rewrite']
-  -- Now goal is: uC * Θ(rA) < uA * Θ(rC), which is exactly h_Theta_lt
-  exact h_Theta_lt
 
 /-- **Separation property (A < B)**: When B ≠ ∅, A-statistics are strictly less than B-statistics.
 
 This is the key refinement of separation_property for the B ≠ ∅ case.
 -/
 lemma separation_property_A_B {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (H : GridComm F) {d : α} (hd : ident < d)
+    (H : GridComm F) {d : α} (_hd : ident < d)
     {rA : Multi k} {uA : ℕ} (huA : 0 < uA) (hrA : rA ∈ extensionSetA F d uA)
     {rB : Multi k} {uB : ℕ} (huB : 0 < uB) (hrB : rB ∈ extensionSetB F d uB) :
     separationStatistic R rA uA huA < separationStatistic R rB uB huB := by
-  -- Derive GridBridge from mu_scale_eq_iterate (same pattern as separation_property)
-  have IH : GridBridge F := ⟨fun r n => mu_scale_eq_iterate R H r n⟩
-  unfold separationStatistic extensionSetA extensionSetB at *
-  -- Extract the key inequalities
-  have hA_lt : mu F rA < iterate_op d uA := hrA
-  have hB_eq : mu F rB = iterate_op d uB := hrB
+  clear _hd
+  apply (separationStatistic_lt_iff_iterate R (gridBridge_of_gridComm H) rA rB uA uB huA huB).mpr
+  change mu F rB = iterate_op d uB at hrB
+  have hA := iterate_op_strictMono_base uB huB _ _ hrA
+  simpa only [hrB, iterate_op_mul, Nat.mul_comm] using hA
 
-  -- Scale to common denominator Δ = uA * uB
-  let Δ := uA * uB
-  have hΔ_pos : 0 < Δ := Nat.mul_pos huA huB
-  let mA := uB  -- Δ / uA
-  let mB := uA  -- Δ / uB
-
-  -- Step 1: Scale A inequality
-  -- From μ(F,rA) < d^uA, get (μ(F,rA))^mA < d^Δ
-  have hA_scaled : iterate_op (mu F rA) mA < iterate_op d Δ := by
-    have : iterate_op (mu F rA) (1 * mA) < iterate_op d (uA * mA) :=
-      repetition_lemma_lt (mu F rA) d 1 uA mA huB (by rwa [iterate_op_one])
-    simpa [Nat.one_mul] using this
-
-  -- Step 2: Use B equality to get d^Δ = (μ(F,rB))^mB
-  -- d^Δ = d^{uA*uB} = (d^uB)^uA = (μ(F,rB))^uA = (μ(F,rB))^mB
-  have hB_scaled : iterate_op d Δ = iterate_op (mu F rB) mB := by
-    calc iterate_op d Δ
-        = iterate_op d (uA * uB) := rfl
-      _ = iterate_op d (uB * uA) := by ring_nf
-      _ = iterate_op (iterate_op d uB) uA := (iterate_op_mul d uB uA).symm
-      _ = iterate_op (mu F rB) uA := by rw [hB_eq]
-      _ = iterate_op (mu F rB) mB := rfl
-
-  -- Step 3: Transitivity gives (μ(F,rA))^mA < (μ(F,rB))^mB
-  have h_iter_lt : iterate_op (mu F rA) mA < iterate_op (mu F rB) mB := by
-    rw [← hB_scaled]; exact hA_scaled
-
-  -- Step 4: Use GridBridge (IH) and Θ to get statistic inequality
-  have h_grid_lt : mu F (scaleMult mA rA) < mu F (scaleMult mB rB) := by
-    have hA_bridge : mu F (scaleMult mA rA) = iterate_op (mu F rA) mA :=
-      IH.bridge rA mA
-    have hB_bridge : mu F (scaleMult mB rB) = iterate_op (mu F rB) mB :=
-      IH.bridge rB mB
-    rw [hA_bridge, hB_bridge]
-    exact h_iter_lt
-
-  have h_Theta_lt : R.Θ_grid ⟨mu F (scaleMult mA rA), mu_mem_kGrid F _⟩ <
-                    R.Θ_grid ⟨mu F (scaleMult mB rB), mu_mem_kGrid F _⟩ :=
-    R.strictMono h_grid_lt
-
-  -- Step 5: Apply Theta_scaleMult
-  have hA_theta : R.Θ_grid ⟨mu F (scaleMult mA rA), mu_mem_kGrid F _⟩ =
-                  mA * R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ :=
-    Theta_scaleMult R rA mA
-  have hB_theta : R.Θ_grid ⟨mu F (scaleMult mB rB), mu_mem_kGrid F _⟩ =
-                  mB * R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ :=
-    Theta_scaleMult R rB mB
-
-  rw [hA_theta, hB_theta] at h_Theta_lt
-
-  -- Step 6: Divide to get statistic inequality
-  have huA_pos_real : (0 : ℝ) < uA := Nat.cast_pos.mpr huA
-  have huB_pos_real : (0 : ℝ) < uB := Nat.cast_pos.mpr huB
-
-  rw [div_lt_div_iff₀ huA_pos_real huB_pos_real]
-  have h_rewrite : R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ * ↑uB =
-                   (uB : ℝ) * R.Θ_grid ⟨mu F rA, mu_mem_kGrid F rA⟩ := by ring
-  have h_rewrite' : R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ * ↑uA =
-                    (uA : ℝ) * R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ := by ring
-  rw [h_rewrite, h_rewrite']
-  exact h_Theta_lt
 
 /-- **Separation property (B < C)**: When B ≠ ∅, B-statistics are strictly less than C-statistics.
 
 This is the key refinement of separation_property for the B ≠ ∅ case.
 -/
 lemma separation_property_B_C {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
-    (H : GridComm F) {d : α} (hd : ident < d)
+    (H : GridComm F) {d : α} (_hd : ident < d)
     {rB : Multi k} {uB : ℕ} (huB : 0 < uB) (hrB : rB ∈ extensionSetB F d uB)
     {rC : Multi k} {uC : ℕ} (huC : 0 < uC) (hrC : rC ∈ extensionSetC F d uC) :
     separationStatistic R rB uB huB < separationStatistic R rC uC huC := by
-  -- Derive GridBridge from mu_scale_eq_iterate (same pattern as separation_property)
-  have IH : GridBridge F := ⟨fun r n => mu_scale_eq_iterate R H r n⟩
-  unfold separationStatistic extensionSetB extensionSetC at *
-  -- Extract the key inequalities
-  have hB_eq : mu F rB = iterate_op d uB := hrB
-  have hC_gt : mu F rC > iterate_op d uC := hrC
+  clear _hd
+  apply (separationStatistic_lt_iff_iterate R (gridBridge_of_gridComm H) rB rC uB uC huB huC).mpr
+  change mu F rB = iterate_op d uB at hrB
+  have hC := iterate_op_strictMono_base uB huB _ _ hrC
+  simpa only [hrB, iterate_op_mul, Nat.mul_comm] using hC
 
-  -- Scale to common denominator Δ = uB * uC
-  let Δ := uB * uC
-  have hΔ_pos : 0 < Δ := Nat.mul_pos huB huC
-  let mB := uC  -- Δ / uB
-  let mC := uB  -- Δ / uC
-
-  -- Step 1: Use B equality to get (μ(F,rB))^mB = d^Δ
-  have hB_scaled : iterate_op (mu F rB) mB = iterate_op d Δ := by
-    calc iterate_op (mu F rB) mB
-        = iterate_op (mu F rB) uC := rfl
-      _ = iterate_op (iterate_op d uB) uC := by rw [hB_eq]
-      _ = iterate_op d (uB * uC) := iterate_op_mul d uB uC
-      _ = iterate_op d Δ := rfl
-
-  -- Step 2: Scale C inequality
-  -- From d^uC < μ(F,rC), get d^Δ < (μ(F,rC))^mC
-  have hC_scaled : iterate_op d Δ < iterate_op (mu F rC) mC := by
-    have : iterate_op d (uC * mC) < iterate_op (mu F rC) (1 * mC) :=
-      repetition_lemma_lt d (mu F rC) uC 1 mC huB (by rwa [iterate_op_one])
-    simp only [Nat.one_mul] at this
-    convert this using 2
-    ring
-
-  -- Step 3: Transitivity gives (μ(F,rB))^mB < (μ(F,rC))^mC
-  have h_iter_lt : iterate_op (mu F rB) mB < iterate_op (mu F rC) mC := by
-    rw [hB_scaled]; exact hC_scaled
-
-  -- Step 4: Use GridBridge (IH) and Θ to get statistic inequality
-  have h_grid_lt : mu F (scaleMult mB rB) < mu F (scaleMult mC rC) := by
-    have hB_bridge : mu F (scaleMult mB rB) = iterate_op (mu F rB) mB :=
-      IH.bridge rB mB
-    have hC_bridge : mu F (scaleMult mC rC) = iterate_op (mu F rC) mC :=
-      IH.bridge rC mC
-    rw [hB_bridge, hC_bridge]
-    exact h_iter_lt
-
-  have h_Theta_lt : R.Θ_grid ⟨mu F (scaleMult mB rB), mu_mem_kGrid F _⟩ <
-                    R.Θ_grid ⟨mu F (scaleMult mC rC), mu_mem_kGrid F _⟩ :=
-    R.strictMono h_grid_lt
-
-  -- Step 5: Apply Theta_scaleMult
-  have hB_theta : R.Θ_grid ⟨mu F (scaleMult mB rB), mu_mem_kGrid F _⟩ =
-                  mB * R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ :=
-    Theta_scaleMult R rB mB
-  have hC_theta : R.Θ_grid ⟨mu F (scaleMult mC rC), mu_mem_kGrid F _⟩ =
-                  mC * R.Θ_grid ⟨mu F rC, mu_mem_kGrid F rC⟩ :=
-    Theta_scaleMult R rC mC
-
-  rw [hB_theta, hC_theta] at h_Theta_lt
-
-  -- Step 6: Divide to get statistic inequality
-  have huB_pos_real : (0 : ℝ) < uB := Nat.cast_pos.mpr huB
-  have huC_pos_real : (0 : ℝ) < uC := Nat.cast_pos.mpr huC
-
-  rw [div_lt_div_iff₀ huB_pos_real huC_pos_real]
-  have h_rewrite : R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ * ↑uC =
-                   (uC : ℝ) * R.Θ_grid ⟨mu F rB, mu_mem_kGrid F rB⟩ := by ring
-  have h_rewrite' : R.Θ_grid ⟨mu F rC, mu_mem_kGrid F rC⟩ * ↑uB =
-                    (uB : ℝ) * R.Θ_grid ⟨mu F rC, mu_mem_kGrid F rC⟩ := by ring
-  rw [h_rewrite, h_rewrite']
-  exact h_Theta_lt
 
 /-- For B empty: any A-witness statistic is ≤ δ. -/
 lemma A_stat_le_delta_of_B_empty {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
@@ -2491,8 +1841,8 @@ theorem accuracy_lemma {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
     (hA_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetA F d u)
     (hC_nonempty : ∃ r u, 0 < u ∧ r ∈ extensionSetC F d u)
     (ε : ℝ) (hε : 0 < ε) :
-    ∃ (rA : Multi k) (uA : ℕ) (huA : 0 < uA) (hrA : rA ∈ extensionSetA F d uA)
-      (rC : Multi k) (uC : ℕ) (huC : 0 < uC) (hrC : rC ∈ extensionSetC F d uC),
+    ∃ (rA : Multi k) (uA : ℕ) (huA : 0 < uA) (_hrA : rA ∈ extensionSetA F d uA)
+      (rC : Multi k) (uC : ℕ) (huC : 0 < uC) (_hrC : rC ∈ extensionSetC F d uC),
       separationStatistic R rC uC huC - separationStatistic R rA uA huA < ε := by
   classical
   -- The k = 0 case is impossible under the hypotheses (C cannot be non-empty).
@@ -2501,10 +1851,10 @@ theorem accuracy_lemma {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
   | zero =>
     -- With no atoms, μ(F, r) = ident for all r, so C cannot contain a witness.
     have hcontr : False := by
-      rcases hC_nonempty with ⟨rC, uC, huC, hrC⟩
+      rcases hC_nonempty with ⟨rC, uC, huC, _hrC⟩
       have hmu : mu F rC = ident := by simp [mu]
       have hpos : ident < iterate_op d uC := iterate_op_pos d hd _ huC
-      have hlt : iterate_op d uC < ident := by simpa [extensionSetC, hmu] using hrC
+      have hlt : iterate_op d uC < ident := by simpa [extensionSetC, hmu] using _hrC
       exact (lt_asymm hpos hlt).elim
     exact (False.elim hcontr)
   | succ k =>
@@ -2577,16 +1927,16 @@ theorem accuracy_lemma {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
       have hne : iterate_op a n ≠ iterate_op d U := by
         intro hEq
         apply hnotB
-        simpa [extensionSetB, Set.mem_setOf_eq, mu_unitMulti F i0 n] using hEq
+        simpa [extensionSetB, Set.mem_ofPred_eq, mu_unitMulti F i0 n] using hEq
       exact lt_of_le_of_ne hPn_le hne
     have hsucc_lt : iterate_op d U < iterate_op a (n + 1) := lt_of_not_ge h_notP_succ
 
     -- Build A and C witnesses.
     let rA := unitMulti i0 n
     let rC := unitMulti i0 (n + 1)
-    have hrA : rA ∈ extensionSetA F d U := by
+    have _hrA : rA ∈ extensionSetA F d U := by
       simpa [rA, extensionSetA, mu_unitMulti] using hPn_lt
-    have hrC : rC ∈ extensionSetC F d U := by
+    have _hrC : rC ∈ extensionSetC F d U := by
       simpa [rC, extensionSetC, mu_unitMulti] using hsucc_lt
 
     -- Separation statistics for the two witnesses.
@@ -2605,7 +1955,7 @@ theorem accuracy_lemma {k : ℕ} {F : AtomFamily α k} (R : MultiGridRep F)
       simpa [θatom] using hθ
 
     -- Gap computation: σ_C - σ_A = θatom / U < ε.
-    refine ⟨rA, U, hUpos, hrA, rC, U, hUpos, hrC, ?_⟩
+    refine ⟨rA, U, hUpos, _hrA, rC, U, hUpos, _hrC, ?_⟩
     have hgap_exact :
         separationStatistic R rC U hUpos - separationStatistic R rA U hUpos =
           θatom / (U : ℝ) := by

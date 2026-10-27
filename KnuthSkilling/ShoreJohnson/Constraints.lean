@@ -95,31 +95,85 @@ def toConstraintSet {n : ℕ} (cs : EVConstraintSet n) : ConstraintSet n :=
 theorem mem_toConstraintSet {n : ℕ} (cs : EVConstraintSet n) (q : ProbDist n) :
     q ∈ toConstraintSet cs ↔ satisfiesSet cs q := Iff.rfl
 
+/-- The linear observation whose level set is an expected-value constraint. -/
+noncomputable def EVConstraint.linearForm {n : ℕ} (c : EVConstraint n) :
+    (Fin n → ℝ) →ₗ[ℝ] ℝ where
+  toFun x := ∑ i, x i * c.coeff i
+  map_add' x y := by simp [add_mul, Finset.sum_add_distrib]
+  map_smul' a x := by simp [Finset.mul_sum, mul_assoc]
+
+/-- Coordinates of the feasible distributions are the simplex intersected with affine levels. -/
+theorem coordinates_toConstraintSet {n : ℕ} (cs : EVConstraintSet n) :
+    (fun q : ProbDist n => q.p) '' toConstraintSet cs =
+      stdSimplex ℝ (Fin n) ∩ {x | ∀ c ∈ cs, c.linearForm x = c.rhs} := by
+  ext x
+  constructor
+  · rintro ⟨q, hq, rfl⟩
+    exact ⟨⟨q.nonneg, q.sum_one⟩, hq⟩
+  · rintro ⟨hx, hc⟩
+    exact ⟨⟨x, hx.1, hx.2⟩, hc, rfl⟩
+
+theorem closed_ev_levels {n : ℕ} (cs : EVConstraintSet n) :
+    IsClosed {x | ∀ c ∈ cs, c.linearForm x = c.rhs} := by
+  have h := isClosed_iInter fun c : EVConstraint n => isClosed_iInter fun (_ : c ∈ cs) =>
+    (show IsClosed ({c.rhs} : Set ℝ) from isClosed_singleton).preimage
+      c.linearForm.continuous_of_finiteDimensional
+  convert h using 1
+  ext x
+  simp
+
+theorem admissible_ev {n : ℕ} (p : ProbDist n) (cs : EVConstraintSet n)
+    (hp : ∀ i, 0 < p.p i) : Admissible p (toConstraintSet cs) := by
+  refine ⟨hp, ?_, ?_⟩ <;> rw [coordinates_toConstraintSet]
+  · apply (convex_stdSimplex ℝ (Fin n)).inter
+    have h := convex_iInter fun c : EVConstraint n => convex_iInter fun (_ : c ∈ cs) =>
+      (convex_singleton c.rhs).linear_preimage c.linearForm
+    convert h using 1 <;> ext x <;> simp
+  · exact (isClosed_stdSimplex ℝ (Fin n)).inter (closed_ev_levels cs)
+
+theorem compact_ev_coordinates {n : ℕ} (cs : EVConstraintSet n) :
+    IsCompact ((fun q : ProbDist n => q.p) '' toConstraintSet cs) := by
+  rw [coordinates_toConstraintSet]
+  exact (isCompact_stdSimplex ℝ (Fin n)).inter_right (closed_ev_levels cs)
+
+/-- Coordinate observations can present any singleton posterior, including boundary points. -/
+def pointConstraints {n : ℕ} (q : ProbDist n) : EVConstraintSet n :=
+  List.ofFn fun i : Fin n => ⟨Pi.single i 1, q.p i⟩
+
+theorem toConstraintSet_pointConstraints {n : ℕ} (q : ProbDist n) :
+    toConstraintSet (pointConstraints q) = {q} := by
+  ext r
+  constructor
+  · intro hr
+    apply ProbDist.ext
+    intro i
+    have hi := hr ⟨Pi.single i 1, q.p i⟩ (List.mem_ofFn.mpr ⟨i, rfl⟩)
+    simpa [satisfies, Pi.single_apply] using hi
+  · intro hr
+    have he : r = q := hr
+    subst r
+    intro c hc
+    obtain ⟨i, rfl⟩ := List.mem_ofFn.mp hc
+    simp [satisfies, Pi.single_apply]
+
+theorem admissible_univ {n : ℕ} (p : ProbDist n) (hp : ∀ i, 0 < p.p i) :
+    Admissible p Set.univ := by
+  simpa [toConstraintSet, satisfiesSet] using admissible_ev p [] hp
+
 theorem toConstraintSet_permute {n : ℕ} (σ : Equiv.Perm (Fin n)) (cs : EVConstraintSet n) :
     ConstraintSet.permute σ (toConstraintSet cs) =
-      toConstraintSet (EVConstraintSet.permute σ⁻¹ cs) := by
+      toConstraintSet (EVConstraintSet.permute σ cs) := by
   ext q
   constructor
   · intro hq
-    have hq' : satisfiesSet cs (ProbDist.permute σ q) := hq
-    have hperm : ProbDist.permute σ⁻¹ (ProbDist.permute σ q) = q := by
-      ext i
-      simp [ProbDist.permute]
-    have hq'' :
-        satisfiesSet (EVConstraintSet.permute σ⁻¹ cs)
-          (ProbDist.permute σ⁻¹ (ProbDist.permute σ q)) :=
-      (EVConstraintSet.satisfiesSet_permute (σ := σ⁻¹) cs (ProbDist.permute σ q)).2 hq'
-    rw [hperm] at hq''
-    exact hq''
+    have h := (EVConstraintSet.satisfiesSet_permute σ cs (ProbDist.permute σ⁻¹ q)).mpr hq
+    change satisfiesSet (EVConstraintSet.permute σ cs) q
+    simpa using h
   · intro hq
-    have hperm : ProbDist.permute σ⁻¹ (ProbDist.permute σ q) = q := by
-      ext i
-      simp [ProbDist.permute]
-    have hq' :
-        satisfiesSet (EVConstraintSet.permute σ⁻¹ cs)
-          (ProbDist.permute σ⁻¹ (ProbDist.permute σ q)) := by
-      rw [hperm]; exact hq
-    exact (EVConstraintSet.satisfiesSet_permute (σ := σ⁻¹) cs (ProbDist.permute σ q)).1 hq'
+    change satisfiesSet (EVConstraintSet.permute σ cs) q at hq
+    have h := (EVConstraintSet.satisfiesSet_permute σ cs (ProbDist.permute σ⁻¹ q)).mp
+      (by simpa using hq)
+    exact h
 
 /-! ## Block-mass constraints -/
 

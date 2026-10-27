@@ -1,188 +1,153 @@
-/-
-# KSModel: Bridge from Events to Plausibility Scale
+import KnuthSkilling.Core.Basic
+import KnuthSkilling.Additive.Representation
+import KnuthSkilling.Probability.BooleanRepresentation
+import Mathlib.Data.NNReal.Basic
 
-This module provides the formal connection between:
-- `PlausibilitySpace E` (distributive lattice of events)
-- `KnuthSkillingAlgebraBase S` (linearly ordered plausibility scale with ⊕)
+/-!
+# Event models and their probability observations
 
-## The Key Insight
-
-Rather than trying to "induce" ⊕ on range(v) by picking representative events
-(which leads to well-definedness nightmares), we keep the scale S already
-equipped with its K&S algebra structure.
-
-The bridge is the single axiom: `v(a ⊔ b) = v(a) ⊕ v(b)` for disjoint `a, b`.
-
-## Full Pipeline
-
-The complete K&S framework forms a pipeline:
-1. **Events → Scale**: A `KSModel` maps events E to scale S with v(a ⊔ b) = v(a) ⊕ v(b)
-2. **Scale → Reals**: The representation theorem embeds S into (ℝ, +)
-3. **Composition**: Events map to ℝ via Θ ∘ v, yielding standard probability
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012), Sections 3-4
-- This approach follows a suggestion by GPT-5 Pro to avoid well-definedness issues
+An event model preserves disjoint joins in a supplied ordered scale.
+An additive order embedding gives real weights; probability additionally needs
+positive total weight. Calibration changes units without changing event answers.
+Finite weighted events and the non-Boolean three-element chain are concrete models.
 -/
 
-import Mathlib.Order.Lattice
-import Mathlib.Data.Real.Basic
-import Mathlib.Data.NNReal.Basic
-import Mathlib.Tactic
-import KnuthSkilling.Core.Basic
-
 namespace KnuthSkilling
-
 open KnuthSkillingMonoidBase
 
-/-! ## KSModel: The Bridge Structure -/
-
-/-- A `KSModel` connects a PlausibilitySpace (events) to a KnuthSkillingAlgebra (scale).
-
-The key axiom `v_sup_of_disjoint` says that for disjoint events a, b:
-  v(a ⊔ b) = v(a) ⊕ v(b)
-
-This mirrors K&S's conceptual approach: ⊕ is the scalar operation that makes
-v additive on disjoint joins.
-
-**Note**: We don't require `v_top` because the K&S algebra has no inherent maximum.
-Normalization (v(⊤) = 1) happens when we compose with the representation theorem
-and choose a scale factor for Θ. -/
+/-- Monotone, bottom-preserving, disjoint-additive event weights. -/
 structure KSModel (E S : Type*)
     [PlausibilitySpace E] [KnuthSkillingMonoidBase S] where
-  /-- The valuation function from events to the plausibility scale -/
   v : E → S
-  /-- Monotonicity: larger events have larger plausibility -/
   mono : Monotone v
-  /-- The impossible event maps to the identity element -/
   v_bot : v ⊥ = ident
-  /-- Additivity on disjoint joins: the fundamental K&S axiom -/
   v_sup_of_disjoint : ∀ {a b : E}, Disjoint a b → v (a ⊔ b) = op (v a) (v b)
 
 namespace KSModel
+variable {E S : Type*} [PlausibilitySpace E] [KnuthSkillingMonoidBase S] (m : KSModel E S)
 
-variable {E S : Type*} [PlausibilitySpace E] [KnuthSkillingMonoidBase S]
-variable (m : KSModel E S)
+theorem v_ident_le (a : E) : ident ≤ m.v a := m.v_bot ▸ m.mono bot_le
 
-/-! ### Basic Properties -/
-
-/-- The valuation is nonnegative (in K&S sense: v(a) ≥ ident) -/
-theorem v_ident_le (a : E) : ident ≤ m.v a := by
-  have h := m.mono (bot_le : (⊥ : E) ≤ a)
-  simp only [m.v_bot] at h
-  exact h
-
-/-- Joining with ⊥ doesn't change the value -/
-theorem v_sup_bot (a : E) : m.v (a ⊔ ⊥) = m.v a := by
-  simp only [sup_bot_eq]
-
-/-- Joining ⊥ from the left doesn't change the value -/
-theorem v_bot_sup (a : E) : m.v (⊥ ⊔ a) = m.v a := by
-  simp only [bot_sup_eq]
-
-/-- Alternative form: v(⊥ ⊔ a) = ident ⊕ v(a) = v(a) -/
+theorem v_sup_bot (a : E) : m.v (a ⊔ ⊥) = m.v a := by rw [sup_bot_eq]
+theorem v_bot_sup (a : E) : m.v (⊥ ⊔ a) = m.v a := by rw [bot_sup_eq]
 theorem v_bot_sup' (a : E) : m.v (⊥ ⊔ a) = op ident (m.v a) := by
   rw [m.v_sup_of_disjoint disjoint_bot_left, m.v_bot]
+theorem v_bot_sup_consistent (a : E) : op ident (m.v a) = m.v a := op_ident_left _
+theorem op_assoc' (x y z : S) : op (op x y) z = op x (op y z) := op_assoc x y z
 
-/-- Verify the identity law is consistent -/
-theorem v_bot_sup_consistent (a : E) : op ident (m.v a) = m.v a := by
-  rw [op_ident_left]
-
-/-! ### Compatibility with K&S Axioms -/
-
-/-- The operation ⊕ is associative (inherited from S) -/
-theorem op_assoc' (x y z : S) : op (op x y) z = op x (op y z) :=
-  op_assoc x y z
-
-/-- Three-way additivity for pairwise disjoint events -/
 theorem v_sup_three {a b c : E}
     (hab : Disjoint a b) (hac : Disjoint a c) (hbc : Disjoint b c) :
     m.v (a ⊔ b ⊔ c) = op (op (m.v a) (m.v b)) (m.v c) := by
-  have h_ab_c : Disjoint (a ⊔ b) c := by
-    rw [disjoint_iff] at hab hac hbc ⊢
-    calc (a ⊔ b) ⊓ c = (a ⊓ c) ⊔ (b ⊓ c) := inf_sup_right a b c
-      _ = ⊥ ⊔ ⊥ := by rw [hac, hbc]
-      _ = ⊥ := sup_idem ⊥
-  calc m.v (a ⊔ b ⊔ c)
-      = op (m.v (a ⊔ b)) (m.v c) := m.v_sup_of_disjoint h_ab_c
-    _ = op (op (m.v a) (m.v b)) (m.v c) := by rw [m.v_sup_of_disjoint hab]
+  rw [m.v_sup_of_disjoint (hac.sup_left hbc), m.v_sup_of_disjoint hab]
 
-/-- Three-way additivity, right-associated form -/
 theorem v_sup_three' {a b c : E}
     (hab : Disjoint a b) (hac : Disjoint a c) (hbc : Disjoint b c) :
     m.v (a ⊔ b ⊔ c) = op (m.v a) (op (m.v b) (m.v c)) := by
   rw [m.v_sup_three hab hac hbc, op_assoc]
-
-/-! ### Monotonicity Consequences -/
-
-/-- If a ≤ b, then v(a) ≤ v(b) -/
-theorem v_le_of_le {a b : E} (h : a ≤ b) : m.v a ≤ m.v b :=
-  m.mono h
-
--- Note: Strict monotonicity (a < b → v(a) < v(b)) requires additional structure
--- (separation property). For now, we only have weak monotonicity.
-
+theorem v_le_of_le {a b : E} (h : a ≤ b) : m.v a ≤ m.v b := m.mono h
 end KSModel
 
-/-! ## Composition with Representation Theorem -/
-
-/-- When we have a KSModel and a representation Θ : S → ℝ, we can compose them
-    to get a valuation v_ℝ : E → ℝ that satisfies the classical probability axioms. -/
+/-- The original event model and an explicitly supplied additive representation. -/
 structure KSModelWithRepresentation (E S : Type*)
     [PlausibilitySpace E] [KnuthSkillingMonoidBase S] extends KSModel E S where
-  /-- The representation into reals -/
   Θ : S → ℝ
-  /-- Θ is an order embedding -/
   Θ_orderEmb : ∀ x y : S, x ≤ y ↔ Θ x ≤ Θ y
-  /-- Θ maps identity to 0 -/
   Θ_ident : Θ ident = 0
-  /-- Θ is a homomorphism -/
   Θ_hom : ∀ x y : S, Θ (op x y) = Θ x + Θ y
 
 namespace KSModelWithRepresentation
-
 variable {E S : Type*} [PlausibilitySpace E] [KnuthSkillingMonoidBase S]
-variable (m : KSModelWithRepresentation E S)
 
-/-- The composed valuation: events → ℝ -/
+def ofRepresentation (m : KSModel E S) (r : Additive.RepresentationResult S) :
+    KSModelWithRepresentation E S :=
+  { m with Θ := r.Θ, Θ_orderEmb := r.order_preserving,
+           Θ_ident := r.ident_zero_of_ident, Θ_hom := r.additive }
+
+def representation (m : KSModelWithRepresentation E S) : Additive.RepresentationResult S :=
+  ⟨m.Θ, m.Θ_orderEmb, m.Θ_hom⟩
+
+variable (m : KSModelWithRepresentation E S)
 def v_ℝ : E → ℝ := m.Θ ∘ m.v
 
-/-- The composed valuation is monotone -/
-theorem v_ℝ_mono : Monotone m.v_ℝ := fun a b h => by
-  unfold v_ℝ
-  simp only [Function.comp_apply]
-  exact (m.Θ_orderEmb _ _).mp (m.mono h)
-
-/-- The composed valuation maps ⊥ to 0 -/
-theorem v_ℝ_bot : m.v_ℝ ⊥ = 0 := by
-  unfold v_ℝ
-  simp only [Function.comp_apply, m.v_bot, m.Θ_ident]
-
-/-- The composed valuation is additive on disjoint joins -/
+theorem v_ℝ_mono : Monotone m.v_ℝ := fun _ _ h => (m.Θ_orderEmb _ _).mp (m.mono h)
+theorem v_ℝ_bot : m.v_ℝ ⊥ = 0 := by simp [v_ℝ, m.v_bot, m.Θ_ident]
 theorem v_ℝ_sup_of_disjoint {a b : E} (h : Disjoint a b) :
     m.v_ℝ (a ⊔ b) = m.v_ℝ a + m.v_ℝ b := by
-  unfold v_ℝ
-  simp only [Function.comp_apply]
-  rw [m.v_sup_of_disjoint h, m.Θ_hom]
-
-/-- The composed valuation is nonnegative -/
+  simp only [v_ℝ, Function.comp_apply, m.v_sup_of_disjoint h, m.Θ_hom]
 theorem v_ℝ_nonneg (a : E) : 0 ≤ m.v_ℝ a := by
-  have h := m.v_ident_le a
-  rw [← m.Θ_ident]
-  exact (m.Θ_orderEmb _ _).mp h
+  simpa [v_ℝ, m.Θ_ident] using (m.Θ_orderEmb _ _).mp (m.v_ident_le a)
 
+/-- Normalization is an actual additive valuation only at positive total weight. -/
+noncomputable def probability (h : 0 < m.v_ℝ ⊤) :
+    ProbabilityTheory.Common.AdditiveValuation E where
+  val a := m.v_ℝ a / m.v_ℝ ⊤
+  mono _ _ hab := div_le_div_of_nonneg_right (m.v_ℝ_mono hab) h.le
+  val_bot := by rw [m.v_ℝ_bot, zero_div]
+  val_top := div_self (ne_of_gt h)
+  additive a b hab := by rw [m.v_ℝ_sup_of_disjoint (disjoint_iff.mpr hab), add_div]
+
+/-- Changing the representation route preserves normalized event answers. -/
+theorem normalization_independent (m : KSModel E S) (r t : Additive.RepresentationResult S)
+    (h : ident < m.v ⊤) (a : E) :
+    r.Θ (m.v a) / r.Θ (m.v ⊤) = t.Θ (m.v a) / t.Θ (m.v ⊤) := by
+  simpa only [Additive.RepresentationResult.calibrate_apply] using
+    r.calibrate_agree t (m.v ⊤) ((isPositive_iff_ident_lt _).mpr h) (m.v a)
 end KSModelWithRepresentation
 
-/-! ## NNReal as a K&S Algebra
+namespace FiniteEvents
+open Classical
+open Probability.BooleanRepresentation
+variable {ι : Type*} [Fintype ι]
 
-The nonnegative reals NNReal with addition form a KnuthSkillingAlgebraBase:
-- op = (+) : addition
-- ident = 0 : the additive identity
-- All K&S axioms are satisfied
--/
+/-- The event observation retains the supplied atomic weights. -/
+noncomputable def weight (w : ι → ℝ) (s : Set ι) : ℝ := ∑ i, if i ∈ s then w i else 0
 
-/-- NNReal with addition forms a KnuthSkillingAlgebraBase. -/
+theorem weight_nonneg (w : ι → ℝ) (hw : ∀ i, 0 ≤ w i) (s : Set ι) :
+    0 ≤ weight w s := Finset.sum_nonneg fun i _ => by split_ifs <;> simp_all
+
+theorem weight_mono (w : ι → ℝ) (hw : ∀ i, 0 ≤ w i) : Monotone (weight w) := by
+  intro a b hab
+  apply Finset.sum_le_sum
+  intro i _
+  by_cases ha : i ∈ a
+  · simp [ha, hab ha]
+  · simp only [if_neg ha]; split_ifs <;> simp_all
+
+theorem weight_modular (w : ι → ℝ) (a b : Set ι) :
+    weight w (a ∪ b) + weight w (a ∩ b) = weight w a + weight w b := by
+  simp only [weight, ← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro i _
+  by_cases ha : i ∈ a <;> by_cases hb : i ∈ b <;> simp [ha, hb]
+
+@[simp] theorem weight_empty (w : ι → ℝ) : weight w ∅ = 0 := by simp [weight]
+@[simp] theorem weight_univ (w : ι → ℝ) : weight w Set.univ = ∑ i, w i := by simp [weight]
+@[simp] theorem weight_singleton (w : ι → ℝ) (i : ι) : weight w {i} = w i := by
+  simp [weight]
+
+theorem weight_scale (w : ι → ℝ) (c : ℝ) (s : Set ι) :
+    weight (fun i => c * w i) s = c * weight w s := by
+  simp only [weight, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i _
+  split_ifs <;> simp
+
+noncomputable def representation (w : ι → ℝ) (hw : ∀ i, 0 ≤ w i) :
+    KSBooleanRepresentation (Set ι) where
+  Θ := weight w
+  Θ_nonneg := weight_nonneg w hw
+  Θ_mono := fun _ _ h => weight_mono w hw h
+  Θ_bot := weight_empty w
+  Θ_modular := weight_modular w
+
+/-- Exact normalization of each supplied atomic weight. -/
+theorem probability_singleton (w : ι → ℝ) (hw : ∀ i, 0 ≤ w i)
+    (h : (∑ i, w i) ≠ 0) (i : ι) :
+    (representation w hw).probability {i} = w i / ∑ j, w j := by
+  simp [KSBooleanRepresentation.probability, representation, h]
+end FiniteEvents
+
+/-- Nonnegative addition supplies a concrete ordered scale. -/
 noncomputable instance instKSAlgebraNNReal : KnuthSkillingAlgebraBase NNReal where
   toLinearOrder := inferInstance
   op := (· + ·)
@@ -192,21 +157,13 @@ noncomputable instance instKSAlgebraNNReal : KnuthSkillingAlgebraBase NNReal whe
   op_ident_left := zero_add
   op_strictMono_left := fun y => fun _ _ h => add_lt_add_left h y
   op_strictMono_right := fun x => fun _ _ h => add_lt_add_right h x
-  ident_le := fun _ => zero_le'
+  ident_le := fun _ => zero_le
 
-/-- In instKSAlgebraNNReal, op is addition -/
 theorem nnreal_op_is_add :
-    @op NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase.toKSSemigroupBase = (· + ·) := by
-  funext _ _
-  rfl
+    @op NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase.toKSSemigroupBase = (· + ·) := rfl
+theorem nnreal_ident_is_zero : @ident NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase = 0 := rfl
 
-/-- In instKSAlgebraNNReal, ident is zero -/
-theorem nnreal_ident_is_zero : @ident NNReal instKSAlgebraNNReal.toKnuthSkillingMonoidBase = 0 := by
-  rfl
-
-/-! ## Example: Three-Element Chain with NNReal Scale -/
-
-/-- The three-element chain as a PlausibilitySpace -/
+/-- A finite non-Boolean event model with an interior truth value. -/
 inductive Three' : Type where
   | bot : Three'
   | mid : Three'
@@ -228,7 +185,7 @@ instance : LinearOrder Three' where
   le_antisymm := fun a b hab hba => by
     cases a <;> cases b <;> simp_all [toNat]
   le_total := fun a b => Nat.le_total _ _
-  lt_iff_le_not_ge := fun _ _ => Nat.lt_iff_le_not_le
+  lt_iff_le_not_ge := fun _ _ => Nat.lt_iff_le_and_not_ge
   toDecidableEq := inferInstance
   toDecidableLE := fun a b => inferInstanceAs (Decidable (a.toNat ≤ b.toNat))
   toDecidableLT := fun a b => inferInstanceAs (Decidable (a.toNat < b.toNat))
@@ -279,7 +236,7 @@ noncomputable def threeKSModel (p : NNReal) (hp0 : 0 < p) (hp1 : p < 1) :
     cases a <;> cases b
     · exact le_rfl
     · exact hp0.le
-    · exact zero_le'
+    · exact zero_le
     · exfalso; exact (by decide : ¬mid ≤ bot) hab
     · exact le_rfl
     · exact hp1.le
@@ -288,28 +245,11 @@ noncomputable def threeKSModel (p : NNReal) (hp0 : 0 < p) (hp1 : p < 1) :
     · exact le_rfl
   v_bot := nnreal_ident_is_zero.symm  -- v ⊥ = 0 = ident
   v_sup_of_disjoint := fun {a b} h => by
-    rw [disjoint_iff_has_bot] at h
-    -- The key insight: op on NNReal is (+), and ident is 0
-    -- So op x 0 = x + 0 = x and op 0 x = 0 + x = x
-    have h_op_zero_left : ∀ x : NNReal, op (0 : NNReal) x = x := by
-      intro x; simp only [nnreal_op_is_add]; exact zero_add x
-    have h_op_zero_right : ∀ x : NNReal, op x (0 : NNReal) = x := by
-      intro x; simp only [nnreal_op_is_add]; exact add_zero x
-    cases h with
-    | inl ha =>
-      subst ha
-      -- v(⊥ ⊔ b) = op(v ⊥)(v b) = op 0 (v b) = v b
-      cases b with
-      | bot => simp only [max_self]; exact (h_op_zero_left 0).symm
-      | mid => simp only [max_eq_right (by decide : bot ≤ mid)]; exact (h_op_zero_left p).symm
-      | top => simp only [max_eq_right (by decide : bot ≤ top)]; exact (h_op_zero_left 1).symm
-    | inr hb =>
-      subst hb
-      -- v(a ⊔ ⊥) = op(v a)(v ⊥) = op(v a) 0 = v a
-      cases a with
-      | bot => simp only [max_self]; exact (h_op_zero_right 0).symm
-      | mid => simp only [max_eq_left (by decide : bot ≤ mid)]; exact (h_op_zero_right p).symm
-      | top => simp only [max_eq_left (by decide : bot ≤ top)]; exact (h_op_zero_right 1).symm
+    rcases (disjoint_iff_has_bot a b).mp h with rfl | rfl
+    · cases b <;> simp [nnreal_op_is_add, max_eq_right (show bot ≤ mid by decide),
+        max_eq_right (show bot ≤ top by decide)]
+    · cases a <;> simp [nnreal_op_is_add, max_eq_left (show bot ≤ mid by decide),
+        max_eq_left (show bot ≤ top by decide)]
 
 /-- Standard model with p = 1/2 -/
 noncomputable def standardThreeKSModel : KSModel Three' NNReal :=
@@ -326,25 +266,10 @@ theorem threeKSModel_additive (p : NNReal) (hp0 : 0 < p) (hp1 : p < 1)
 /-- Three' is not Boolean -/
 theorem not_boolean : ¬∃ (compl : Three' → Three'),
     (∀ a, a ⊔ compl a = ⊤) ∧ (∀ a, a ⊓ compl a = ⊥) := by
-  intro ⟨compl, hsup, hinf⟩
-  have h1 : mid ⊔ compl mid = ⊤ := hsup mid
-  have h2 : mid ⊓ compl mid = ⊥ := hinf mid
-  cases hc : compl mid with
-  | bot =>
-    simp only [hc] at h1
-    have : mid ⊔ bot = mid := by decide
-    rw [this] at h1
-    exact absurd h1 (by decide)
-  | mid =>
-    simp only [hc] at h2
-    have : mid ⊓ mid = mid := by decide
-    rw [this] at h2
-    exact absurd h2 (by decide)
-  | top =>
-    simp only [hc] at h2
-    have : mid ⊓ top = mid := by decide
-    rw [this] at h2
-    exact absurd h2 (by decide)
+  rintro ⟨c, hs, hi⟩
+  have hs := hs mid
+  have hi := hi mid
+  cases hc : c mid <;> simp_all
 
 /-- Summary: Three' is a K&S compatible non-Boolean lattice -/
 theorem three_is_ks_compatible :

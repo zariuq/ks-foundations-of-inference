@@ -1,45 +1,9 @@
 /-
-# KnuthSkilling Core - Stable Facade
+# Stable algebra entry point
 
-This module provides a **stable re-export** of the core algebraic results.
-It is designed to be a safe import target for downstream development
-(including Shore-Johnson work) without coupling to internal implementation details.
-
-## What's Exported
-
-The "core algebra" layer:
-- **Basic**: Ordered scale structures
-  (`KSSemigroupBase`, `KnuthSkillingMonoidBase`, `KnuthSkillingAlgebraBase`)
-- **Algebra**: Iteration, separation axioms
-- **Additive**: Appendix A - separation axioms + additive representation (⊕ → ℝ+)
-- **Multiplicative**: Appendix B - product representation (⊗ → scaled multiplication)
-
-## What's NOT Exported
-
-- Shore-Johnson modules (depend on Core, not vice versa)
-- Divergence/Entropy/Information theory (application layer)
-- Probability calculus derivations (interpretation layer)
-- Counterexamples (optional educational material)
-- Explorations/research (unstable)
-
-## Stability Guarantee
-
-Files in this module are considered stable. Changes to their public API
-should be coordinated with downstream users. Internal implementation
-changes that preserve the API are allowed.
-
-## Usage
-
-```lean
-import KnuthSkilling.Core
-
--- Access core structures
-example : Type := KSSemigroupBase
-example : Type := KnuthSkillingMonoidBase
-example : Type := KnuthSkillingAlgebraBase
-example : Type := KSSeparation
--- etc.
-```
+Ordered scales, separation profiles, additive embeddings, tensor representations
+and variational functional equations. Probability normalization and entropy are
+interpretation layers; Shore--Johnson and countermodels are opt-in.
 -/
 
 -- Foundation layer

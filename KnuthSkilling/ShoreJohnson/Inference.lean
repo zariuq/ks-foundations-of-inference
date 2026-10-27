@@ -1,40 +1,21 @@
 import KnuthSkilling.ShoreJohnson.Proof
+import Mathlib.Analysis.Convex.StdSimplex
 
 /-!
-# Shore–Johnson (discrete) inference-operator interface (SJ1–SJ4)
+# Finite Shore–Johnson inference laws
 
-This file defines a **discrete** interface for Shore–Johnson's axioms (1980), phrased in a way
-usable for connecting their “consistency across applications” premise to the K&S Appendix C
-variational story.
+Inference is a relation: an impossible problem need not have an answer. Uniqueness
+means at most one answer on the positive-reference, closed convex domain. Existence
+is separate, and is proved for finite KL minimization on nonempty affine constraints.
 
-Paper reference:
-- J. E. Shore and R. W. Johnson, *Axiomatic Derivation of the Principle of Maximum Entropy and the
-  Principle of Minimum Cross-Entropy*, IEEE Trans. Info. Theory 26(1), 1980.
-  (Local copy: `literature/InformationTheory/shore-johnson-axiomatic-derivation.pdf`.)
+SJ2 here is permutation invariance, SJ3 is two-block subset independence, and SJ4
+is product-system independence. The paper numbers the last two III and IV in the
+opposite order. These finite laws do not by themselves characterize relative entropy:
+prior preservation is a separate law in the discrete correction.
 
-Important design choice:
-- We model “information” / “constraints” extensionally as a set of admissible posteriors.
-  This keeps the interface independent of a particular constraint language (expected values,
-  inequalities, etc.). A concrete constraint language can be added later as a refinement.
-
-Implemented axioms (finite/discrete, Lean-friendly):
-- SJ1 (Uniqueness) as `unique` / `uniqueProd`.
-- SJ2 (Invariance) specialized to permutation invariance (`perm_invariant`).
-- SJ4 (System independence) specialized to product state spaces (`system_independent`), matching
-  Shore–Johnson's Axiom III / equation (11): inferring on two independent systems separately vs
-  jointly yields the same factorized posterior.
-- SJ3 (Subset independence) specialized to a two-block partition (`subset_independent_twoBlock`),
-  matching Shore–Johnson's Axiom IV / equation (14) in the special case of a two-way partition
-  with known block mass `w`.
-
-Note: the objective-level KL/cross-entropy uniqueness results we currently use are formalized
-separately in `KnuthSkilling/Theorem.lean`. Connecting
-this operator-level interface to those objective-level theorems requires fixing a concrete
-constraint language (as in Shore–Johnson: expected-value constraints) and formalizing the
-operator→objective derivation (their Theorem I / Appendix). The constraint language is introduced
-in `KnuthSkilling/Constraints.lean`, and the resulting
-assumption bundle for the SJ→KL pipeline is packaged in
-`KnuthSkilling/ShoreJohnson/KLDerivation.lean`.
+References:
+* Shore and Johnson (1980), https://doi.org/10.1109/TIT.1980.1056144
+* Johnson and Shore (1983), https://zenodo.org/records/1281600
 -/
 
 namespace KnuthSkilling.ShoreJohnson.Inference
@@ -50,6 +31,11 @@ namespace ProbDist
 
 variable {n : ℕ}
 
+theorem dimension_pos (P : ProbDist n) : 0 < n := by
+  cases n with
+  | zero => simpa using P.sum_one
+  | succ n => exact Nat.succ_pos n
+
 /-- Permute a finite distribution by relabeling indices. -/
 noncomputable def permute (σ : Equiv.Perm (Fin n)) (P : ProbDist n) : ProbDist n where
   p := fun i => P.p (σ⁻¹ i)
@@ -64,6 +50,16 @@ noncomputable def permute (σ : Equiv.Perm (Fin n)) (P : ProbDist n) : ProbDist 
 
 theorem permute_apply (σ : Equiv.Perm (Fin n)) (P : ProbDist n) (i : Fin n) :
     (permute σ P).p i = P.p (σ⁻¹ i) := rfl
+
+@[simp] theorem permute_inv_permute (σ : Equiv.Perm (Fin n)) (P : ProbDist n) :
+    permute σ⁻¹ (permute σ P) = P := by
+  ext i
+  simp [permute]
+
+@[simp] theorem permute_permute_inv (σ : Equiv.Perm (Fin n)) (P : ProbDist n) :
+    permute σ (permute σ⁻¹ P) = P := by
+  ext i
+  simp [permute]
 
 end ProbDist
 
@@ -91,46 +87,14 @@ noncomputable def twoBlock (w : ℝ) (hw0 : 0 ≤ w) (hw1 : w ≤ 1)
         have hw' : 0 ≤ 1 - w := sub_nonneg.mpr hw1
         simpa [h] using mul_nonneg hw' (P₂.nonneg i₂)
   sum_one := by
-    classical
-    -- Reindex by the sum-equivalence and split the sum over `Fin n ⊕ Fin m`.
-    have hsum :
-        (∑ i : Fin (n + m),
-            match (finSumFinEquiv (m := n) (n := m)).symm i with
-            | Sum.inl i₁ => w * P₁.p i₁
-            | Sum.inr i₂ => (1 - w) * P₂.p i₂) =
-          ∑ s : Fin n ⊕ Fin m,
-            (match s with
-              | Sum.inl i₁ => w * P₁.p i₁
-              | Sum.inr i₂ => (1 - w) * P₂.p i₂) := by
-      -- Reindex the finite sum by the equivalence `Fin (n+m) ≃ Fin n ⊕ Fin m`.
-      let e : Fin (n + m) ≃ Fin n ⊕ Fin m := (finSumFinEquiv (m := n) (n := m)).symm
-      let g : Fin n ⊕ Fin m → ℝ := fun s =>
-        match s with
-        | Sum.inl i₁ => w * P₁.p i₁
-        | Sum.inr i₂ => (1 - w) * P₂.p i₂
-      -- Now `Equiv.sum_comp e g` is exactly the desired equality.
-      simpa [e, g] using (Equiv.sum_comp e g)
-    rw [hsum]
-    -- Now split the sum over the two summands.
-    simp [Fintype.sum_sum_type]
-    have hleft :
-        (∑ i : Fin n, w * P₁.p i) = w * ∑ i : Fin n, P₁.p i := by
-      -- Pull out the constant `w` from the finite sum.
-      change (Finset.univ.sum fun i : Fin n => w * P₁.p i) =
-        w * (Finset.univ.sum fun i : Fin n => P₁.p i)
-      simpa using
-        (Finset.mul_sum (s := (Finset.univ : Finset (Fin n))) (a := w) (f := fun i => P₁.p i)).symm
-    have hright :
-        (∑ i : Fin m, (1 - w) * P₂.p i) = (1 - w) * ∑ i : Fin m, P₂.p i := by
-      change (Finset.univ.sum fun i : Fin m => (1 - w) * P₂.p i) =
-        (1 - w) * (Finset.univ.sum fun i : Fin m => P₂.p i)
-      simpa using
-        (Finset.mul_sum (s := (Finset.univ : Finset (Fin m))) (a := (1 - w)) (f := fun i => P₂.p i)).symm
-    -- Finish using `∑ P₁ = 1` and `∑ P₂ = 1`.
-    calc
-      (∑ i : Fin n, w * P₁.p i) + (∑ i : Fin m, (1 - w) * P₂.p i)
-          = w * 1 + (1 - w) * 1 := by simp [hleft, hright, P₁.sum_one, P₂.sum_one]
-      _ = 1 := by ring
+    let e := (finSumFinEquiv (m := n) (n := m)).symm
+    let g : Fin n ⊕ Fin m → ℝ := fun s =>
+      match s with | .inl i => w * P₁.p i | .inr j => (1-w) * P₂.p j
+    change (∑ i, g (e i)) = 1
+    rw [Equiv.sum_comp e g, Fintype.sum_sum_type]
+    change (∑ i, w * P₁.p i) + (∑ j, (1-w) * P₂.p j) = 1
+    rw [← Finset.mul_sum, ← Finset.mul_sum, P₁.sum_one, P₂.sum_one]
+    ring
 
 end ProbDist
 
@@ -139,6 +103,12 @@ end ProbDist
 namespace ProbDistProd
 
 variable {n m : ℕ}
+
+@[ext] theorem ext (P Q : ProbDistProd n m) (h : ∀ i, P.p i = Q.p i) : P = Q := by
+  cases P
+  cases Q
+  cases funext h
+  rfl
 
 /-- Left marginal of a distribution on `Fin n × Fin m`. -/
 noncomputable def marginalLeft (P : ProbDistProd n m) : ProbDist n where
@@ -158,22 +128,20 @@ noncomputable def marginalRight (P : ProbDistProd n m) : ProbDist m where
     intro j
     exact Finset.sum_nonneg (fun i _ => P.nonneg (i, j))
   sum_one := by
-    classical
-    -- `∑ j (∑ i P(i,j)) = ∑ (i,j) P(i,j) = 1`, by swapping the order of summation.
-    calc
-      (∑ j : Fin m, ∑ i : Fin n, P.p (i, j))
-          = ∑ ji : Fin m × Fin n, P.p (ji.2, ji.1) := by
-              -- This is just `Fintype.sum_prod_type` for the function `ji ↦ P.p (ji.2, ji.1)`.
-              have h :
-                  (∑ ji : Fin m × Fin n, P.p (ji.2, ji.1)) =
-                    ∑ j : Fin m, ∑ i : Fin n, P.p (i, j) := by
-                simp [Fintype.sum_prod_type]
-              exact h.symm
-      _ = ∑ ij : Fin n × Fin m, P.p ij := by
-            -- Reindex via `Equiv.prodComm`; `(ji.2, ji.1)` is defeq to `ji.swap`.
-            exact Equiv.sum_comp (Equiv.prodComm (Fin m) (Fin n))
-              (fun ij : Fin n × Fin m => P.p ij)
-      _ = 1 := P.sum_one
+    rw [Finset.sum_comm]
+    simpa [Fintype.sum_prod_type] using P.sum_one
+
+@[simp] theorem marginalLeft_product (P : ProbDist n) (Q : ProbDist m) :
+    marginalLeft (P ⊗ Q) = P := by
+  ext i
+  change (∑ j, P.p i * Q.p j) = P.p i
+  rw [← Finset.mul_sum, Q.sum_one, mul_one]
+
+@[simp] theorem marginalRight_product (P : ProbDist n) (Q : ProbDist m) :
+    marginalRight (P ⊗ Q) = Q := by
+  ext j
+  change (∑ i, P.p i * Q.p j) = Q.p j
+  rw [← Finset.sum_mul, P.sum_one, one_mul]
 
 end ProbDistProd
 
@@ -191,7 +159,10 @@ variable {n : ℕ}
 
 /-- Relabel constraints by permuting the state labels. -/
 def permute (σ : Equiv.Perm (Fin n)) (C : ConstraintSet n) : ConstraintSet n :=
-  {Q | ProbDist.permute σ Q ∈ C}
+  {Q | ProbDist.permute σ⁻¹ Q ∈ C}
+
+@[simp] theorem mem_permute (σ : Equiv.Perm (Fin n)) (C : ConstraintSet n) (q : ProbDist n) :
+    ProbDist.permute σ q ∈ permute σ C ↔ q ∈ C := by simp [permute]
 
 end ConstraintSet
 
@@ -226,19 +197,45 @@ structure InferenceMethod where
   Infer : ∀ {n : ℕ}, ProbDist n → ConstraintSet n → ProbDist n → Prop
   InferProd : ∀ {n m : ℕ}, ProbDistProd n m → ConstraintSetProd n m → ProbDistProd n m → Prop
 
+/-- Finite KL's regular problem domain. Empty regions are allowed here: uniqueness is
+an at-most-one law, and existence requires a separate feasibility premise. -/
+def Admissible {n : ℕ} (p : ProbDist n) (C : ConstraintSet n) : Prop :=
+  (∀ i, 0 < p.p i) ∧ Convex ℝ ((fun q : ProbDist n => q.p) '' C) ∧
+    IsClosed ((fun q : ProbDist n => q.p) '' C)
+
+/-- The corresponding domain on a product state space. -/
+def AdmissibleProd {n m : ℕ} (p : ProbDistProd n m) (C : ConstraintSetProd n m) : Prop :=
+  (∀ i, 0 < p.p i) ∧ Convex ℝ ((fun q : ProbDistProd n m => q.p) '' C) ∧
+    IsClosed ((fun q : ProbDistProd n m => q.p) '' C)
+
+/-- An actual inference witness, independent of uniqueness. -/
+def Solvable {n : ℕ} (I : InferenceMethod) (p : ProbDist n) (C : ConstraintSet n) : Prop :=
+  ∃ q, I.Infer p C q
+
+/-- The former totality requirement contradicts feasibility, already on one state.
+This records the rejected interface without making it an available axiom bundle. -/
+theorem unrestricted_totality_feasibility_impossible (I : InferenceMethod)
+    (total : ∀ {n : ℕ} (p : ProbDist n) (C : ConstraintSet n), ∃! q, I.Infer p C q)
+    (feasible : ∀ {n : ℕ} {p : ProbDist n} {C : ConstraintSet n} {q},
+      I.Infer p C q → q ∈ C) : False := by
+  obtain ⟨q, hq, _⟩ := total (ProbDist.pointMass (0 : Fin 1)) ∅
+  exact feasible hq
+
 /-- Shore–Johnson axioms (discrete).
 
 This is intentionally an interface: it does not commit to any specific constraint language, only to
 the *structural* invariance/independence requirements.
 -/
 structure ShoreJohnsonAxioms (I : InferenceMethod) : Prop where
-  /-- SJ1 (Uniqueness): unique inferred posterior for every prior and constraint set. -/
+  /-- SJ1: at most one answer on the admitted finite problem domain. -/
   unique :
-    ∀ {n : ℕ} (p : ProbDist n) (C : ConstraintSet n), ∃! q : ProbDist n, I.Infer p C q
+    ∀ {n : ℕ} (p : ProbDist n) (C : ConstraintSet n), Admissible p C →
+      ∀ q r, I.Infer p C q → I.Infer p C r → q = r
 
   /-- SJ1 (Uniqueness) on product spaces. -/
   uniqueProd :
-    ∀ {n m : ℕ} (p : ProbDistProd n m) (C : ConstraintSetProd n m), ∃! q : ProbDistProd n m, I.InferProd p C q
+    ∀ {n m : ℕ} (p : ProbDistProd n m) (C : ConstraintSetProd n m), AdmissibleProd p C →
+      ∀ q r, I.InferProd p C q → I.InferProd p C r → q = r
 
   /-- Feasibility: inferred posteriors lie in the constraint set. -/
   feasible :
@@ -259,6 +256,7 @@ structure ShoreJohnsonAxioms (I : InferenceMethod) : Prop where
     ∀ {n m : ℕ} (p₁ : ProbDist n) (p₂ : ProbDist m)
       (C₁ : ConstraintSet n) (C₂ : ConstraintSet m)
       (q₁ : ProbDist n) (q₂ : ProbDist m) (q : ProbDistProd n m),
+      Admissible p₁ C₁ → Admissible p₂ C₂ →
       I.Infer p₁ C₁ q₁ →
       I.Infer p₂ C₂ q₂ →
       I.InferProd (p₁ ⊗ p₂) (ConstraintSetProd.product C₁ C₂) q →
@@ -279,10 +277,24 @@ sets of admissible posteriors, and `ConstraintSet.twoBlock` is the canonical con
       (p₁ : ProbDist n) (p₂ : ProbDist m)
       (C₁ : ConstraintSet n) (C₂ : ConstraintSet m)
       (q₁ : ProbDist n) (q₂ : ProbDist m) (q : ProbDist (n + m)),
+      Admissible p₁ C₁ → Admissible p₂ C₂ →
       I.Infer p₁ C₁ q₁ →
       I.Infer p₂ C₂ q₂ →
       I.Infer (ProbDist.twoBlock (n := n) (m := m) w hw0 hw1 p₁ p₂)
         (ConstraintSet.twoBlock (n := n) (m := m) w hw0 hw1 C₁ C₂) q →
       q = ProbDist.twoBlock (n := n) (m := m) w hw0 hw1 q₁ q₂
+
+/-- The discrete correction's null-information law; it is separate from SJ1--SJ4. -/
+def PriorPreservation (I : InferenceMethod) : Prop :=
+  ∀ {n : ℕ} (p : ProbDist n), (∀ i, 0 < p.p i) → I.Infer p Set.univ p
+
+theorem not_infer_empty {I : InferenceMethod} (h : ShoreJohnsonAxioms I)
+    {n : ℕ} (p q : ProbDist n) : ¬ I.Infer p ∅ q := fun hi => h.feasible hi
+
+theorem unique_of_solvable {I : InferenceMethod} (h : ShoreJohnsonAxioms I)
+    {n : ℕ} (p : ProbDist n) (C : ConstraintSet n)
+    (ha : Admissible p C) (hs : Solvable I p C) : ∃! q, I.Infer p C q := by
+  obtain ⟨q, hq⟩ := hs
+  exact ⟨q, hq, fun r hr => h.unique p C ha r q hr hq⟩
 
 end KnuthSkilling.ShoreJohnson.Inference

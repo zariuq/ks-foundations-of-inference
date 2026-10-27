@@ -2,7 +2,7 @@ import KnuthSkilling.ShoreJohnson.Appendix
 import Mathlib.Analysis.Calculus.FDeriv.Add
 import Mathlib.Analysis.Calculus.FDeriv.Comp
 import Mathlib.Analysis.Calculus.FDeriv.Linear
-import Mathlib.Topology.Algebra.Module.LinearMap
+import Mathlib.Topology.Algebra.Module.ContinuousLinearMap.Basic
 
 /-!
 # Shore–Johnson Appendix: Fréchet derivative helpers for `shift2`

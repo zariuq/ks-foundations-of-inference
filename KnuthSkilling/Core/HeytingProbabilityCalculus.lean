@@ -1,19 +1,10 @@
 /-
-# Interval Probability Calculus for Heyting K&S
+# Interval bounds and sound conditional observations
 
-## Overview
-
-This file develops probability calculus for interval-valued probabilities
-on distributive lattices (including Heyting algebras).
-
-For intervals, we get bounds from monotonicity:
-- lower(A ⊔ B) ≥ max(lower(A), lower(B))
-- upper(A ⊓ B) ≤ min(upper(A), upper(B))
-
-## References
-
-- Walley, "Statistical Reasoning with Imprecise Probabilities" (1991)
-- de Cooman & Hermans, "Imprecise probability trees" (2008)
+Monotonicity supplies endpoint inequalities. Conditional ratios are outer
+bounds for every supplied compatible modular valuation when the lower evidence
+bound is positive. The upper ratio can exceed one, so the observation theorem
+clips it at one. Total real division at zero supplies no conditioning guarantee.
 -/
 
 import Mathlib.Order.Lattice
@@ -22,13 +13,11 @@ import Mathlib.Order.BoundedOrder.Basic
 import Mathlib.Order.Heyting.Basic
 import Mathlib.Tactic
 import KnuthSkilling.Core.HeytingValuation
-import KnuthSkilling.Core.HeytingIntervalRepresentation
+import KnuthSkilling.Core.HeytingBounds
 
 namespace KnuthSkilling.Heyting
 
 variable {α : Type*} [DistribLattice α] [BoundedOrder α]
-
-/-! ## Basic Interval Bounds from Monotonicity -/
 
 section MonotonicityBounds
 
@@ -67,8 +56,6 @@ theorem lower_inf_nonneg (a b : α) :
 
 end MonotonicityBounds
 
-/-! ## Interval Arithmetic Properties -/
-
 section IntervalArithmetic
 
 variable (iv : IntervalValuation α)
@@ -81,31 +68,18 @@ theorem interval_bot : iv.interval ⊥ = {0} := by
 theorem interval_top : iv.interval ⊤ = {1} := by
   simp only [IntervalValuation.interval, iv.lower_top, iv.upper_top, Set.Icc_self]
 
-/-- For a ≤ b, the intervals are nested: interval(a) has lower values than interval(b). -/
+/-- Comparable inputs have coordinatewise ordered endpoints; this is not set containment. -/
 theorem interval_le_of_le {a b : α} (h : a ≤ b) :
     iv.lower a ≤ iv.lower b ∧ iv.upper a ≤ iv.upper b :=
   ⟨iv.lower_monotone h, iv.upper_monotone h⟩
 
-/-
-Note: The converse "disjoint intervals imply comparable elements" requires
-FaithfulIntervalValuation. For a general IntervalValuation, intervals can be
-disjoint even for incomparable elements (the valuation may not faithfully
-represent the lattice structure).
-
-See `FaithfulIntervalValuation.interval_intersect_of_incomparable` in
-HeytingIntervalRepresentation.lean for the faithful case.
--/
-
 end IntervalArithmetic
-
-/-! ## Conditioning Basics -/
 
 section Conditioning
 
 variable (iv : IntervalValuation α)
 
-/-- For conditioning, we need the evidence to have positive probability.
-    The conditioned interval is related to the meet. -/
+/-- The meet is below the evidence at both endpoints. -/
 theorem conditioning_meet_bound (a e : α) :
     iv.lower (a ⊓ e) ≤ iv.lower e ∧ iv.upper (a ⊓ e) ≤ iv.upper e :=
   ⟨iv.lower_monotone inf_le_right, iv.upper_monotone inf_le_right⟩
@@ -131,25 +105,40 @@ theorem conditionalLowerBound'_mem_unit (a e : α) (he : 0 < iv.upper e) :
 
 end Conditioning
 
-/-! ## Summary
+section ConditionalSoundness
+variable {α : Type*} [HeytingAlgebra α]
 
-This file provides basic interval arithmetic for Heyting probability:
+/-- Every compatible valuation's conditional value lies in the clipped outer bounds. -/
+theorem conditionalBounds_sound (iv : IntervalValuation α) (ν : ModularValuation α)
+    (hν : IntervalValuation.Compatible ν iv) (a e : α) (he : 0 < iv.lower e) :
+    ν.val (a ⊓ e) / ν.val e ∈
+      Set.Icc (conditionalLowerBound' iv a e) (min 1 (conditionalUpperBound' iv a e)) := by
+  have hv : 0 < ν.val e := lt_of_lt_of_le he (hν e).1
+  constructor
+  · exact div_le_div₀ (ν.nonneg _) (hν (a ⊓ e)).1 hv (hν e).2
+  · apply le_min
+    · exact (div_le_one hv).mpr (ν.monotone inf_le_right)
+    · exact div_le_div₀ (le_trans (ν.nonneg _) (hν (a ⊓ e)).2) (hν (a ⊓ e)).2 he (hν e).1
 
-1. **Monotonicity Bounds**:
-   - lower(A ⊔ B) ≥ max(lower(A), lower(B))
-   - upper(A ⊓ B) ≤ min(upper(A), upper(B))
+/-- The complement-derived interval carries a compatible witness automatically. -/
+theorem conditionalBounds_ofHeyting (ν : ModularValuation α) (a e : α) (he : 0 < ν.val e) :
+    ν.val (a ⊓ e) / ν.val e ∈
+      Set.Icc (conditionalLowerBound' (IntervalValuation.ofHeyting ν) a e)
+        (min 1 (conditionalUpperBound' (IntervalValuation.ofHeyting ν) a e)) :=
+  conditionalBounds_sound _ ν (IntervalValuation.ofHeyting_compatible ν) a e he
 
-2. **Interval Properties**:
-   - interval(⊥) = {0}, interval(⊤) = {1}
-   - Comparable elements have consistently ordered intervals
+end ConditionalSoundness
 
-3. **Conditioning**:
-   - P(A|E) lower bound: lower(A∧E) / upper(E)
-   - P(A|E) upper bound: upper(A∧E) / lower(E)
+/-- Raw upper ratios need clipping even for realizable complement-derived intervals. -/
+theorem threeChain_conditional_upper_exceeds_one :
+    conditionalUpperBound' (IntervalValuation.ofHeyting threeChainValuation)
+      (1 : Fin 3) (1 : Fin 3) = 2 ∧
+      threeChainValuation.val ((1 : Fin 3) ⊓ 1) / threeChainValuation.val 1 = 1 := by
+  norm_num [conditionalUpperBound', IntervalValuation.ofHeyting, lowerBound, upperBound,
+    threeChainValuation]
 
-The key insight: interval arithmetic from monotonicity alone gives useful bounds,
-but stronger results (like disjoint intervals implying comparability) require
-the FaithfulIntervalValuation structure from HeytingIntervalRepresentation.
--/
+theorem threeChain_zero_evidence :
+    ¬0 < (IntervalValuation.ofHeyting threeChainValuation).lower (0 : Fin 3) := by
+  norm_num [IntervalValuation.ofHeyting, lowerBound, threeChainValuation]
 
 end KnuthSkilling.Heyting

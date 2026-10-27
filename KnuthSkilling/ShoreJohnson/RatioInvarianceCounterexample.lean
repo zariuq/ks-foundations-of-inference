@@ -1,11 +1,13 @@
 import KnuthSkilling.ShoreJohnson.GradientSeparability
+import KnuthSkilling.ShoreJohnson.TheoremI
 import Mathlib.Analysis.Calculus.Deriv.Pow
 import Mathlib.Tactic
 
 /-!
 # Counterexample: quadratic loss is not ratio-invariant
 
-This file shows that the ratio-invariant derivative axiom excludes quadratic loss.
+Quadratic loss separates the explicit ratio-invariance premise and also shows
+that constraint-preserving pairwise shifts cannot replace all affine directions.
 -/
 
 namespace KnuthSkilling.ShoreJohnson.RatioInvarianceCounterexample
@@ -129,5 +131,35 @@ theorem not_derivRatioInvariant_quadAtom :
             simp [hChoose2]
       _ = (1 / 2 : ℝ) := hVal2
   norm_num at hEq'
+
+
+/-- Distinct constraint coefficients can exclude every pairwise shift while
+leaving a genuine affine direction. The quadratic objective is not minimized. -/
+theorem pairwise_shift_test_insufficient :
+    ∃ (p q : ProbDist 3) (cs : Constraints.EVConstraintSet 3),
+      q ∈ Constraints.toConstraintSet cs ∧ (∀ i, 0 < q.p i) ∧
+      AppendixTheoremI.GEqualOnCoeffs quadAtomDeriv p q cs ∧
+      ¬ IsMinimizer (ofAtom quadAtom) p (Constraints.toConstraintSet cs) q := by
+  let p := uniformDist 3 (by decide)
+  let q := GradientSeparability.probDist3 (1/4) (1/2) (by norm_num) (by norm_num) (by norm_num)
+  let c : Constraints.EVConstraint 3 := ⟨fun i => (i.val : ℝ), 1⟩
+  let cs := [c]
+  have hq : q ∈ Constraints.toConstraintSet cs := by
+    norm_num [Constraints.toConstraintSet, Constraints.satisfiesSet, Constraints.satisfies,
+      cs, c, q, GradientSeparability.probDist3, Fin.sum_univ_succ]
+    change (1/2 : ℝ) + (1/4)*2 = 1
+    norm_num
+  refine ⟨p, q, cs, hq, ?_, ?_, ?_⟩
+  · intro i
+    fin_cases i <;> norm_num [q, GradientSeparability.probDist3]
+  · intro i j hij hc
+    have he : (i.val : ℝ) = (j.val : ℝ) := hc c (by simp [cs])
+    exact (hij (Fin.ext (Nat.cast_inj.mp he))).elim
+  · intro hm
+    have hp : p ∈ Constraints.toConstraintSet cs := by
+      norm_num [Constraints.toConstraintSet, Constraints.satisfiesSet, Constraints.satisfies,
+        cs, c, p, uniformDist, Fin.sum_univ_succ]
+    have hh := hm.2 p hp
+    norm_num [ofAtom, quadAtom, p, q, uniformDist, GradientSeparability.probDist3, Fin.sum_univ_succ] at hh
 
 end KnuthSkilling.ShoreJohnson.RatioInvarianceCounterexample

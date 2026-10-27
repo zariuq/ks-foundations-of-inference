@@ -6,58 +6,25 @@ import Mathlib.MeasureTheory.Measure.MeasureSpace
 import Mathlib.MeasureTheory.MeasurableSpace.Basic
 import Mathlib.Data.ENNReal.Basic
 import KnuthSkilling.Core.Basic
+import KnuthSkilling.Probability.BooleanRepresentation
 import KnuthSkilling.Multiplicative
 
 /-!
-# K&S Section 7: Conditional Probability via Chaining Associativity (Axiom 5)
+# Conditional event observations and ordered chaining
 
-**IMPORTANT**: For canonical probability calculus results (Bayes' theorem, product rule, etc.),
-use `ProbabilityCalculus.lean` which provides the single source of truth. This file contains
-the lattice-theoretic `Bivaluation` formalism from K&S Section 7, which is complementary
-to (not a replacement for) the main derivation.
+A bivaluation supplies context-sensitive disjoint additivity and positivity.
+The chaining profile additionally supplies an associative, positive operation
+and its distributivity law. Its positive restriction therefore has the shared
+scaled-multiplication representation; normalization interprets every ordered fold.
 
-**Architecture**:
-- `ProbabilityCalculus.lean`: Canonical interface for end-results (use this!)
-- `Probability/ProbabilityDerivation.lean`: Main K&S derivation (provides the canonical implementation)
-- This file: K&S Section 7's `Bivaluation` + `ChainingAssociativity` formalism
+The product-equation interpretation uses an inverse only on positive inputs.
+Logarithm and exponential provide a concrete realization. The historical global
+inverse profile is retained separately with its inconsistency control.
 
-The theorems in this file (e.g., `bayesTheorem`, `productRule`) are specific to the
-`Bivaluation` structure and demonstrate how Section 7's framework derives the same
-results. For general use, prefer `ProbabilityCalculus.sumRule`, etc.
-
-This file uses `DirectProof.lean` for the Appendix B result, which is an alternative
-proof technique (not a different axiom system) that avoids "apply Appendix A again".
-
-## The Story
-
-K&S derives conditional probability `p(x|t)` as a **bivaluation** - a function taking pairs of
-lattice elements to reals. The key axiom is:
-
-**Axiom 5 (Chaining Associativity)**: For chains `a < b < c < d`:
-```
-(p(a|b) ⊙ p(b|c)) ⊙ p(c|d) = p(a|b) ⊙ (p(b|c) ⊙ p(c|d))
-```
-
-Combined with the sum rule (from Appendix A), this gives the **same product equation** as
-Appendix B! The solution (Θ = log, ⊙ = multiplication) yields:
-
-**Chain-Product Rule**: `p(x|z) = p(x|y) · p(y|z)`
-
-From this, K&S derives:
-- Bayes' Theorem: `Pr(x|θ) · Pr(θ) = Pr(θ|x) · Pr(x)`
-- Probability as ratio: `Pr(x|t) = m(x ∧ t) / m(t)`
-
-## Main Results
-
-- `ChainingAssociativity`: Axiom 5 as a typeclass
-- `chainProductRule`: `p(a|c) = p(a|b) · p(b|c)` for chains
-- `bayesTheorem`: From commutativity of ∧
-- `prob_eq_measure_ratio`: `Pr(x|t) = m(x ∧ t) / m(t)`
-
-## References
-
-- K&S "Foundations of Inference" (2012), Section 7 "Probability Calculus"
-- Especially Section 7.1 "Chained Arguments"
+Eventwise product, Bayes, complement and measure-ratio laws retain their
+normalization and positive-evidence premises. `ProbabilityCalculus` exposes the
+valuation-based interface; these bivaluation statements have their own premises.
+Reference: Knuth and Skilling, “Foundations of Inference” (2012), Section 7.
 -/
 
 namespace KnuthSkilling.Probability.ConditionalProbability
@@ -192,17 +159,55 @@ theorem tensor_inj_kPos (C : ChainingOp) : Function.Injective (fun t : PosReal =
 theorem tensor_regular (C : ChainingOp) : TensorRegularity (tensor C) :=
   ⟨fun u v w => tensor_assoc C u v w, tensor_inj_kPos C⟩
 
+/-- The original chaining tensor carries the shared scaled-multiplication observation. -/
+noncomputable def representation (C : ChainingOp) : ScaledMultRep (tensor C) :=
+  ScaledMultRep.ofExists (tensor_coe_eq_mul_div_const_of_tensorRegularity
+    (tensor := tensor C) (tensor_regular C) (tensor_distributesOverAdd C))
+
+/-- Ordered chaining occurrences are interpreted by the same faithful normalized fold. -/
+theorem observe_fold (C : ChainingOp) (s : PosReal) (xs : List PosReal) :
+    ((xs.foldl (tensor C) s : PosReal) : ℝ) / (representation C).C =
+      ((s : ℝ) / (representation C).C) *
+        (xs.map (fun x : PosReal => (x : ℝ) / (representation C).C)).prod :=
+  (representation C).observe_fold s xs
+
 /-- Appendix B applied to chaining: the operation is scaled multiplication on `(0,∞)`. -/
 theorem chain_eq_mul_div_const (C : ChainingOp) :
     ∃ K : ℝ, 0 < K ∧
       ∀ x y : ℝ, 0 < x → 0 < y → C.chain x y = (x * y) / K := by
-  rcases tensor_coe_eq_mul_div_const_of_tensorRegularity
-      (tensor := tensor C) (tensor_regular C) (tensor_distributesOverAdd C) with
-    ⟨K, hK, h⟩
-  refine ⟨K, hK, ?_⟩
-  intro x y hx hy
-  have := h ⟨x, hx⟩ ⟨y, hy⟩
-  simpa [tensor] using this
+  refine ⟨(representation C).C, (representation C).C_pos, fun x y hx hy => ?_⟩
+  exact (representation C).tensor_eq ⟨x, hx⟩ ⟨y, hy⟩
+
+/-- Positive-domain inverse agreement transports chaining distributivity to the product equation. -/
+theorem productEquation (C : ChainingOp) (Θ : ℝ → ℝ)
+    (hΘ_chain : ∀ x y : ℝ, 0 < x → 0 < y → Θ (C.chain x y) = Θ x + Θ y)
+    (Ψ : ℝ → ℝ) (hΨΘ : ∀ x, 0 < x → Ψ (Θ x) = x)
+    (hΘΨ : ∀ r, Θ (Ψ r) = r) (hΨ_pos : ∀ r : ℝ, 0 < Ψ r) :
+    Multiplicative.ProductEquation Ψ (fun ξ η => Θ (Ψ ξ + Ψ η)) := by
+  have inverse_chain (x y : ℝ) (hx : 0 < x) (hy : 0 < y) :
+      Ψ (Θ x + Θ y) = C.chain x y := by
+    rw [← hΘ_chain x y hx hy, hΨΘ _ (C.chain_pos x y hx hy)]
+  intro τ ξ η
+  have shift (r : ℝ) : Ψ (τ + r) = C.chain (Ψ r) (Ψ τ) := by
+    calc
+      Ψ (τ + r) = Ψ (Θ (Ψ r) + Θ (Ψ τ)) := by rw [hΘΨ r, hΘΨ τ, add_comm]
+      _ = _ := inverse_chain _ _ (hΨ_pos _) (hΨ_pos _)
+  rw [shift ξ, shift η, shift (Θ (Ψ ξ + Ψ η)), hΨΘ _ (add_pos (hΨ_pos ξ) (hΨ_pos η))]
+  exact C.chain_distrib_left _ _ _ (hΨ_pos ξ) (hΨ_pos η) (hΨ_pos τ)
+
+private def multiplication : ChainingOp where
+  chain := (· * ·)
+  chain_assoc := mul_assoc
+  chain_strictMono_left _ hz := fun _ _ h => mul_lt_mul_of_pos_right h hz
+  chain_strictMono_right _ hx := fun _ _ h => mul_lt_mul_of_pos_left h hx
+  chain_pos _ _ hx hy := mul_pos hx hy
+  chain_distrib_left a b t _ _ _ := (add_mul a b t).symm
+
+/-- The positive-domain hypotheses hold for ordinary multiplication and logarithms. -/
+theorem multiplication_productEquation :
+    Multiplicative.ProductEquation Real.exp (fun ξ η => Real.log (Real.exp ξ + Real.exp η)) :=
+  multiplication.productEquation Real.log (fun _ _ hx hy => Real.log_mul hx.ne' hy.ne')
+    Real.exp (fun _ hx => Real.exp_log hx) Real.log_exp Real.exp_pos
 
 end ChainingOp
 
@@ -241,25 +246,9 @@ Substituting into the sum rule term by term yields:
 where Ψ = Θ⁻¹. This is exactly the Appendix B product equation!
 -/
 
-/-- The chaining operation, combined with the sum rule, satisfies the product equation.
-
-**KEY THEOREM**: This establishes the conceptual link between K&S Section 7 (conditional
-probability via Axiom 5) and Appendix B (product equation → exponential).
-
-K&S's key insight: The SAME functional equation (ProductEquation) that arises from
-distributivity in Appendix B ALSO arises from chaining + sum rule in Section 7!
-
-The product equation is: `Ψ(τ + ξ) + Ψ(τ + η) = Ψ(τ + ζ(ξ,η))`
-where Ψ = Θ⁻¹ and ζ(ξ,η) = Θ(Ψ(ξ) + Ψ(η)) encodes the sum rule.
-
-**Proof strategy**:
-- Let a = Ψ(ξ), b = Ψ(η), t = Ψ(τ)
-- By hΘ_chain: Ψ(Θ(x) + Θ(y)) = chain(x, y)
-- So Ψ(τ + ξ) = chain(a, t) and Ψ(τ + η) = chain(b, t)
-- By distributivity: chain(a,t) + chain(b,t) = chain(a+b, t)
-- And Ψ(τ + ζ(ξ,η)) = Ψ(Θ(t) + Θ(a+b)) = chain(a+b, t)
-- Hence LHS = RHS ∎
--/
+/-- Historical unrestricted-inverse interface. Its positivity and inverse premises are
+inconsistent (`global_positive_inverse_impossible`); use `ChainingOp.productEquation`
+for the inhabited positive-domain correspondence. -/
 theorem chaining_gives_productEquation
     {α : Type*} [DistribLattice α] [BoundedOrder α]
     (_B : Bivaluation α) [CA : ChainingAssociativity α _B]
@@ -273,63 +262,15 @@ theorem chaining_gives_productEquation
     ∃ (Ψ' : ℝ → ℝ) (ζ : ℝ → ℝ → ℝ),
       (∀ x, Ψ' (Θ x) = x) ∧
       Multiplicative.ProductEquation Ψ' ζ := by
-  -- Step 1: Use the given Ψ = Θ⁻¹
-  -- Step 2: Construct ζ(ξ,η) = Θ(Ψ(ξ) + Ψ(η))
-  let ζ : ℝ → ℝ → ℝ := fun ξ η => Θ (Ψ ξ + Ψ η)
+  exact ⟨Ψ, (fun ξ η => Θ (Ψ ξ + Ψ η)), hΨΘ,
+    CA.chainOp.productEquation Θ hΘ_chain Ψ (fun x _ => hΨΘ x) hΘΨ hΨ_pos⟩
 
-  -- Step 3: Verify ProductEquation
-  refine ⟨Ψ, ζ, hΨΘ, ?_⟩
-  intro τ ξ η
-
-  -- Let a = Ψ(ξ), b = Ψ(η), t = Ψ(τ)
-  set a := Ψ ξ with ha_def
-  set b := Ψ η with hb_def
-  set t := Ψ τ with ht_def
-
-  -- Positivity (from hΨ_pos)
-  have ha : 0 < a := hΨ_pos ξ
-  have hb : 0 < b := hΨ_pos η
-  have ht : 0 < t := hΨ_pos τ
-  have hab : 0 < a + b := add_pos ha hb
-
-  -- Key: Ψ(Θ(x) + Θ(y)) = chain(x, y) for positive x, y
-  have hΨ_chain : ∀ x y : ℝ, 0 < x → 0 < y →
-      Ψ (Θ x + Θ y) = CA.chainOp.chain x y := fun x y hx hy => by
-    have h := hΘ_chain x y hx hy
-    rw [← h, hΨΘ]
-
-  -- Compute LHS pieces
-  -- τ + ξ = Θ(Ψ τ) + Θ(Ψ ξ) = Θ t + Θ a, so Ψ(τ + ξ) = Ψ(Θ t + Θ a) = chain(a, t)
-  have hLHS1 : Ψ (τ + ξ) = CA.chainOp.chain a t := by
-    have h_eq : τ + ξ = Θ t + Θ a := by
-      simp only [ht_def, ha_def, hΘΨ]
-    rw [h_eq, add_comm (Θ t) (Θ a)]
-    exact hΨ_chain a t ha ht
-
-  have hLHS2 : Ψ (τ + η) = CA.chainOp.chain b t := by
-    have h_eq : τ + η = Θ t + Θ b := by
-      simp only [ht_def, hb_def, hΘΨ]
-    rw [h_eq, add_comm (Θ t) (Θ b)]
-    exact hΨ_chain b t hb ht
-
-  -- Distributivity: chain(a,t) + chain(b,t) = chain(a+b, t)
-  have hDistrib : CA.chainOp.chain a t + CA.chainOp.chain b t =
-      CA.chainOp.chain (a + b) t :=
-    CA.chainOp.chain_distrib_left a b t ha hb ht
-
-  -- Compute RHS
-  -- ζ(ξ,η) = Θ(Ψ ξ + Ψ η) = Θ(a + b)
-  -- τ + ζ(ξ,η) = Θ(Ψ τ) + Θ(a+b) = Θ t + Θ(a+b)
-  -- So Ψ(τ + ζ(ξ,η)) = Ψ(Θ t + Θ(a+b)) = chain(a+b, t)
-  have hRHS : Ψ (τ + ζ ξ η) = CA.chainOp.chain (a + b) t := by
-    show Ψ (τ + Θ (Ψ ξ + Ψ η)) = _
-    have h1 : τ + Θ (Ψ ξ + Ψ η) = Θ t + Θ (a + b) := by
-      simp only [ha_def, hb_def, ht_def, hΘΨ]
-    rw [h1, add_comm (Θ t) (Θ (a + b))]
-    exact hΨ_chain (a + b) t hab ht
-
-  -- Combine
-  rw [hLHS1, hLHS2, hDistrib, hRHS]
+/-- An unrestricted real left inverse cannot have an everywhere positive inverse map. -/
+theorem global_positive_inverse_impossible (Θ Ψ : ℝ → ℝ)
+    (hΨΘ : ∀ x, Ψ (Θ x) = x) (hΨ_pos : ∀ r : ℝ, 0 < Ψ r) : False := by
+  have h := hΨ_pos (Θ 0)
+  rw [hΨΘ] at h
+  exact (lt_irrefl 0) h
 
 /-! ## Main Theorem: Chain-Product Rule
 
@@ -505,7 +446,7 @@ theorem le_measure_top (x : α) : baseMeasure B x ≤ baseMeasure B ⊤ := by
 
 /-- For normalized bivaluations (p(t|t) = 1), we have m(⊤) = 1.
 
-This makes baseMeasure a probability measure on the lattice. -/
+Normalization makes baseMeasure a normalized finitely additive event valuation. -/
 theorem top_eq_one (hNormalized : ∀ t : α, ⊥ < t → B.p t t = 1) (hTop : (⊤ : α) ≠ ⊥) :
     baseMeasure B ⊤ = 1 := by
   have htop : ⊥ < (⊤ : α) := bot_lt_iff_ne_bot.mpr hTop
@@ -524,38 +465,23 @@ end baseMeasure
 
 /-! ### Connection to Mathlib Measure Theory
 
-For finite Boolean algebras, `baseMeasure` induces a proper `MeasureTheory.Measure`.
-The key insight is that:
-1. A finite Boolean algebra is a σ-algebra (all subsets are measurable)
-2. Finite additivity = σ-additivity for finite types
-3. baseMeasure ≥ 0 and baseMeasure(⊥) = 0
-
-We construct the measure via ENNReal (extended non-negative reals). -/
+The following laws give finite additivity and an `ENNReal` event readout.
+Realizing those events as a sigma-algebra and proving countable additivity
+are separate obligations before constructing a Mathlib measure. -/
 
 section MeasureAxioms
 
-/-! ### baseMeasure Satisfies Measure Axioms
+/-! ### Finite event-measure laws
 
-We prove that `baseMeasure` satisfies all standard measure axioms,
-making it a finitely additive probability measure on the lattice.
-
-For finite Boolean algebras, finite additivity is equivalent to σ-additivity,
-so this is a bona fide probability measure. For infinite lattices, K&S only
-guarantees finite additivity (extending to σ-additivity would require
-additional continuity assumptions not present in the K&S framework). -/
+The bivaluation supplies bottom, disjoint additivity and monotonicity.
+Normalization gives unit-interval bounds. A measure on a sigma-algebra
+additionally requires the appropriate event representation and countable
+additivity; those are not supplied by these finite lattice laws alone.
+-/
 
 variable {α : Type*} [BooleanAlgebra α] (B : Bivaluation α)
 
-/-- **Main Theorem**: baseMeasure satisfies all measure axioms.
-
-This theorem states that baseMeasure from a normalized Bivaluation satisfies:
-1. m(⊥) = 0 (empty set has measure zero)
-2. Finite additivity: m(x ⊔ y) = m(x) + m(y) for disjoint x, y
-3. Non-negativity: 0 ≤ m(x)
-4. Normalization: m(⊤) = 1 (probability measure)
-
-For finite Boolean algebras, finite additivity is equivalent to σ-additivity,
-so this is a bona fide probability measure. -/
+/-- Bottom, finite additivity, nonnegativity and normalization of the event readout. -/
 theorem baseMeasure_satisfies_measure_axioms
     (hNormalized : ∀ t : α, ⊥ < t → B.p t t = 1)
     (hTop : (⊤ : α) ≠ ⊥) :
@@ -588,40 +514,8 @@ The general `sumRule_general` theorem (proven later in this file) also gives thi
 theorem baseMeasure_inclusion_exclusion
     (x y : α) :
     baseMeasure B (x ⊔ y) + baseMeasure B (x ⊓ y) = baseMeasure B x + baseMeasure B y := by
-  -- Reduce to context ⊤ via baseMeasure definition
-  unfold baseMeasure
-  -- Decompose x = (x ⊓ yᶜ) ⊔ (x ⊓ y) (disjoint union)
-  have hdecomp_x : (x ⊓ yᶜ) ⊔ (x ⊓ y) = x := by
-    calc (x ⊓ yᶜ) ⊔ (x ⊓ y) = x ⊓ (yᶜ ⊔ y) := by rw [← inf_sup_left]
-      _ = x ⊓ ⊤ := by simp
-      _ = x := by simp
-  have hdisj_x : Disjoint (x ⊓ yᶜ) (x ⊓ y) := by
-    rw [disjoint_iff]
-    calc (x ⊓ yᶜ) ⊓ (x ⊓ y) = x ⊓ (yᶜ ⊓ y) := by simp [inf_left_comm, inf_comm]
-      _ = ⊥ := by simp
-  have hle_x : (x ⊓ yᶜ) ⊔ (x ⊓ y) ≤ (⊤ : α) := le_top
-  have hadd_x : B.p x ⊤ = B.p (x ⊓ yᶜ) ⊤ + B.p (x ⊓ y) ⊤ := by
-    have h := B.p_sum_disjoint (x ⊓ yᶜ) (x ⊓ y) ⊤ hdisj_x hle_x
-    rw [hdecomp_x] at h
-    exact h
-  -- Similarly decompose x ⊔ y = (x ⊓ yᶜ) ⊔ y
-  have hjoin_sup : (x ⊓ yᶜ) ⊔ y = x ⊔ y := by
-    apply le_antisymm
-    · exact sup_le (le_trans inf_le_left le_sup_left) le_sup_right
-    · refine sup_le ?_ le_sup_right
-      calc x = (x ⊓ yᶜ) ⊔ (x ⊓ y) := hdecomp_x.symm
-        _ ≤ (x ⊓ yᶜ) ⊔ y := sup_le le_sup_left (le_trans inf_le_right le_sup_right)
-  have hdisj_sup : Disjoint (x ⊓ yᶜ) y := by
-    rw [disjoint_iff]
-    calc (x ⊓ yᶜ) ⊓ y = x ⊓ (yᶜ ⊓ y) := by simp [inf_left_comm, inf_comm]
-      _ = ⊥ := by simp
-  have hle_sup : (x ⊓ yᶜ) ⊔ y ≤ (⊤ : α) := le_top
-  have hadd_sup : B.p (x ⊔ y) ⊤ = B.p (x ⊓ yᶜ) ⊤ + B.p y ⊤ := by
-    have h := B.p_sum_disjoint (x ⊓ yᶜ) y ⊤ hdisj_sup hle_sup
-    rw [hjoin_sup] at h
-    exact h
-  -- Combine: (x⊔y) + (x⊓y) = (x⊓yᶜ) + y + (x⊓y) = (x⊓yᶜ) + (x⊓y) + y = x + y
-  linarith
+  exact KnuthSkilling.Probability.BooleanRepresentation.modular_of_disjoint_add
+    (baseMeasure B) (baseMeasure.additive B) x y
 
 /-- Complement rule for baseMeasure: m(xᶜ) = m(⊤) - m(x).
 

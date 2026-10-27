@@ -1,4 +1,4 @@
-import Mathlib.Data.Prod.Lex
+import Mathlib.Algebra.Order.Monoid.Prod
 import KnuthSkilling.Core.Algebra
 
 namespace KnuthSkilling.Additive.Counterexamples
@@ -56,46 +56,14 @@ instance : KnuthSkillingAlgebraBase NatProdLex where
     intro x
     simp [natProdAdd_def, natProdIdent]
   op_strictMono_left := by
-    intro y x₁ x₂ hx
-    have hx' :
-        (ofLex x₁).1 < (ofLex x₂).1 ∨
-          (ofLex x₁).1 = (ofLex x₂).1 ∧ (ofLex x₁).2 < (ofLex x₂).2 :=
-      (Prod.Lex.lt_iff (x := x₁) (y := x₂)).1 hx
-    refine (Prod.Lex.lt_iff (x := natProdAdd x₁ y) (y := natProdAdd x₂ y)).2 ?_
-    rcases hx' with hlt | ⟨heq, hlt⟩
-    · left
-      simpa [natProdAdd_def] using Nat.add_lt_add_right hlt (ofLex y).1
-    · right
-      refine ⟨?_, ?_⟩
-      · simpa [natProdAdd_def] using congrArg (fun t => t + (ofLex y).1) heq
-      · simpa [natProdAdd_def] using Nat.add_lt_add_right hlt (ofLex y).2
+    intro y a b h
+    change a + y < b + y
+    exact _root_.add_lt_add_left h y
   op_strictMono_right := by
-    intro x y₁ y₂ hy
-    have hy' :
-        (ofLex y₁).1 < (ofLex y₂).1 ∨
-          (ofLex y₁).1 = (ofLex y₂).1 ∧ (ofLex y₁).2 < (ofLex y₂).2 :=
-      (Prod.Lex.lt_iff (x := y₁) (y := y₂)).1 hy
-    refine (Prod.Lex.lt_iff (x := natProdAdd x y₁) (y := natProdAdd x y₂)).2 ?_
-    rcases hy' with hlt | ⟨heq, hlt⟩
-    · left
-      simpa [natProdAdd_def] using Nat.add_lt_add_left hlt (ofLex x).1
-    · right
-      refine ⟨?_, ?_⟩
-      · simpa [natProdAdd_def] using congrArg (fun t => (ofLex x).1 + t) heq
-      · simpa [natProdAdd_def] using Nat.add_lt_add_left hlt (ofLex x).2
-  ident_le := by
-    rintro ⟨a₁, a₂⟩
-    by_cases h : a₁ = 0
-    · -- Same first coordinate: (0,0) ≤ (0,a₂)
-      have : (toLex (0, 0) : NatProdLex) ≤ toLex (a₁, a₂) := by
-        simp [Prod.Lex.toLex_le_toLex, h]
-      exact this
-    · -- Strictly larger first coordinate: (0,0) ≤ (a₁,a₂) via the left disjunct.
-      have hpos : 0 < a₁ := Nat.pos_of_ne_zero h
-      have : (toLex (0, 0) : NatProdLex) ≤ toLex (a₁, a₂) := by
-        have : 0 < a₁ ∨ (0 : ℕ) = a₁ ∧ (0 : ℕ) ≤ a₂ := Or.inl hpos
-        simpa [Prod.Lex.toLex_le_toLex] using this
-      exact this
+    intro x a b h
+    change x + a < x + b
+    exact _root_.add_lt_add_right h x
+  ident_le := fun _ => bot_le
 
 /-- In the product model, `ident` is definitionally `natProdIdent`. -/
 @[simp] theorem ident_eq_natProdIdent : (ident (α := NatProdLex)) = natProdIdent := rfl

@@ -10,42 +10,16 @@ open KnuthSkillingAlgebra
 variable {α : Type*} [KSSemigroupBase α]
 
 /-!
-# No Anomalous Pairs (Unified Definition)
+# No anomalous pairs
 
-This file defines the "no anomalous pairs" condition from the ordered-semigroup literature
-in the **identity-free** `iterate_op_pnat` language.
+An anomalous pair remains squeezed between successive powers in every positive-natural
+stage. The two alternatives cover positive and negative elements without choosing an
+identity. With a minimum identity the negative alternative is impossible, and sandwich
+separation excludes the positive alternative. The minimum-identity premise is explicit;
+identity-free representations may have negative values.
 
-## References
-
-- Alimov, N. G. (1950). "On ordered semigroups." Izv. Akad. Nauk SSSR Ser. Mat. 14, 569–576.
-- Fuchs, L. (1963). "Partially Ordered Algebraic Systems." Pergamon Press.
-- Binder, D. (2016). "Non-Anomalous Semigroups and Real Numbers." arXiv:1607.05997
-- **Luap, E.** (2024). "OrderedSemigroups: Formalization of Ordered Semigroups in Lean 4."
-  github.com/ericluap/OrderedSemigroups
-
-We follow **Eric Luap's approach** from OrderedSemigroups, using a **unified definition**
-that handles both positive and negative elements symmetrically:
-
-*An anomalous pair `(a, b)` has iterates that stay "squeezed" in one of two ways:*
-- *Positive squeeze: `a^n < b^n < a^(n+1)` for all n (when a, b > ident)*
-- *Negative squeeze: `a^n > b^n > a^(n+1)` for all n (when a, b < ident)*
-
-## Note on the K&S Setting
-
-**Knuth & Skilling work exclusively with R⁺ (positive reals / log-probabilities).**
-
-In their framework, `ident` represents the certain event (probability 1), and all elements
-represent "sub-events" with probability ≤ 1. In the additive (log-probability) representation,
-this means `ident` is the minimum element: `∀ a, ident ≤ a`.
-
-This naturally rules out "negative elements" (a < ident), making the negative anomalous pair
-case vacuous. The `IdentIsMinimum` typeclass captures this assumption, and
-`noAnomalousPairs_of_KSSeparation_with_IdentMin` provides the complete proof under this
-natural assumption.
-
-**Credit**: The unified approach and negative element handling follows Eric Luap's
-OrderedSemigroups formalization, which elegantly avoids the need for separate
-NoNegAnomalousPairs classes.
+References: Alimov, "On ordered semigroups" (1950); Fuchs, "Partially Ordered Algebraic
+Systems" (1963); https://github.com/ericluap/OrderedSemigroups.
 -/
 
 /-- **Unified anomalous pair definition** (following Eric Luap's OrderedSemigroups).
@@ -74,9 +48,8 @@ variable {α : Type*} [KnuthSkillingMonoidBase α]
 
 /-- **IdentIsMinimum**: the identity element is the minimum of the order.
 
-In probability theory, `ident` represents the certain event, and all elements
-are "sub-events" with `a ≤ ident`. This rules out negative elements (a < ident),
-making negative anomalous pairs impossible. -/
+This additional order law rules out elements below the identity. It is distinct
+from merely having an identity, and makes the negative anomalous alternative impossible. -/
 class IdentIsMinimum (α : Type*) [KnuthSkillingMonoidBase α] : Prop where
   ident_le : ∀ a : α, ident ≤ a
 
@@ -108,7 +81,7 @@ theorem noAnomalousPairs_of_KSSeparation_with_IdentMin [IdentIsMinimum α] : NoA
 
     have ha_pos : ident < a := by
       by_contra h_not
-      push_neg at h_not
+      push Not at h_not
       rcases h_not.lt_or_eq with ha_neg | ha_eq
       · have : op a a < a := by
           calc op a a < op a ident := op_strictMono_right a ha_neg
@@ -121,7 +94,7 @@ theorem noAnomalousPairs_of_KSSeparation_with_IdentMin [IdentIsMinimum α] : NoA
     have hb_pos : ident < b := lt_trans ha_pos hab
 
     -- Use identity-free separation via KSSeparationSemigroup
-    haveI : KSSeparationSemigroup α := inferInstance
+    have : KSSeparationSemigroup α := inferInstance
     have ha_pos' : IsPositive a := (isPositive_iff_ident_lt a).mpr ha_pos
     have hb_pos' : IsPositive b := (isPositive_iff_ident_lt b).mpr hb_pos
     rcases KSSeparationSemigroup.sep (a := a) (x := a) (y := b) ha_pos' ha_pos' hb_pos' hab with
@@ -138,7 +111,7 @@ theorem noAnomalousPairs_of_KSSeparation_with_IdentMin [IdentIsMinimum α] : NoA
 
     -- Then a^(m+1) ≤ a^n ≤ b^m
     have h_m_le : m ≤ n - 1 := PNat.le_sub_one_of_lt hmn
-    have h1 : 1 < n := PNat.one_lt_of_lt hmn
+    have h1 : 1 < n := one_lt_of_gt hmn
     have h_m1_le : m + 1 ≤ n := by
       have h' : m + 1 ≤ (n - 1) + 1 := by
         simpa [add_comm, add_left_comm, add_assoc] using (add_le_add_left h_m_le 1)
@@ -166,7 +139,7 @@ theorem noAnomalousPairs_of_KSSeparation_with_IdentMin [IdentIsMinimum α] : NoA
     -- But IdentIsMinimum says ident ≤ a for all a, so a ≮ ident
     have ha_neg : a < ident := by
       by_contra h_not
-      push_neg at h_not
+      push Not at h_not
       rcases h_not.lt_or_eq with ha_pos | ha_eq
       · have : a < op a a := by
           calc a = op a ident := (op_ident_right a).symm

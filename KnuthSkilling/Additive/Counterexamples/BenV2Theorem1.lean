@@ -20,8 +20,8 @@ minimal counterexample to the *too-weak* hypothesis bundle:
 alone does **not** force commutativity: there are noncommutative associative operations with
 strict monotonicity in both arguments.
 
-Therefore, any theorem in this direction needs additional hypotheses (e.g. cancellation laws,
-solvability, separation/Archimedean conditions, or a construction of a commutative quotient).
+Therefore additional hypotheses, such as solvability or a stronger separation law, are needed.
+Strict monotonicity already gives cancellation; Archimedean growth alone still does not suffice.
 
 We reuse the semidirect model built in `SemidirectNoSeparation.lean`.
 -/

@@ -10,20 +10,10 @@ import KnuthSkilling.Additive.Counterexamples.ProductFailsSeparation
 import KnuthSkilling.Additive.Counterexamples.SemidirectNoSeparation
 
 /-!
-# Knuth–Skilling: Counterexamples
+# Counterexamples to omitted hypotheses
 
-This module re-exports small countermodels/counterexamples used to clarify which hypotheses are
-actually needed in the Knuth–Skilling development.
-
-Notably:
-- `...Counterexamples.VariationalNonsmooth` shows that “variational optimum ⇒ differentiable” is
-  false in general.
-- `...Counterexamples.CauchyPathology` builds a non-`A*x` additive function (Hamel-basis style),
-  demonstrating why Appendix C needs an explicit regularity condition (measurable/continuous/etc.).
-- `...Counterexamples.NonModularDistributive` shows disjoint additivity does not imply modularity.
-- `...Additive.Counterexamples.NegativeWithoutIdentity` shows why the bounded-below/identity
-  hypothesis matters for the additive representation theorem.
-- `...Additive.Counterexamples.ProductFailsSeparation` and
-  `...Additive.Counterexamples.SemidirectNoSeparation` witness failures of separation-style
-  hypotheses in simple algebraic models.
+Regularity excludes additive pathologies; differentiability does not follow from
+being a variational minimizer. Disjoint additivity alone need not give modularity.
+Positive identity-free scales, nonseparated operations and nonsigma-additive
+charges distinguish the other algebraic, order and countable-observation premises.
 -/

@@ -51,26 +51,8 @@ theorem associativity_representation_semigroup_cuts_pnat
     ∃ Θ : α → ℝ,
       (∀ x y : α, x ≤ y ↔ Θ x ≤ Θ y) ∧
       ∀ x y : α, Θ (op x y) = Θ x + Θ y := by
-  classical
-  let Θ : α → ℝ := fun x => Θ_cuts_pnat a ha x (h_all_pos x)
-  refine ⟨Θ, ?_, ?_⟩
-  · intro x y
-    constructor
-    · intro hxy
-      -- monotonicity of Θ_cuts_pnat
-      exact Θ_cuts_pnat_mono (a := a) (ha := ha) (x := x) (y := y) (h_all_pos x) (h_all_pos y) hxy
-    · intro hΘ
-      by_contra hxy
-      have hyx : y < x := lt_of_not_ge hxy
-      have hlt :=
-        Θ_cuts_pnat_strictMono (a := a) (ha := ha) (x := y) (y := x) (h_all_pos y) (h_all_pos x) hyx
-      exact (not_le_of_gt hlt) hΘ
-  · intro x y
-    -- Additivity uses commutativity; the positivity proof for `op x y` is irrelevant.
-    have h_add :=
-      Θ_cuts_pnat_add (a := a) (ha := ha) hcomm x y (h_all_pos x) (h_all_pos y)
-    -- Our Θ uses `h_all_pos (op x y)`; the lemma uses `isPositive_op' ...`. These agree by proof irrelevance.
-    simpa [Θ, Θ_cuts_pnat] using h_add
+  let r := cuts_pnat_representation a ha h_all_pos hcomm
+  exact ⟨r.Θ, r.order_preserving, r.additive⟩
 
 /-- **K&S Appendix A representation theorem (cuts proof)**.
 
@@ -83,7 +65,7 @@ Conclusion:
 There exists an order embedding `Θ : α → ℝ` with `Θ ident = 0` and `Θ (x ⊕ y) = Θ x + Θ y`.
 -/
 theorem associativity_representation_cuts
-    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparation α] [KSSeparationStrict α] :
+    (α : Type*) [KnuthSkillingAlgebraBase α] [KSSeparationStrict α] :
     ∃ Θ : α → ℝ,
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       Θ ident = 0 ∧
@@ -96,7 +78,7 @@ theorem associativity_representation_cuts
       simp [htriv a, htriv b]
     · simp
   -- Non-trivial: pick a base element `a₀ > ident` and use `Θ_cuts a₀`.
-  push_neg at htriv
+  push Not at htriv
   obtain ⟨a₀, ha₀_ne⟩ := htriv
   have ha₀ : ident < a₀ := lt_of_le_of_ne (ident_le a₀) (Ne.symm ha₀_ne)
   refine ⟨Θ_cuts a₀ ha₀, ?_, Θ_cuts_ident a₀ ha₀, fun x y => Θ_cuts_add a₀ ha₀ x y⟩
@@ -118,7 +100,7 @@ theorem associativity_representation_cuts_of_denselyOrdered
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       Θ ident = 0 ∧
       ∀ x y : α, Θ (op x y) = Θ x + Θ y := by
-  letI : KSSeparationStrict α := KSSeparation.toKSSeparationStrict_of_denselyOrdered (α := α)
+  let : KSSeparationStrict α := KSSeparation.toKSSeparationStrict_of_denselyOrdered (α := α)
   exact associativity_representation_cuts (α := α)
 
 end KnuthSkilling.Additive.Proofs.DirectCuts

@@ -1,38 +1,12 @@
 /-
-# Scale Completeness and σ-Additivity
+# From additive scales to countable event valuations
 
-## The Key Insight
-
-The K&S representation theorem embeds S into (ℝ, +) algebraically, independently of events.
-The σ-additivity gap is about whether Θ(S) ⊆ ℝ is *sequentially complete*.
-
-## Architecture
-
-```
-K&S Axioms (Finite Additivity)
-    │
-    │  Gate 1: NAP → Θ : S ↪ (ℝ,+) exists (Hölder/Alimov)
-    ▼
-Representation Theorem (scale-only, event-free)
-    │
-    │  Gate 2: Sequential Completeness → Θ(S) closed under bounded ω-sups
-    │         + Scott Continuity of v → v preserves directed sups
-    ▼
-σ-Additivity: μ = Θ ∘ v is countably additive
-```
-
-## Design Principles
-
-1. **Integrated with K&S stack**: Builds on RepresentationResult from Additive/Representation.lean
-2. **Hölder/Alimov (NAP) route**: Uses NoAnomalousPairs, NOT require KSSeparation
-3. **Θ from representation theorem**: Not a free parameter
-4. **Automatic preservation**: Θ commutes with seqSup by construction (closure property)
-5. **Sequential completeness**: We only need ω-chains, not full Dedekind completeness
-
-## References
-
-- Knuth & Skilling, "Foundations of Inference" (2012)
-- Billingsley, "Probability and Measure" (1995), §1.4 for finite→σ bridge
+A representation is an algebraic order embedding into the additive reals;
+countable additivity requires separate event and continuity hypotheses.
+`KSScaleComplete` provides preimages of bounded increasing real suprema.
+`KSScottContinuous` supplies preservation along increasing event sequences.
+The normalized scale then sends disjoint countable joins to convergent sums.
+These hypotheses do not assert normalization at the top event.
 -/
 
 import Mathlib.Order.Lattice
@@ -50,16 +24,6 @@ namespace KnuthSkilling
 open KnuthSkillingMonoidBase KSSemigroupBase
 open KnuthSkilling.Additive
 
-/-! ## Section 1: Sequential Completeness of the Scale -/
-
-/-! ### Unbundled Predicates
-
-Following the K&S design pattern: each axiom has both:
-- An unbundled **predicate** (`def XxxProp`) for flexibility
-- A bundled **class** (`class KSXxx`) for typeclass inference
-
-This matches the pattern used for `SeparationProp` / `KSSeparation`. -/
-
 /-- **Unbundled predicate**: Scale completeness property.
 
 Θ(S) ⊆ ℝ is closed under suprema of bounded increasing ω-sequences.
@@ -74,7 +38,7 @@ Given a representation Θ from the Hölder/Alimov embedding (via NoAnomalousPair
 this says: Θ(S) ⊆ ℝ is closed under suprema of bounded increasing ω-sequences.
 
 This is **sequential completeness** (ω-completeness), NOT full Dedekind completeness.
-It's the minimal axiom bridging K&S finite additivity to σ-additivity.
+It is a sufficient scale-closure premise in the σ-additivity theorem.
 
 **Key Design**: Θ-preservation is automatic from the closure property - we don't need
 to axiomatize that Θ preserves sups separately, it falls out of the definition. -/
@@ -120,14 +84,10 @@ theorem seqSup_le (f : ℕ → S) (hf : Monotone f) (hbdd : BddAbove (Set.range 
 
 end KSScaleComplete
 
-/-! ### Connection to Unbundled Predicate -/
-
 /-- The `KSScaleComplete` instance satisfies the unbundled `ScaleCompleteProp` predicate. -/
 theorem KSScaleComplete.scaleCompleteProp {S : Type*} [KSSemigroupBase S]
     (R : RepresentationResult S) [KSScaleComplete S R] : ScaleCompleteProp R :=
   KSScaleComplete.closed_seqSup
-
-/-! ## Section 2: σ-Complete Events -/
 
 /-- **Unbundled predicate**: σ-complete events property.
 
@@ -170,14 +130,10 @@ theorem iSup_eq_of_const {f : ℕ → E} {a : E} (h : ∀ n, f n = a) :
 
 end SigmaCompleteEvents
 
-/-! ### Connection to Unbundled Predicate -/
-
 /-- The `SigmaCompleteEvents` instance satisfies the unbundled `SigmaCompleteEventsProp` predicate. -/
 theorem SigmaCompleteEvents.sigmaCompleteEventsProp {E : Type*} [inst : SigmaCompleteEvents E] :
     SigmaCompleteEventsProp E :=
   ⟨inst.iSup, inst.le_iSup, inst.iSup_le⟩
-
-/-! ## Section 3: Scott Continuity for Valuations -/
 
 /-- **Unbundled predicate**: Scott continuity property.
 
@@ -196,7 +152,7 @@ Phrased via the representation Θ since S may not have internal sups.
 The key property: when events increase to a limit, their Θ-images converge
 to the Θ-image of the limit.
 
-This is the second gate axiom (alongside scale completeness) needed for σ-additivity.
+This is an additional hypothesis, not a consequence of finite additivity.
 
 **Identity note**: The unbundled predicate is identity-free; the bundled class
 `KSScottContinuous` requires identity only because it extends `KSModel`. -/
@@ -222,21 +178,15 @@ theorem v_countable_union_eq (f : ℕ → E) (hf : Monotone f) :
 
 end KSScottContinuous
 
-/-! ### Connection to Unbundled Predicate -/
-
 /-- The `KSScottContinuous` instance satisfies the unbundled `ScottContinuousProp` predicate. -/
 theorem KSScottContinuous.scottContinuousProp {E S : Type*} [SigmaCompleteEvents E]
     [KnuthSkillingMonoidBase S] (R : RepresentationResult S) [KSScaleComplete S R]
     (m : KSScottContinuous E S R) : ScottContinuousProp R m.v :=
   m.v_scott
 
-/-! ## Section 4: Pairwise Disjointness -/
-
 /-- Pairwise disjoint family of events -/
 def PairwiseDisjoint' {E : Type*} [SemilatticeInf E] [OrderBot E] (f : ℕ → E) : Prop :=
   ∀ i j, i ≠ j → Disjoint (f i) (f j)
-
-/-! ## Section 5: Partial Sums Infrastructure -/
 
 /-- Partial unions: the finite union of the first n events -/
 def partialUnion {E : Type*} [PlausibilitySpace E] (f : ℕ → E) (n : ℕ) : E :=
@@ -274,8 +224,6 @@ theorem iSup_eq_iSup_partialUnion {E : Type*} [SigmaCompleteEvents E] (f : ℕ �
     intro i _
     exact SigmaCompleteEvents.le_iSup f i
 
-/-! ## Section 6: Finite Additivity for n terms -/
-
 /-- For a pairwise disjoint family in range n, partialUnion f n is disjoint from f n -/
 theorem disjoint_partialUnion_of_pairwiseDisjoint {E : Type*} [PlausibilitySpace E]
     {f : ℕ → E} (hd : PairwiseDisjoint' f) (n : ℕ) :
@@ -301,8 +249,6 @@ theorem Θ_v_partialUnion_eq_sum {E S : Type*} [PlausibilitySpace E] [KnuthSkill
     have hdisj := disjoint_partialUnion_of_pairwiseDisjoint hd n
     rw [m.v_sup_of_disjoint hdisj, R.additive, ih]
 
-/-! ## Section 7: Key Lemmas for tsum-iSup Connection -/
-
 /-- **Key Lemma**: For nonnegative sequences with bounded partial sums, tsum equals the iSup of partial sums.
 
 For f : ℕ → ℝ with f ≥ 0 and bounded partial sums:
@@ -315,29 +261,14 @@ For f : ℕ → ℝ with f ≥ 0 and bounded partial sums:
 theorem tsum_eq_iSup_partialSums_nonneg {f : ℕ → ℝ} (hf : ∀ n, 0 ≤ f n)
     (hbdd : BddAbove (Set.range (fun n => ∑ i ∈ Finset.range n, f i))) :
     ∑' n, f n = ⨆ n, ∑ i ∈ Finset.range n, f i := by
-  -- Extract the bound explicitly
   obtain ⟨C, hC⟩ := hbdd
-  -- Bounded partial sums + nonnegative terms → summable
   have hsummable : Summable f := summable_of_sum_range_le (c := C) hf (fun n => hC (Set.mem_range_self n))
-  -- The partial sums are monotone (adding nonnegative terms)
   have hmono : Monotone (fun n => ∑ i ∈ Finset.range n, f i) := by
     intro m n hmn
     apply Finset.sum_mono_set_of_nonneg hf
     exact Finset.range_mono hmn
-  -- Reconstruct hbdd for tendsto_atTop_ciSup
-  have hbdd' : BddAbove (Set.range (fun n => ∑ i ∈ Finset.range n, f i)) := ⟨C, hC⟩
-  -- Partial sums converge to their supremum (monotone + bounded → converges to sup)
-  have htends : Filter.Tendsto (fun n => ∑ i ∈ Finset.range n, f i) Filter.atTop
-      (nhds (⨆ n, ∑ i ∈ Finset.range n, f i)) :=
-    tendsto_atTop_ciSup hmono hbdd'
-  -- tsum = limit of partial sums (definition of HasSum)
-  have hsum : HasSum f (⨆ n, ∑ i ∈ Finset.range n, f i) := by
-    rw [hasSum_iff_tendsto_nat_of_summable_norm]
-    · simpa only [Real.norm_of_nonneg (hf _)] using htends
-    · simpa only [Real.norm_of_nonneg (hf _)] using hsummable
-  exact hsum.tsum_eq
-
-/-! ## Section 8: The Main Theorem -/
+  exact tendsto_nhds_unique hsummable.hasSum.tendsto_sum_nat
+    (tendsto_atTop_ciSup hmono ⟨C, hC⟩)
 
 /-- **K&S σ-Additivity Theorem**
 
@@ -365,59 +296,22 @@ theorem ks_sigma_additive
     let μ := R.Θ ∘ m.v
     μ (SigmaCompleteEvents.iSup f) = ∑' n, μ (f n) := by
   intro μ
-  -- Step 1: The iSup of f equals iSup of partial unions
   rw [iSup_eq_iSup_partialUnion f]
-  -- Unfold μ for rewriting
   show R.Θ (m.v (SigmaCompleteEvents.iSup (partialUnion f))) = ∑' n, R.Θ (m.v (f n))
-  -- Step 2: Apply Scott continuity to get Θ(v(iSup (partialUnion f))) = ⨆ n, Θ(v(partialUnion f n))
   have hscott := m.v_countable_union_eq R.toRepresentationResult (partialUnion f) (partialUnion_mono f)
   rw [hscott]
-  -- Step 3: By finite additivity, Θ(v(partialUnion f n)) = ∑ i < n, μ(f i)
-  have hfinite : ∀ n, R.Θ (m.v (partialUnion f n)) = ∑ i ∈ Finset.range n, μ (f i) := by
-    intro n
-    induction n with
-    | zero =>
-      simp only [partialUnion, Finset.range_zero, Finset.sup_empty, Finset.sum_empty]
-      rw [m.v_bot]
-      exact R.ident_zero
-    | succ n ih =>
-      rw [partialUnion_succ, Finset.sum_range_succ]
-      have hdisj := disjoint_partialUnion_of_pairwiseDisjoint hd n
-      rw [m.v_sup_of_disjoint hdisj, R.additive, ih]
-      rfl
-  -- Now goal is: ⨆ n, R.Θ (m.v (partialUnion f n)) = ∑' n, R.Θ (m.v (f n))
-  -- Apply hfinite to rewrite LHS
-  have hfinite' : (fun n => R.Θ (m.v (partialUnion f n))) = (fun n => ∑ i ∈ Finset.range n, R.Θ (m.v (f i))) := by
-    ext n; exact hfinite n
-  rw [hfinite']
-  -- Now goal is: ⨆ n, ∑ i ∈ Finset.range n, R.Θ (m.v (f i)) = ∑' n, R.Θ (m.v (f n))
-  -- μ ≥ 0 since Θ preserves order and v(a) ≥ v(⊥) = ident, so Θ(v(a)) ≥ Θ(ident) = 0
+  have hfinite := Θ_v_partialUnion_eq_sum R m.toKSModel f hd
+  simp_rw [hfinite]
   have hμ_nonneg : ∀ n, 0 ≤ R.Θ (m.v (f n)) := by
     intro n
     have h := m.v_ident_le (f n)
     rw [← R.ident_zero]
     exact (R.order_preserving ident (m.v (f n))).mp h
-  -- Step 4: Get boundedness from Scott continuity on the partial unions
-  -- Scott continuity on partialUnion gives bounded Θ(v(partialUnion f n))
   obtain ⟨_, hbdd_pu, _⟩ := m.v_scott (partialUnion f) (partialUnion_mono f)
-  -- Convert boundedness: Θ(v(partialUnion f n)) = ∑ i < n, μ(f i) by hfinite
   have hbdd : BddAbove (Set.range (fun n => ∑ i ∈ Finset.range n, R.Θ (m.v (f i)))) := by
-    obtain ⟨c, hc⟩ := hbdd_pu
-    use c
-    intro x hx
-    obtain ⟨n, hn⟩ := hx
-    simp only at hn
-    rw [← hn]
-    -- hfinite n : R.Θ (m.v (partialUnion f n)) = ∑ i ∈ Finset.range n, μ (f i)
-    -- But μ = R.Θ ∘ m.v, so ∑ i ∈ Finset.range n, μ (f i) = ∑ i ∈ Finset.range n, R.Θ (m.v (f i))
-    have heq : ∑ i ∈ Finset.range n, R.Θ (m.v (f i)) = R.Θ (m.v (partialUnion f n)) := by
-      rw [hfinite n]; rfl
-    rw [heq]
-    exact hc (Set.mem_range_self n)
-  -- Apply the key lemma connecting iSup of partial sums to tsum for nonnegative sequences
+    change BddAbove (Set.range (fun n => R.Θ (m.v (partialUnion f n)))) at hbdd_pu
+    simpa only [hfinite] using hbdd_pu
   exact (tsum_eq_iSup_partialSums_nonneg hμ_nonneg hbdd).symm
-
-/-! ## Section 9: NNReal Instance -/
 
 /-- NNReal with identity and coercion to ℝ forms a valid K&S representation.
 
@@ -427,7 +321,6 @@ def nnrealRepresentation : RepresentationResult NNReal where
   order_preserving := fun a b => NNReal.coe_le_coe
   additive := fun x y => by
     show (op x y).val = x.val + y.val
-    -- op on NNReal is addition, defined in Model.lean
     rfl
 
 /-- NNReal is sequentially complete (inherits from ℝ's conditional completeness).
@@ -435,52 +328,14 @@ def nnrealRepresentation : RepresentationResult NNReal where
 The image Θ(NNReal) = [0, ∞) ⊆ ℝ is closed under bounded ω-sups. -/
 instance instKSScaleCompleteNNReal : KSScaleComplete NNReal nnrealRepresentation where
   closed_seqSup := fun f _hf hbdd => by
-    -- The sequence (f n).val is bounded and monotone in ℝ
-    -- Its sup exists in [0, ∞) since NNReal is conditionally complete
-    have hne : (Set.range (fun n => (f n).val)).Nonempty := ⟨(f 0).val, ⟨0, rfl⟩⟩
-    -- The sup is nonnegative since all terms are
     have hsup_nonneg : 0 ≤ ⨆ n, (f n).val := by
       apply Real.iSup_nonneg
       intro n
       exact (f n).coe_nonneg
-    -- Construct the NNReal sup
     use ⟨⨆ n, (f n).val, hsup_nonneg⟩
     rfl
 
 /-- The standard model NNReal satisfies scale completeness. -/
 theorem nnreal_scale_complete : KSScaleComplete NNReal nnrealRepresentation := inferInstance
-
-/-! ## Section 8: Summary
-
-We have established the clean path to σ-additivity:
-
-```
-K&S Axioms (Finite Additivity)
-        +
-NoAnomalousPairs (NAP)
-        ↓
-Representation Theorem: Θ : S ↪ (ℝ,+)
-        +
-KSScaleComplete S R (Θ(S) sequentially closed)
-        +
-KSScottContinuous E S R (v preserves directed sups)
-        ↓
-σ-Additivity: μ = Θ ∘ v is countably additive
-```
-
-**Key Design Choices**:
-
-1. **Integrated with K&S stack**: Uses `RepresentationResult` from Additive/Representation.lean
-2. **Closure-based completeness**: Θ-preservation is automatic (not an axiom)
-3. **Scott continuity via Θ**: Since S may lack internal sups
-4. **Hölder/Alimov route**: Uses NoAnomalousPairs, not KSSeparation
-5. **Two independent gates**: NAP for Θ's existence; Completeness+Scott for σ-additivity
-
-**What we did NOT assume**:
-- Events form a σ-algebra (we use σ-complete lattice instead)
-- Full Dedekind completeness (we only need sequential/ω-completeness)
-- The valuation is continuous a priori (derived from Scott continuity of v)
-- Any topology on events (continuity lives on the scale via Θ)
--/
 
 end KnuthSkilling

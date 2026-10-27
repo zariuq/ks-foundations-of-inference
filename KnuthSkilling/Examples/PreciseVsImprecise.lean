@@ -1,3 +1,4 @@
+import KnuthSkilling.Examples.PreciseVsImpreciseGrounded
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Rat.Cast.Defs
 import Mathlib.Tactic
@@ -94,6 +95,22 @@ theorem EU_diff_formula (P : PreciseProb) :
 
 end PreciseProb
 
+/-- Rational calculations and real expected utilities agree under the explicit interpretation. -/
+def PreciseProb.toGrounded (P : PreciseProb) : PreciseVsImpreciseGrounded.KSGroundedProb where
+  pSafe := P.pSafe
+  pRisky := P.pRisky
+  pCatastrophic := P.pCatastrophic
+  nonneg_safe := by exact_mod_cast P.nonneg_safe
+  nonneg_risky := by exact_mod_cast P.nonneg_risky
+  nonneg_cat := by exact_mod_cast P.nonneg_cat
+  sum_one := by exact_mod_cast P.sum_one
+
+theorem expectedUtility_cast (P : PreciseProb) (a : Action) :
+    (P.expectedUtility a : ℝ) = PreciseVsImpreciseGrounded.expectedUtility P.toGrounded
+      (match a with | .normal => .normal | .cautious => .cautious) := by
+  cases a <;> simp [PreciseProb.expectedUtility, payoff, PreciseProb.toGrounded,
+    PreciseVsImpreciseGrounded.expectedUtility, PreciseVsImpreciseGrounded.utility]
+
 /-! ## §4: Example Distributions -/
 
 /-- Low catastrophic risk: P(Cat) = 1/200 = 0.5% -/
@@ -140,20 +157,30 @@ structure ImpreciseProb where
   risky_valid : pRisky_lo ≤ pRisky_hi
   cat_valid : pCat_lo ≤ pCat_hi
   all_nonneg : 0 ≤ pSafe_lo ∧ 0 ≤ pRisky_lo ∧ 0 ≤ pCat_lo
+  nonempty : ∃ ps pr pc : ℝ, (pSafe_lo : ℝ) ≤ ps ∧ ps ≤ pSafe_hi ∧
+    (pRisky_lo : ℝ) ≤ pr ∧ pr ≤ pRisky_hi ∧ (pCat_lo : ℝ) ≤ pc ∧ pc ≤ pCat_hi ∧ ps + pr + pc = 1
 
 namespace ImpreciseProb
 
-/-- Worst-case utility for Normal action.
-    Normal's payoff in catastrophic state is -1000 (worst).
-    So worst case maximizes pCatastrophic and minimizes good states. -/
-def worstCase_normal (I : ImpreciseProb) : ℚ :=
-  I.pSafe_lo * 100 + I.pRisky_lo * 50 + I.pCat_hi * (-1000)
+/-- Interpret rational interval bounds in the checked normalized credal model. -/
+noncomputable def toCredal (I : ImpreciseProb) : PreciseVsImpreciseGrounded.KSCredalSet where
+  pSafe_lo := I.pSafe_lo
+  pSafe_hi := I.pSafe_hi
+  pRisky_lo := I.pRisky_lo
+  pRisky_hi := I.pRisky_hi
+  pCat_lo := I.pCat_lo
+  pCat_hi := I.pCat_hi
+  safe_valid := by exact_mod_cast I.safe_valid
+  risky_valid := by exact_mod_cast I.risky_valid
+  cat_valid := by exact_mod_cast I.cat_valid
+  all_nonneg := by exact_mod_cast I.all_nonneg
+  nonempty := I.nonempty
 
-/-- Worst-case utility for Cautious action.
-    Cautious has positive payoffs everywhere (60, 70, 80).
-    Worst case minimizes all (uses lowest probabilities for highest payoffs). -/
-def worstCase_cautious (I : ImpreciseProb) : ℚ :=
-  I.pSafe_lo * 80 + I.pRisky_lo * 70 + I.pCat_hi * 60
+/-- The true infimum over feasible normalized distributions, not an unchecked corner. -/
+noncomputable def worstCase_normal (I : ImpreciseProb) : ℝ :=
+  PreciseVsImpreciseGrounded.worstCaseEU I.toCredal .normal
+noncomputable def worstCase_cautious (I : ImpreciseProb) : ℝ :=
+  PreciseVsImpreciseGrounded.worstCaseEU I.toCredal .cautious
 
 /-- Maximin prefers Cautious if worst(Cautious) > worst(Normal) -/
 def maximinPrefersCautious (I : ImpreciseProb) : Prop :=
@@ -175,24 +202,27 @@ def uncertaintyRange : ImpreciseProb where
   risky_valid := by norm_num
   cat_valid := by norm_num
   all_nonneg := by norm_num
+  nonempty := ⟨17/20, 1/10, 1/20, by norm_num⟩
 
-/-- Compute worst case for Normal under uncertainty -/
-theorem normal_worst_case_val :
-    uncertaintyRange.worstCase_normal = 17/20 * 100 + 1/10 * 50 + 1/20 * (-1000) := rfl
+theorem uncertaintyRange_toCredal :
+    uncertaintyRange.toCredal = PreciseVsImpreciseGrounded.uncertaintyCredal := by
+  norm_num [ImpreciseProb.toCredal, uncertaintyRange, PreciseVsImpreciseGrounded.uncertaintyCredal]
 
-/-- Compute worst case for Cautious under uncertainty -/
-theorem cautious_worst_case_val :
-    uncertaintyRange.worstCase_cautious = 17/20 * 80 + 1/10 * 70 + 1/20 * 60 := rfl
-
-/-- Worst case Normal = 85 + 5 - 50 = 40 -/
 theorem normal_worst_simplified : uncertaintyRange.worstCase_normal = 40 := by
-  unfold ImpreciseProb.worstCase_normal uncertaintyRange
-  norm_num
+  simpa only [ImpreciseProb.worstCase_normal, uncertaintyRange_toCredal] using
+    PreciseVsImpreciseGrounded.normal_worst
 
-/-- Worst case Cautious = 68 + 7 + 3 = 78 -/
 theorem cautious_worst_simplified : uncertaintyRange.worstCase_cautious = 78 := by
-  unfold ImpreciseProb.worstCase_cautious uncertaintyRange
-  norm_num
+  simpa only [ImpreciseProb.worstCase_cautious, uncertaintyRange_toCredal] using
+    PreciseVsImpreciseGrounded.cautious_worst
+
+theorem normal_worst_case_val :
+    uncertaintyRange.worstCase_normal = 17/20 * 100 + 1/10 * 50 + 1/20 * (-1000) := by
+  rw [normal_worst_simplified]; norm_num
+
+theorem cautious_worst_case_val :
+    uncertaintyRange.worstCase_cautious = 17/20 * 80 + 1/10 * 70 + 1/20 * 60 := by
+  rw [cautious_worst_simplified]; norm_num
 
 /-- **Main Result**: Maximin prefers Cautious (78 > 40) -/
 theorem maximin_prefers_cautious : uncertaintyRange.maximinPrefersCautious := by

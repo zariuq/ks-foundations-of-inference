@@ -50,19 +50,6 @@ class RepresentationGlobalizationSemigroup (α : Type*) [KSSemigroupBase α] : P
       (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
       ∀ x y : α, Θ (op x y) = Θ x + Θ y
 
-/-- Identity-free globalization normalized to an *anchor* element.
-
-This is provided for completeness; it is rarely used in the K&S development.
--/
-class RepresentationGlobalizationAnchor (α : Type*) [KSSemigroupBase α] [KSSeparationSemigroup α]
-    (anchor : α) (h_anchor : IsPositive anchor) : Prop where
-  /-- Existence of an order embedding `Θ : α → ℝ` turning `op` into `+`, with `Θ(anchor) = 0`. -/
-  exists_Theta :
-    ∃ Θ : α → ℝ,
-      (∀ a b : α, a ≤ b ↔ Θ a ≤ Θ b) ∧
-      Θ anchor = 0 ∧
-      ∀ x y : α, Θ (op x y) = Θ x + Θ y
-
 end IdentityFree
 
 section Bridge

@@ -3,30 +3,12 @@ import KnuthSkilling.Multiplicative.FunctionalEquation
 import KnuthSkilling.Literature.FunctionalEquations
 
 /-!
-# Knuth–Skilling Product Theorem: Bridge to the Product Equation
+# From an additive order isomorphism to the product equation
 
-This file supplies the *algebra-to-functional-equation* bridge used in
-Knuth & Skilling (2012), §"Independence" and Appendix B.
-
-After Appendix A regrades `⊕` to real addition, K&S introduce a second scalar
-operation `⊗` corresponding to direct products of independent lattices.
-
-Axioms (paper eqs. (\"Axiom 3\"–\"Axiom 4\")):
-- Distributivity over `+` (for fixed `t`): `(x ⊗ t) + (y ⊗ t) = (x + y) ⊗ t`
-- Associativity of `⊗`: `(u ⊗ v) ⊗ w = u ⊗ (v ⊗ w)`
-
-K&S then apply the Appendix A associativity theorem *again* (now to `⊗`) to get
-an order-isomorphism `Θ` such that:
-
-`Θ (x ⊗ t) = Θ x + Θ t`.
-
-From distributivity + invertibility of `Θ`, they derive the **product equation**
-
-`Ψ(τ + ξ) + Ψ(τ + η) = Ψ(τ + ζ(ξ,η))`
-
-for `Ψ := Θ⁻¹` (paper eq. (\"prodeqn\")), and solve it in Appendix B.
-
-This file formalizes only this derivation of the product equation.
+The supplied representation is onto the real line and therefore has a global
+inverse. Distributivity transports through that inverse to `ProductEquation`.
+This file consumes the representation; it does not derive its existence from
+Cox's interval axioms or from an arbitrary additive embedding.
 -/
 
 namespace KnuthSkilling.Multiplicative
@@ -41,8 +23,6 @@ abbrev PosReal := Ioi (0 : ℝ)
 /-- Addition on positive reals (closed since `0 < x` and `0 < y` implies `0 < x + y`). -/
 @[simp] noncomputable def addPos (x y : PosReal) : PosReal :=
   ⟨(x : ℝ) + (y : ℝ), by
-    -- NB: for `PosReal := Ioi 0`, the predicate is `fun r => r ∈ Ioi 0`.
-    -- Provide the membership proof explicitly to avoid definitional-equality issues.
     simpa [PosReal] using add_pos x.2 y.2⟩
 
 @[simp] theorem coe_addPos (x y : PosReal) : ((addPos x y : PosReal) : ℝ) = (x : ℝ) + (y : ℝ) := by
@@ -55,10 +35,6 @@ abbrev PosReal := Ioi (0 : ℝ)
 
 @[simp] theorem coe_mulPos (x y : PosReal) : ((mulPos x y : PosReal) : ℝ) = (x : ℝ) * (y : ℝ) := by
   rfl
-
-/-! ## Unbundled Tensor Axiom Predicates
-
-Following the "unbundled predicates + bundled convenience classes" pattern. -/
 
 /-- The distributivity axiom for `⊗` over `+` (paper eq. ("axiom3"))
 
@@ -84,12 +60,6 @@ def TensorStrictMonoLeft (tensor : PosReal → PosReal → PosReal) : Prop :=
 /-- Tensor is strictly monotone in the right argument. -/
 def TensorStrictMonoRight (tensor : PosReal → PosReal → PosReal) : Prop :=
   ∀ x : PosReal, StrictMono (fun t => tensor x t)
-
-/-! ## Bundled Tensor Algebra Class
-
-`TensorAlgebra` bundles the key tensor axioms used in the Product Theorem.
-This provides ergonomics for longer proofs while the unbundled predicates
-enable minimal-hypothesis tracking in theorem statements. -/
 
 /-- **TensorAlgebra**: Bundled tensor axioms for the K&S Product Theorem.
 
@@ -152,7 +122,6 @@ theorem Psi_strictMono (hRep : AdditiveOrderIsoRep PosReal tensor) : StrictMono 
 
 /-- `Psi` is continuous (order isomorphisms are continuous for order topology). -/
 theorem Psi_continuous (hRep : AdditiveOrderIsoRep PosReal tensor) : Continuous (Psi hRep) := by
-  -- `Θ.symm` is continuous as an order isomorphism; `Subtype.val` is continuous.
   unfold Psi
   exact continuous_subtype_val.comp hRep.Θ.symm.continuous
 
@@ -167,79 +136,14 @@ theorem productEquation_of_distributes
     (hDistrib : DistributesOverAdd tensor) :
     ProductEquation (Psi hRep) (zeta hRep) := by
   intro τ ξ η
-  -- Set `x = Θ⁻¹ ξ`, `y = Θ⁻¹ η`, `t = Θ⁻¹ τ`.
-  let x : PosReal := hRep.Θ.symm ξ
-  let y : PosReal := hRep.Θ.symm η
-  let t : PosReal := hRep.Θ.symm τ
-
-  -- Distributivity at the level of `PosReal`.
-  have hdis : tensor (addPos x y) t = addPos (tensor x t) (tensor y t) := hDistrib x y t
-
-  -- Compute `x ⊗ t = Θ⁻¹(ξ+τ)` and similarly for `y ⊗ t`.
-  have hx : tensor x t = hRep.Θ.symm (ξ + τ) := by
+  have decode (x y : PosReal) : tensor x y = hRep.Θ.symm (hRep.Θ x + hRep.Θ y) := by
     apply hRep.Θ.injective
-    calc
-      hRep.Θ (tensor x t) = hRep.Θ x + hRep.Θ t := hRep.map_op x t
-      _ = ξ + τ := by
-        simp [x, t, add_comm]
-      _ = hRep.Θ (hRep.Θ.symm (ξ + τ)) := by simp
-
-  have hy : tensor y t = hRep.Θ.symm (η + τ) := by
-    apply hRep.Θ.injective
-    calc
-      hRep.Θ (tensor y t) = hRep.Θ y + hRep.Θ t := hRep.map_op y t
-      _ = η + τ := by
-        simp [y, t, add_comm]
-      _ = hRep.Θ (hRep.Θ.symm (η + τ)) := by simp
-
-  -- Compute `(x+y) ⊗ t = Θ⁻¹(ζ(ξ,η)+τ)`.
-  have hxy : tensor (addPos x y) t = hRep.Θ.symm (zeta hRep ξ η + τ) := by
-    apply hRep.Θ.injective
-    calc
-      hRep.Θ (tensor (addPos x y) t) = hRep.Θ (addPos x y) + hRep.Θ t := hRep.map_op (addPos x y) t
-      _ = zeta hRep ξ η + τ := by
-        simp [zeta, x, y, t, add_comm]
-      _ = hRep.Θ (hRep.Θ.symm (zeta hRep ξ η + τ)) := by simp
-
-  -- Now rewrite distributivity into the product equation after coercions to ℝ.
-  -- (All terms are in `PosReal`, so `addPos` agrees with real addition under coercion.)
-  have : (tensor (addPos x y) t : ℝ) = (addPos (tensor x t) (tensor y t) : ℝ) := by
-    exact congrArg (fun u : PosReal => (u : ℝ)) hdis
-
-  -- Rewrite each side using `hx`, `hy`, `hxy`, and the definitions of `Psi`.
-  -- Note: the product equation uses `τ + ξ` rather than `ξ + τ`; commute where needed.
-  -- Also, `Psi` is defined using `Θ.symm`.
-  --
-  -- First, convert `ξ + τ` to `τ + ξ` etc.
-  have hx' : (tensor x t : ℝ) = Psi hRep (τ + ξ) := by
-    have hx_comm : tensor x t = hRep.Θ.symm (τ + ξ) := by
-      simpa [add_comm] using hx
-    simpa [Psi] using congrArg (fun u : PosReal => (u : ℝ)) hx_comm
-
-  have hy' : (tensor y t : ℝ) = Psi hRep (τ + η) := by
-    have hy_comm : tensor y t = hRep.Θ.symm (τ + η) := by
-      simpa [add_comm] using hy
-    simpa [Psi] using congrArg (fun u : PosReal => (u : ℝ)) hy_comm
-
-  have hxy' : (tensor (addPos x y) t : ℝ) = Psi hRep (τ + zeta hRep ξ η) := by
-    have hxy_comm : tensor (addPos x y) t = hRep.Θ.symm (τ + zeta hRep ξ η) := by
-      simpa [add_comm] using hxy
-    simpa [Psi] using congrArg (fun u : PosReal => (u : ℝ)) hxy_comm
-
-  -- Finish: expand `addPos` coercion.
-  --
-  -- LHS of `this` is `Ψ(τ+ζ)`.
-  -- RHS of `this` is `Ψ(τ+ξ)+Ψ(τ+η)`.
-  --
-  -- Rearrange to match `ProductEquation` statement.
-  calc
-    Psi hRep (τ + ξ) + Psi hRep (τ + η)
-        = (addPos (tensor x t) (tensor y t) : ℝ) := by
-            simp [hx', hy', addPos]
-    _ = (tensor (addPos x y) t : ℝ) := by
-            simpa [this] using this.symm
-    _ = Psi hRep (τ + zeta hRep ξ η) := by
-            simpa [hxy']
+    rw [hRep.map_op, OrderIso.apply_symm_apply]
+  have h := congrArg (fun x : PosReal => (x : ℝ))
+    (hDistrib (hRep.Θ.symm ξ) (hRep.Θ.symm η) (hRep.Θ.symm τ))
+  simp only [coe_addPos] at h
+  simp_rw [decode, OrderIso.apply_symm_apply] at h
+  simpa only [Psi, zeta, add_comm] using h.symm
 
 /-- The K&S product equation using bundled `TensorAlgebra` instance.
 

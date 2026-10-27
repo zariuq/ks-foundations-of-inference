@@ -76,7 +76,34 @@ def diracDist {n : ℕ} [NeZero n] (a : Fin n) : ProbDist n where
 def RegularAtom (d : ℝ → ℝ → ℝ) : Prop :=
   ∀ x : ℝ, d 0 x = 0
 
-/-- **Key lemma**: sum-level additivity + Dirac deltas ⟹ Cauchy equation for `d(1, ·)`. -/
+/-- A Dirac source selects one coordinate; only zero-source regularity is used. -/
+theorem sum_dirac_atom {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (d : ℝ → ℝ → ℝ) (hReg : RegularAtom d) (a : ι) (u : ι → ℝ) :
+    (∑ i, d (if i = a then 1 else 0) (u i)) = d 1 (u a) := by
+  have he (i : ι) : d (if i = a then 1 else 0) (u i) = if i = a then d 1 (u i) else 0 := by
+    by_cases hi : i = a
+    · simp [hi]
+    · simpa only [if_neg hi] using hReg (u i)
+  simp_rw [he]
+  simp
+
+/-- Extract the coordinate equation from the particular product equality being tested. -/
+theorem dirac_extraction_at (d : ℝ → ℝ → ℝ) (hReg : RegularAtom d)
+    {n m : ℕ} [NeZero n] [NeZero m] (a : Fin n) (b : Fin m)
+    (Q : ProbDist n) (S : ProbDist m)
+    (h : (∑ ij, d ((diracDist a ⊗ diracDist b).p ij) ((Q ⊗ S).p ij)) =
+      (∑ i, d ((diracDist a).p i) (Q.p i)) + ∑ j, d ((diracDist b).p j) (S.p j)) :
+    d 1 (Q.p a * S.p b) = d 1 (Q.p a) + d 1 (S.p b) := by
+  have hp (ij : Fin n × Fin m) : (diracDist a ⊗ diracDist b).p ij =
+      if ij = (a,b) then 1 else 0 := by
+    rcases ij with ⟨i,j⟩
+    by_cases hi : i = a <;> by_cases hj : j = b <;> simp [productDist, diracDist, hi, hj]
+  simp_rw [hp] at h
+  change (∑ ij, d (if ij = (a,b) then 1 else 0) ((Q ⊗ S).p ij)) =
+    (∑ i, d (if i = a then 1 else 0) (Q.p i)) + ∑ j, d (if j = b then 1 else 0) (S.p j) at h
+  rw [sum_dirac_atom d hReg, sum_dirac_atom d hReg, sum_dirac_atom d hReg] at h
+  exact h
+
 theorem dirac_extraction_cauchy
     (d : ℝ → ℝ → ℝ)
     (hd_reg : RegularAtom d)
@@ -88,76 +115,7 @@ theorem dirac_extraction_cauchy
     (a : Fin n) (b : Fin m) (Q : ProbDist n) (S : ProbDist m)
     (_hQa : 0 < Q.p a) (_hSb : 0 < S.p b) :
     d 1 (Q.p a * S.p b) = d 1 (Q.p a) + d 1 (S.p b) := by
-  -- Apply additivity with P = δₐ, R = δᵦ.
-  have h := hAdd (diracDist a) Q (diracDist b) S
-
-  -- LHS: only (a,b) contributes because δ has zeros elsewhere.
-  have h_lhs :
-      (∑ ij : Fin n × Fin m, d ((diracDist a ⊗ diracDist b).p ij) ((Q ⊗ S).p ij)) =
-        d 1 (Q.p a * S.p b) := by
-    have h_single :
-        ∀ i j,
-          d ((diracDist a ⊗ diracDist b).p (i, j)) ((Q ⊗ S).p (i, j)) =
-            if i = a ∧ j = b then d 1 (Q.p a * S.p b) else 0 := by
-      intro i j
-      simp only [productDist, diracDist]
-      by_cases hi : i = a <;> by_cases hj : j = b
-      · simp [hi, hj]
-      · simp only [hi, hj, ↓reduceIte, mul_zero]
-        exact hd_reg _
-      · simp only [hi, hj, ↓reduceIte, zero_mul]
-        exact hd_reg _
-      · simp only [hi, hj, ↓reduceIte, zero_mul]
-        exact hd_reg _
-    have h_eq :
-        ∀ ij : Fin n × Fin m,
-          d ((diracDist a ⊗ diracDist b).p ij) ((Q ⊗ S).p ij) =
-            if ij.1 = a ∧ ij.2 = b then d 1 (Q.p a * S.p b) else 0 :=
-      fun ij => h_single ij.1 ij.2
-    simp_rw [h_eq]
-    have h_filter :
-        Finset.filter (fun x : Fin n × Fin m => x.1 = a ∧ x.2 = b) Finset.univ = {(a, b)} := by
-      ext x
-      simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
-      constructor
-      · intro ⟨ha, hb⟩
-        exact Prod.ext ha hb
-      · intro h
-        simp [h]
-    calc
-      ∑ x : Fin n × Fin m, (if x.1 = a ∧ x.2 = b then d 1 (Q.p a * S.p b) else 0)
-          =
-          ∑ x ∈ Finset.filter (fun x : Fin n × Fin m => x.1 = a ∧ x.2 = b) Finset.univ,
-            d 1 (Q.p a * S.p b) := by
-              rw [Finset.sum_ite, Finset.sum_const_zero, add_zero]
-      _ =
-          ∑ x ∈ ({(a, b)} : Finset (Fin n × Fin m)), d 1 (Q.p a * S.p b) := by
-            rw [h_filter]
-      _ = d 1 (Q.p a * S.p b) := by simp
-
-  have h_rhs1 : (∑ i : Fin n, d ((diracDist a).p i) (Q.p i)) = d 1 (Q.p a) := by
-    have h_single : ∀ i, d ((diracDist a).p i) (Q.p i) = if i = a then d 1 (Q.p a) else 0 := by
-      intro i
-      simp only [diracDist]
-      split_ifs with hi
-      · simp [hi]
-      · exact hd_reg _
-    simp_rw [h_single]
-    simp only [Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
-
-  have h_rhs2 : (∑ j : Fin m, d ((diracDist b).p j) (S.p j)) = d 1 (S.p b) := by
-    have h_single : ∀ j, d ((diracDist b).p j) (S.p j) = if j = b then d 1 (S.p b) else 0 := by
-      intro j
-      simp only [diracDist]
-      split_ifs with hj
-      · simp [hj]
-      · exact hd_reg _
-    simp_rw [h_single]
-    simp only [Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
-
-  -- Combine.
-  rw [h_lhs, h_rhs1, h_rhs2] at h
-  exact h
+  exact dirac_extraction_at d hd_reg a b Q S (hAdd (diracDist a) Q (diracDist b) S)
 
 /-! ## Binary test distributions -/
 

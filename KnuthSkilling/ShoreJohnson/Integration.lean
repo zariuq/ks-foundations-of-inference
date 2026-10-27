@@ -1,14 +1,12 @@
 import KnuthSkilling.ShoreJohnson.GradientSeparability
 
 /-!
-# Integration step (scaffolding)
+# Minimizer transport along an atom-sum certificate
 
-This file packages the **analytic integration step** from Appendix A:
-given a gradient representation `g`, produce an atom divergence `d` such that
-`F(q,p) = ∑ d(q_i, p_i) + const(p)`, hence `F` is objective-equivalent to `ofAtom d`.
-
-The actual construction of `d` from `g` is the remaining analytic task; here we
-record the exact assumptions needed and the objective-equivalence consequence.
+An `AtomSumCertificate` supplies a derivative identity and an exact value identity
+up to a prior-dependent constant. This module transports minimizer observations
+along that supplied value identity. It does not construct an antiderivative or
+prove the value identity from the operator laws.
 -/
 
 namespace KnuthSkilling.ShoreJohnson.Integration
@@ -19,7 +17,7 @@ open KnuthSkilling.Information.InformationEntropy
 
 /-- **Integration assumptions**: a candidate atom `d` whose derivative matches the
 gradient kernel `g`, together with a constant shift term independent of `q`. -/
-structure IntegrationAssumptions (F : ObjectiveFunctional) (gr : GradientRepresentation F) where
+structure AtomSumCertificate (F : ObjectiveFunctional) (gr : GradientRepresentation F) where
   d : ℝ → ℝ → ℝ
   d_deriv :
     ∀ q p : ℝ, 0 < q → 0 < p → HasDerivAt (fun t => d t p) (gr.g q p) q
@@ -29,9 +27,9 @@ structure IntegrationAssumptions (F : ObjectiveFunctional) (gr : GradientReprese
       F.D q p = (∑ i : Fin n, d (q.p i) (p.p i)) + const p
 
 /-- From the integration assumptions we obtain objective equivalence to an atom-sum objective. -/
-theorem objEquiv_of_integrationAssumptions
+theorem objEquiv_of_atomSumCertificate
     (F : ObjectiveFunctional) (gr : GradientRepresentation F)
-    (h : IntegrationAssumptions F gr) :
+    (h : AtomSumCertificate F gr) :
     ObjEquiv F (ofAtom h.d) := by
   intro n p C
   ext q
@@ -63,10 +61,10 @@ theorem objEquiv_of_integrationAssumptions
     exact hle''
 
 /-- Integration step packaged as existence of a sum-form objective equivalent to `F`. -/
-theorem exists_sumForm_of_integrationAssumptions
+theorem exists_sumForm_of_atomSumCertificate
     (F : ObjectiveFunctional) (gr : GradientRepresentation F)
-    (h : IntegrationAssumptions F gr) :
+    (h : AtomSumCertificate F gr) :
     ∃ d : ℝ → ℝ → ℝ, ObjEquiv F (ofAtom d) := by
-  exact ⟨h.d, objEquiv_of_integrationAssumptions F gr h⟩
+  exact ⟨h.d, objEquiv_of_atomSumCertificate F gr h⟩
 
 end KnuthSkilling.ShoreJohnson.Integration

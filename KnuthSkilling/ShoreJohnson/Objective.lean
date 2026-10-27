@@ -68,6 +68,13 @@ structure RealizesEV (I : Inference.InferenceMethod) (F : ObjectiveFunctional) :
     ∀ {n : ℕ} (p : ProbDist n) (cs : EVConstraintSet n) (q : ProbDist n),
       I.Infer p (toConstraintSet cs) q ↔ IsMinimizer F p (toConstraintSet cs) q
 
+/-- A real-valued objective interpretation on strictly positive reference laws. -/
+structure RealizesEVPositive (I : Inference.InferenceMethod) (F : ObjectiveFunctional) : Prop where
+  infer_iff_minimizer_ev :
+    ∀ {n : ℕ} (p : ProbDist n) (cs : EVConstraintSet n) (q : ProbDist n),
+      (∀ i, 0 < p.p i) →
+      (I.Infer p (toConstraintSet cs) q ↔ IsMinimizer F p (toConstraintSet cs) q)
+
 theorem Realizes.toRealizesEV
     {I : Inference.InferenceMethod} {F : ObjectiveFunctional}
     (h : Realizes I F) : RealizesEV I F := by
@@ -154,15 +161,13 @@ theorem realizesEV_of_objEquivEV
 
 theorem unique_minimizer_of_realizes
     {I : Inference.InferenceMethod} {F : ObjectiveFunctional}
-    (hSJ : Inference.ShoreJohnsonAxioms I) (hF : Realizes I F) :
-    ∀ {n : ℕ} (p : ProbDist n) (C : Inference.ConstraintSet n),
-      ∃! q : ProbDist n, IsMinimizer F p C q := by
-  intro n p C
-  rcases hSJ.unique p C with ⟨q, hq, huniq⟩
-  refine ⟨q, (hF.infer_iff_minimizer p C q).1 hq, ?_⟩
-  intro q' hq'
-  apply huniq
-  exact (hF.infer_iff_minimizer p C q').2 hq'
+    (hSJ : Inference.ShoreJohnsonAxioms I) (hF : Realizes I F)
+    {n : ℕ} (p : ProbDist n) (C : Inference.ConstraintSet n)
+    (ha : Inference.Admissible p C) (hs : Inference.Solvable I p C) :
+    ∃! q : ProbDist n, IsMinimizer F p C q := by
+  obtain ⟨q, hq, hu⟩ := Inference.unique_of_solvable hSJ p C ha hs
+  exact ⟨q, (hF.infer_iff_minimizer p C q).mp hq,
+    fun r hr => hu r ((hF.infer_iff_minimizer p C r).mpr hr)⟩
 
 /-! ## Objective-level consequences of SJ2/SJ3/SJ4 -/
 
@@ -187,19 +192,20 @@ theorem eq_twoBlock_of_isMinimizer_twoBlock
     (p₁ : ProbDist n) (p₂ : ProbDist m)
     (C₁ : Inference.ConstraintSet n) (C₂ : Inference.ConstraintSet m)
     (q₁ : ProbDist n) (q₂ : ProbDist m) (q : ProbDist (n + m)),
+    Inference.Admissible p₁ C₁ → Inference.Admissible p₂ C₂ →
     IsMinimizer F p₁ C₁ q₁ →
     IsMinimizer F p₂ C₂ q₂ →
       IsMinimizer F (Inference.ProbDist.twoBlock (n := n) (m := m) w hw0 hw1 p₁ p₂)
         (Inference.ConstraintSet.twoBlock (n := n) (m := m) w hw0 hw1 C₁ C₂) q →
       q = Inference.ProbDist.twoBlock (n := n) (m := m) w hw0 hw1 q₁ q₂ := by
-  intro n m w hw0 hw1 p₁ p₂ C₁ C₂ q₁ q₂ q hq₁ hq₂ hq
+  intro n m w hw0 hw1 p₁ p₂ C₁ C₂ q₁ q₂ q ha₁ ha₂ hq₁ hq₂ hq
   have hInf₁ : I.Infer p₁ C₁ q₁ := (hF.infer_iff_minimizer p₁ C₁ q₁).2 hq₁
   have hInf₂ : I.Infer p₂ C₂ q₂ := (hF.infer_iff_minimizer p₂ C₂ q₂).2 hq₂
   have hInf :
       I.Infer (Inference.ProbDist.twoBlock (n := n) (m := m) w hw0 hw1 p₁ p₂)
         (Inference.ConstraintSet.twoBlock (n := n) (m := m) w hw0 hw1 C₁ C₂) q :=
     (hF.infer_iff_minimizer _ _ _).2 hq
-  exact hSJ.subset_independent_twoBlock w hw0 hw1 p₁ p₂ C₁ C₂ q₁ q₂ q hInf₁ hInf₂ hInf
+  exact hSJ.subset_independent_twoBlock w hw0 hw1 p₁ p₂ C₁ C₂ q₁ q₂ q ha₁ ha₂ hInf₁ hInf₂ hInf
 
 theorem eq_twoBlock_of_isMinimizer_twoBlock_ev
     {I : Inference.InferenceMethod} {F : ObjectiveFunctional}
@@ -208,12 +214,13 @@ theorem eq_twoBlock_of_isMinimizer_twoBlock_ev
       (p₁ : ProbDist n) (p₂ : ProbDist m)
       (cs₁ : EVConstraintSet n) (cs₂ : EVConstraintSet m)
       (q₁ : ProbDist n) (q₂ : ProbDist m) (q : ProbDist (n + m)),
+      (∀ i, 0 < p₁.p i) → (∀ i, 0 < p₂.p i) →
       IsMinimizer F p₁ (toConstraintSet cs₁) q₁ →
       IsMinimizer F p₂ (toConstraintSet cs₂) q₂ →
       IsMinimizer F (Inference.ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) p₁ p₂)
         (toConstraintSet (twoBlockConstraints (n := n) (m := m) w cs₁ cs₂)) q →
       q = Inference.ProbDist.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1) q₁ q₂ := by
-  intro n m w hw0 hw1 p₁ p₂ cs₁ cs₂ q₁ q₂ q hq₁ hq₂ hq
+  intro n m w hw0 hw1 p₁ p₂ cs₁ cs₂ q₁ q₂ q hp₁ hp₂ hq₁ hq₂ hq
   have heq :
       toConstraintSet (twoBlockConstraints (n := n) (m := m) w cs₁ cs₂) =
         Inference.ConstraintSet.twoBlock (n := n) (m := m) w (le_of_lt hw0) (le_of_lt hw1)
@@ -232,7 +239,7 @@ theorem eq_twoBlock_of_isMinimizer_twoBlock_ev
         simpa [heq] using hq'
       exact hq_le q' hq''
   exact eq_twoBlock_of_isMinimizer_twoBlock (hSJ := hSJ) (hF := hF) w (le_of_lt hw0) (le_of_lt hw1)
-    p₁ p₂ (toConstraintSet cs₁) (toConstraintSet cs₂) q₁ q₂ q hq₁ hq₂ hq'
+    p₁ p₂ (toConstraintSet cs₁) (toConstraintSet cs₂) q₁ q₂ q (admissible_ev p₁ cs₁ hp₁) (admissible_ev p₂ cs₂ hp₂) hq₁ hq₂ hq'
 
 theorem eq_prod_of_isMinimizer_product
     {I : Inference.InferenceMethod} {F : ObjectiveFunctional}
@@ -240,17 +247,18 @@ theorem eq_prod_of_isMinimizer_product
     ∀ {n m : ℕ} (p₁ : ProbDist n) (p₂ : ProbDist m)
       (C₁ : Inference.ConstraintSet n) (C₂ : Inference.ConstraintSet m)
       (q₁ : ProbDist n) (q₂ : ProbDist m) (q : ProbDistProd n m),
+      Inference.Admissible p₁ C₁ → Inference.Admissible p₂ C₂ →
       IsMinimizer F p₁ C₁ q₁ →
       IsMinimizer F p₂ C₂ q₂ →
       IsMinimizerProd F (p₁ ⊗ p₂) (Inference.ConstraintSetProd.product C₁ C₂) q →
       q = (q₁ ⊗ q₂) := by
-  intro n m p₁ p₂ C₁ C₂ q₁ q₂ q hq₁ hq₂ hq
+  intro n m p₁ p₂ C₁ C₂ q₁ q₂ q ha₁ ha₂ hq₁ hq₂ hq
   have hInf₁ : I.Infer p₁ C₁ q₁ := (hF.infer_iff_minimizer p₁ C₁ q₁).2 hq₁
   have hInf₂ : I.Infer p₂ C₂ q₂ := (hF.infer_iff_minimizer p₂ C₂ q₂).2 hq₂
   have hInf :
       I.InferProd (p₁ ⊗ p₂) (Inference.ConstraintSetProd.product C₁ C₂) q :=
     (hF.inferProd_iff_minimizer _ _ _).2 hq
-  exact hSJ.system_independent p₁ p₂ C₁ C₂ q₁ q₂ q hInf₁ hInf₂ hInf
+  exact hSJ.system_independent p₁ p₂ C₁ C₂ q₁ q₂ q ha₁ ha₂ hInf₁ hInf₂ hInf
 
 /-! ## Atom-sum objectives -/
 
@@ -258,6 +266,98 @@ theorem eq_prod_of_isMinimizer_product
 noncomputable def ofAtom (d : ℝ → ℝ → ℝ) : ObjectiveFunctional where
   D := fun {n} q p => ∑ i : Fin n, d (q.p i) (p.p i)
   DProd := fun {n m} q p => ∑ ij : Fin n × Fin m, d (q.p ij) (p.p ij)
+
+/-- Objective-based inference is a relation; unattained minima produce no answer. -/
+def minimizerMethod (F : ObjectiveFunctional) : Inference.InferenceMethod where
+  Infer p C q := IsMinimizer F p C q
+  InferProd p C q := IsMinimizerProd F p C q
+
+/-- A partial finite-reference interpretation. It does not assign the total-real
+atom's finite boundary convention to unsupported probabilistic problems. -/
+def positiveMinimizerMethod (F : ObjectiveFunctional) : Inference.InferenceMethod where
+  Infer p C q := (∀ i, 0 < p.p i) ∧ IsMinimizer F p C q
+  InferProd p C q := (∀ i, 0 < p.p i) ∧ IsMinimizerProd F p C q
+
+theorem realizesEVPositive_positiveMinimizerMethod (F : ObjectiveFunctional) :
+    RealizesEVPositive (positiveMinimizerMethod F) F :=
+  ⟨fun _ _ _ hp => and_iff_right hp⟩
+
+theorem positiveMinimizerMethod_axioms (F : ObjectiveFunctional)
+    (h : Inference.ShoreJohnsonAxioms (minimizerMethod F)) :
+    Inference.ShoreJohnsonAxioms (positiveMinimizerMethod F) where
+  unique p C ha q r hq hr := h.unique p C ha q r hq.2 hr.2
+  uniqueProd p C ha q r hq hr := h.uniqueProd p C ha q r hq.2 hr.2
+  feasible hq := h.feasible hq.2
+  feasibleProd hq := h.feasibleProd hq.2
+  perm_invariant σ p C q hq :=
+    ⟨fun i => hq.1 (σ⁻¹ i), h.perm_invariant σ p C q hq.2⟩
+  system_independent p₁ p₂ C₁ C₂ q₁ q₂ Q ha₁ ha₂ h₁ h₂ hQ :=
+    h.system_independent p₁ p₂ C₁ C₂ q₁ q₂ Q ha₁ ha₂ h₁.2 h₂.2 hQ.2
+  subset_independent_twoBlock w hw0 hw1 p₁ p₂ C₁ C₂ q₁ q₂ Q ha₁ ha₂ h₁ h₂ hQ :=
+    h.subset_independent_twoBlock w hw0 hw1 p₁ p₂ C₁ C₂ q₁ q₂ Q ha₁ ha₂ h₁.2 h₂.2 hQ.2
+
+theorem realizes_minimizerMethod (F : ObjectiveFunctional) : Realizes (minimizerMethod F) F :=
+  ⟨fun _ _ _ => Iff.rfl, fun _ _ _ => Iff.rfl⟩
+
+/-- Strictness is supplied by a coordinate on which the two vectors differ. -/
+theorem strictConvexOn_sum_coordinates {ι : Type*} [Fintype ι]
+    (f : ι → ℝ → ℝ) (h : ∀ i, StrictConvexOn ℝ (Set.Ici 0) (f i)) :
+    StrictConvexOn ℝ (stdSimplex ℝ ι) (fun x => ∑ i, f i (x i)) := by
+  classical
+  refine ⟨convex_stdSimplex ℝ ι, fun x hx y hy hxy a b ha hb hab => ?_⟩
+  obtain ⟨i, hi⟩ := Function.ne_iff.mp hxy
+  have hs := Finset.sum_lt_sum
+    (fun (j : ι) (_ : j ∈ Finset.univ) => (h j).convexOn.2
+      (hx.1 j) (hy.1 j) ha.le hb.le hab)
+    ⟨i, Finset.mem_univ i, (h i).2 (hx.1 i) (hy.1 i) hi ha hb hab⟩
+  simpa only [Pi.add_apply, Pi.smul_apply, smul_eq_mul, Finset.sum_add_distrib,
+    ← Finset.mul_sum] using hs
+
+/-- Compactness supplies existence. Feasibility alone does not imply attainment. -/
+theorem exists_minimizer_of_compact {n : ℕ} (F : ObjectiveFunctional) (p : ProbDist n)
+    (C : Inference.ConstraintSet n) (φ : (Fin n → ℝ) → ℝ)
+    (hvalue : ∀ q : ProbDist n, φ q.p = F.D q p)
+    (hc : IsCompact ((fun q : ProbDist n => q.p) '' C))
+    (hne : C.Nonempty) (hφ : ContinuousOn φ ((fun q : ProbDist n => q.p) '' C)) :
+    ∃ q, IsMinimizer F p C q := by
+  obtain ⟨x, ⟨q, hq, rfl⟩, hm⟩ := hc.exists_isMinOn (hne.image _) hφ
+  refine ⟨q, hq, fun r hr => ?_⟩
+  have hh : φ q.p ≤ φ r.p := hm ⟨r, hr, rfl⟩
+  simpa only [hvalue] using hh
+
+theorem minimizer_unique_of_strictConvex {n : ℕ} (F : ObjectiveFunctional) (p : ProbDist n)
+    (C : Inference.ConstraintSet n) (φ : (Fin n → ℝ) → ℝ)
+    (hvalue : ∀ q : ProbDist n, φ q.p = F.D q p)
+    (hc : Convex ℝ ((fun q : ProbDist n => q.p) '' C))
+    (hs : StrictConvexOn ℝ (stdSimplex ℝ (Fin n)) φ)
+    (q r : ProbDist n) (hq : IsMinimizer F p C q) (hr : IsMinimizer F p C r) : q = r := by
+  have hsub : (fun q : ProbDist n => q.p) '' C ⊆ stdSimplex ℝ (Fin n) := by
+    rintro _ ⟨x, _, rfl⟩
+    exact ⟨x.nonneg, x.sum_one⟩
+  have hm (x : ProbDist n) (hx : IsMinimizer F p C x) :
+      IsMinOn φ ((fun q : ProbDist n => q.p) '' C) x.p := by
+    rintro y ⟨z, hz, rfl⟩
+    change φ x.p ≤ φ z.p
+    simpa only [hvalue] using hx.2 z hz
+  have he := (hs.subset hsub hc).eq_of_isMinOn (hm q hq) (hm r hr)
+    ⟨q, hq.1, rfl⟩ ⟨r, hr.1, rfl⟩
+  exact ProbDist.ext q r (fun i => congrFun he i)
+
+/-- A strictly increasing value transformation preserves the minimizer observation. -/
+noncomputable def transform (F : ObjectiveFunctional) (f : ℝ → ℝ) : ObjectiveFunctional where
+  D q p := f (F.D q p)
+  DProd q p := f (F.DProd q p)
+
+theorem isMinimizer_transform_iff (F : ObjectiveFunctional) (f : ℝ → ℝ) (hf : StrictMono f)
+    {n : ℕ} (p : ProbDist n) (C : Inference.ConstraintSet n) (q : ProbDist n) :
+    IsMinimizer (transform F f) p C q ↔ IsMinimizer F p C q := by
+  simp only [IsMinimizer, transform, hf.le_iff_le]
+
+theorem objEquiv_transform (F : ObjectiveFunctional) (f : ℝ → ℝ) (hf : StrictMono f) :
+    ObjEquiv F (transform F f) := by
+  intro n p C
+  ext q
+  exact (isMinimizer_transform_iff F f hf p C q).symm
 
 /-! ## Objective equivalences -/
 
@@ -314,5 +414,69 @@ theorem objEquiv_const_mul_ofAtom (c : ℝ) (hc : 0 < c) (d : ℝ → ℝ → �
   intro n p C
   ext q
   exact isMinimizer_const_mul_ofAtom_iff (n := n) c hc d p C q
+
+/-- Reindexing a disjoint-union presentation retains both authored blocks. -/
+theorem sum_atom_twoBlock (d : ℝ → ℝ → ℝ) {n m : ℕ}
+    (w : ℝ) (hw0 : 0 ≤ w) (hw1 : w ≤ 1)
+    (p₁ q₁ : ProbDist n) (p₂ q₂ : ProbDist m) :
+    (ofAtom d).D (Inference.ProbDist.twoBlock w hw0 hw1 q₁ q₂)
+      (Inference.ProbDist.twoBlock w hw0 hw1 p₁ p₂) =
+      (∑ i, d (w*q₁.p i) (w*p₁.p i)) +
+      ∑ j, d ((1-w)*q₂.p j) ((1-w)*p₂.p j) := by
+  let e := (finSumFinEquiv (m := n) (n := m)).symm
+  let f : Fin n ⊕ Fin m → ℝ := fun s => match s with
+    | .inl i => d (w*q₁.p i) (w*p₁.p i)
+    | .inr j => d ((1-w)*q₂.p j) ((1-w)*p₂.p j)
+  change (∑ i : Fin (n+m), _) = _
+  calc
+    _ = ∑ i : Fin (n+m), f (e i) := by
+      apply Finset.sum_congr rfl
+      intro i _
+      cases hh : e i <;> simp_all [f, e, Inference.ProbDist.twoBlock]
+    _ = _ := by rw [Equiv.sum_comp e f, Fintype.sum_sum_type]
+
+/-- A fixed-mass block formula and component uniqueness imply subset independence.
+At zero block mass the hidden component need not be identified. -/
+theorem subset_independent_of_block_formula (F : ObjectiveFunctional)
+    (hu : ∀ {n : ℕ} (p : ProbDist n) (C : Inference.ConstraintSet n),
+      Inference.Admissible p C → ∀ q r,
+        IsMinimizer F p C q → IsMinimizer F p C r → q = r)
+    {n m : ℕ} (w : ℝ) (hw0 : 0 ≤ w) (hw1 : w ≤ 1)
+    (p₁ : ProbDist n) (p₂ : ProbDist m)
+    (C₁ : Inference.ConstraintSet n) (C₂ : Inference.ConstraintSet m)
+    (q₁ : ProbDist n) (q₂ : ProbDist m) (Q : ProbDist (n+m))
+    (ha₁ : Inference.Admissible p₁ C₁) (ha₂ : Inference.Admissible p₂ C₂)
+    (hq₁ : IsMinimizer F p₁ C₁ q₁) (hq₂ : IsMinimizer F p₂ C₂ q₂)
+    (hQ : IsMinimizer F (Inference.ProbDist.twoBlock w hw0 hw1 p₁ p₂)
+      (Inference.ConstraintSet.twoBlock w hw0 hw1 C₁ C₂) Q)
+    (k : ℝ) (hblock : ∀ r₁ ∈ C₁, ∀ r₂ ∈ C₂,
+      F.D (Inference.ProbDist.twoBlock w hw0 hw1 r₁ r₂)
+        (Inference.ProbDist.twoBlock w hw0 hw1 p₁ p₂) = w*F.D r₁ p₁ + (1-w)*F.D r₂ p₂ + k) :
+    Q = Inference.ProbDist.twoBlock w hw0 hw1 q₁ q₂ := by
+  obtain ⟨r₁, hr₁, r₂, hr₂, rfl⟩ := hQ.1
+  have hb := hQ.2 (Inference.ProbDist.twoBlock w hw0 hw1 q₁ q₂)
+    ⟨q₁, hq₁.1, q₂, hq₂.1, rfl⟩
+  rw [hblock r₁ hr₁ r₂ hr₂, hblock q₁ hq₁.1 q₂ hq₂.1] at hb
+  have h₁ := mul_nonneg hw0 (sub_nonneg.mpr (hq₁.2 r₁ hr₁))
+  have h₂ := mul_nonneg (sub_nonneg.mpr hw1) (sub_nonneg.mpr (hq₂.2 r₂ hr₂))
+  have hz₁ : w*(F.D r₁ p₁ - F.D q₁ p₁) = 0 := by nlinarith
+  have hz₂ : (1-w)*(F.D r₂ p₂ - F.D q₂ p₂) = 0 := by nlinarith
+  have he₁ (hw : w ≠ 0) : r₁ = q₁ := by
+    have he := sub_eq_zero.mp ((mul_eq_zero.mp hz₁).resolve_left hw)
+    exact hu p₁ C₁ ha₁ r₁ q₁ ⟨hr₁, fun r hr => by rw [he]; exact hq₁.2 r hr⟩ hq₁
+  have he₂ (hw : 1-w ≠ 0) : r₂ = q₂ := by
+    have he := sub_eq_zero.mp ((mul_eq_zero.mp hz₂).resolve_left hw)
+    exact hu p₂ C₂ ha₂ r₂ q₂ ⟨hr₂, fun r hr => by rw [he]; exact hq₂.2 r hr⟩ hq₂
+  apply ProbDist.ext
+  intro i
+  cases hh : (finSumFinEquiv (m := n) (n := m)).symm i with
+  | inl j =>
+    by_cases hw : w = 0
+    · simp [Inference.ProbDist.twoBlock, hh, hw]
+    · simp [Inference.ProbDist.twoBlock, hh, he₁ hw]
+  | inr j =>
+    by_cases hw : 1-w = 0
+    · simp [Inference.ProbDist.twoBlock, hh, hw]
+    · simp [Inference.ProbDist.twoBlock, hh, he₂ hw]
 
 end KnuthSkilling.ShoreJohnson.Objective

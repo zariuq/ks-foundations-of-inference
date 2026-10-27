@@ -10,58 +10,18 @@ import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 import Mathlib.Tactic.Convert
 
 /-!
-# Faddeev's Axiomatic Characterization of Shannon Entropy
+# Faddeev's binary-continuity characterization of Shannon entropy
 
-This file formalizes Faddeev's 1956 axiomatization of Shannon entropy and the
-uniqueness route: any function satisfying Faddeev's axioms must equal the Shannon
-entropy (up to a multiplicative constant determined by normalization). The Lean
-4.28 recovery build proves the Lemma 9 coefficient-squeeze route explicitly.
+The supplied function satisfies binary continuity, relabeling symmetry, grouping
+and normalization at the fair binary distribution. The coefficient-squeeze proof
+establishes uniform entropy, then rational and real uniqueness. Full continuity,
+maximality and expansibility follow without adding axioms to the input record.
 
-## The Key Insight: Faddeev is MINIMAL
+The four displayed clauses do not by themselves establish axiomatic independence
+or minimality. `Equivalence` compares actual Faddeev and Shannon–Khinchin records
+while preserving the supplied entropy function at every arity.
 
-Faddeev's axioms are the **minimal** characterization of Shannon entropy:
-
-**Only 4 axioms** (compared to Shannon-Khinchin's 5):
-1. **Binary Continuity (F1)**: H(p, 1-p) is continuous (NOT full continuity!)
-2. **Symmetry (F2)**: H is invariant under permutations
-3. **Recursivity (F3)**: H satisfies the grouping/chain rule
-4. **Normalization (F4)**: H(1/2, 1/2) = 1
-
-## What Faddeev DERIVES (others ASSUME)
-
-| Property | Faddeev | Shannon-Khinchin |
-|----------|---------|------------------|
-| Binary continuity | **ASSUMES** | - |
-| Full continuity | **DERIVES** | ASSUMES |
-| Symmetry | ASSUMES | DERIVES |
-| Recursivity | ASSUMES | ASSUMES (=strong additivity) |
-| Monotonicity | **DERIVES** | - |
-| Maximality | **DERIVES** | ASSUMES |
-| Expansibility | **DERIVES** | ASSUMES |
-| **Total axioms** | **4** | **5** |
-
-## Proof Strategy (via Lemma 9)
-
-1. From recursivity: F(mn) = F(m) + F(n) where F(n) = H(uniform(n))
-2. From normalization: F(2) = 1, hence F(2^k) = k
-3. Define c_p = F(p)/log(p) for primes p
-4. Via prime power analysis and binary continuity: All c_p are equal
-5. Conclusion: F(n) = log₂(n) for all n ≥ 1
-6. Full continuity, monotonicity, and maximality then follow!
-
-## Main Results
-
-* `FaddeevEntropy` - Structure encoding Faddeev's 4 axioms
-* `shannonFaddeev` - Shannon entropy satisfies Faddeev's axioms
-* `faddeev_c_prime_all_equal` - Key lemma: all c_p = c_2 = 1/log(2);
-  this is Faddeev's Lemma 9 coefficient-squeeze step.
-* `faddeev_F_eq_log2` - F(n) = log₂(n), downstream of the key lemma.
-* `faddeev_F_monotone` - Derived: F is monotone (Faddeev proves, Shannon assumes).
-
-## References
-
-* Faddeev, D.K. "On the concept of entropy of a finite probabilistic scheme" (1956)
-* Leinster, T. "An operadic introduction to entropy" (lecture notes)
+Reference: Faddeev, On the concept of entropy of a finite probabilistic scheme (1956).
 -/
 
 namespace InformationTheory
@@ -452,7 +412,7 @@ theorem faddeev_splitFirst_two {n : ℕ} (E : FaddeevEntropy) (p : ProbVec (n + 
           have hidx :
               (⟨i.1 + 2, by exact Nat.succ_lt_succ (Nat.succ_lt_succ i.isLt)⟩ : Fin (n + 2)) =
                 (Fin.natAdd 2 i).cast (Nat.add_comm 2 n) := by
-            apply Fin.ext; simp [Nat.add_comm]
+            apply Fin.ext; simp []
           rw [hidx]
           exact splitFirst_natAdd (p := p) (q := q) (m := 2) (i := i)
         -- unfold `groupFirstTwo` at `Fin.succ i`
@@ -2437,7 +2397,7 @@ theorem faddeev_F_mul (E : FaddeevEntropy) {m n : ℕ} (hm : 0 < m) (hn : 0 < n)
                 exact this.trans hr1'_tail
 
               -- Allow numerals `0`,`1` as `Fin _` indices by providing `NeZero`.
-              letI : NeZero ((m.succ.succ - 1) * n.succ.succ) := ⟨Nat.ne_of_gt htailpos⟩
+              let : NeZero ((m.succ.succ - 1) * n.succ.succ) := ⟨Nat.ne_of_gt htailpos⟩
               have hqmn : 0 < qmn.1 0 + qmn.1 1 := by
                 simp [hqmn_def, uniformDist_apply] ; positivity
 
@@ -3507,7 +3467,7 @@ theorem F_eq_c2_times_log_of_c_prime_const (E : FaddeevEntropy)
           exact Nat.div_mul_cancel hm_dvd
         have hk_pos : 0 < k := by
           by_contra h_not
-          push_neg at h_not
+          push Not at h_not
           have : n = m * k := hdiv.symm
           simp [Nat.le_zero.mp h_not] at this
           omega
@@ -3593,7 +3553,7 @@ theorem F_odd_upper_bound (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n) (h_odd : O
       obtain ⟨k, m, hq_not_dvd, hn_eq⟩ := Nat.exists_eq_pow_mul_and_not_dvd hn.ne' q hq_prime.ne_one
       have hm_pos : 0 < m := by
         by_contra hm_not_pos
-        push_neg at hm_not_pos
+        push Not at hm_not_pos
         simp [Nat.le_zero.mp hm_not_pos] at hn_eq
         omega
       -- m is odd (since n = q^k * m is odd, q is odd, so q^k is odd, so m is odd)
@@ -3603,7 +3563,7 @@ theorem F_odd_upper_bound (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n) (h_odd : O
       -- k ≥ 1 since q | n
       have hk_pos : 0 < k := by
         by_contra hk_zero
-        push_neg at hk_zero
+        push Not at hk_zero
         have hk_eq : k = 0 := Nat.le_zero.mp hk_zero
         simp [hk_eq] at hn_eq
         rw [hn_eq] at hq_dvd
@@ -3709,11 +3669,11 @@ theorem F_odd_lower_bound (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n) (h_odd : O
         exact h_odd.not_two_dvd_nat hq_dvd
       obtain ⟨k, m, hq_not_dvd, hn_eq⟩ := Nat.exists_eq_pow_mul_and_not_dvd hn.ne' q hq_prime.ne_one
       have hm_pos : 0 < m := by
-        by_contra hm_not_pos; push_neg at hm_not_pos
+        by_contra hm_not_pos; push Not at hm_not_pos
         simp [Nat.le_zero.mp hm_not_pos] at hn_eq; omega
       have hm_odd : Odd m := by rw [hn_eq] at h_odd; exact (Nat.odd_mul.mp h_odd).2
       have hk_pos : 0 < k := by
-        by_contra hk_zero; push_neg at hk_zero
+        by_contra hk_zero; push Not at hk_zero
         have hk_eq : k = 0 := Nat.le_zero.mp hk_zero
         simp [hk_eq] at hn_eq; rw [hn_eq] at hq_dvd; exact hq_not_dvd hq_dvd
       have hm_lt_n : m < n := by
@@ -3838,7 +3798,7 @@ theorem lambda_prime_lower_bound (E : FaddeevEntropy) {p : ℕ} (hp : Nat.Prime 
   obtain ⟨a, m, h2_not_dvd, hp1_eq⟩ := Nat.exists_eq_pow_mul_and_not_dvd hp1_pos.ne' 2 (by decide : (2 : ℕ) ≠ 1)
   have hm_pos : 0 < m := by
     by_contra hm_not_pos
-    push_neg at hm_not_pos
+    push Not at hm_not_pos
     simp [Nat.le_zero.mp hm_not_pos] at hp1_eq
     omega
   -- m is odd since 2 ∤ m
@@ -3846,7 +3806,7 @@ theorem lambda_prime_lower_bound (E : FaddeevEntropy) {p : ℕ} (hp : Nat.Prime 
   -- a ≥ 1 since p - 1 is even (2 | p - 1)
   have ha_pos : 0 < a := by
     by_contra ha_zero
-    push_neg at ha_zero
+    push Not at ha_zero
     have ha_eq : a = 0 := Nat.le_zero.mp ha_zero
     simp [ha_eq] at hp1_eq
     rw [hp1_eq] at h2_dvd
@@ -3997,7 +3957,7 @@ theorem exists_recordHolder_gt (E : FaddeevEntropy)
     -- First show q₀ > r (otherwise contradicts record-holder)
     have hq₀_gt_r : q₀ > r := by
       by_contra hq₀_le_r
-      push_neg at hq₀_le_r
+      push Not at hq₀_le_r
       have hq₀_lt_r_or_eq : q₀ < r ∨ q₀ = r := Nat.lt_or_eq_of_le hq₀_le_r
       cases hq₀_lt_r_or_eq with
       | inl hq₀_lt => exact absurd (h_rec q₀ hq₀_prime hq₀_lt) (not_lt.mpr (le_of_lt hq₀_gt))
@@ -4031,14 +3991,14 @@ theorem exists_recordHolder_gt (E : FaddeevEntropy)
           exact ⟨q, hq_prime, hq_gt_r, le_refl q, hq_rec⟩
         · -- q is not a record-holder: ∃ prime q' < q with c_q' ≥ c_q
           unfold isRecordHolder at hq_rec
-          push_neg at hq_rec
+          push Not at hq_rec
           obtain ⟨q', hq'_prime, hq'_lt_q, hq'_ge⟩ := hq_rec
           -- c_q' ≥ c_q > c_r, so c_q' > c_r
           have hq'_gt_cr : c_prime E r hr < c_prime E q' hq'_prime := lt_of_lt_of_le hq_gt hq'_ge
           -- q' > r (otherwise contradicts r being record-holder)
           have hq'_gt_r : r < q' := by
             by_contra hq'_le_r
-            push_neg at hq'_le_r
+            push Not at hq'_le_r
             have hq'_lt_r_or_eq : q' < r ∨ q' = r := Nat.lt_or_eq_of_le hq'_le_r
             cases hq'_lt_r_or_eq with
             | inl hq'_lt => exact absurd (h_rec q' hq'_prime hq'_lt) (not_lt.mpr (le_of_lt hq'_gt_cr))
@@ -4062,7 +4022,7 @@ theorem exists_recordHolder_gt (E : FaddeevEntropy)
   by_cases hr'_gt_p : r' > p
   · exact ⟨r', hr', hr'_gt_p, hr'_rec⟩
   · -- r' ≤ p, but r' > r, so we made progress
-    push_neg at hr'_gt_p
+    push Not at hr'_gt_p
     -- Use strong induction on (p - r)
     have hp_sub_r_pos : p - r > 0 := Nat.sub_pos_of_lt (lt_of_lt_of_le hr'_gt_r hr'_gt_p)
     -- Actually we need to track that p - r' < p - r
@@ -4079,7 +4039,7 @@ theorem exists_recordHolder_gt (E : FaddeevEntropy)
         obtain ⟨r', hr', hr'_gt_r, hr'_rec⟩ := next_recordHolder r hr hr_rec
         by_cases hr'_gt_p : r' > p
         · exact ⟨r', hr', hr'_gt_p, hr'_rec⟩
-        · push_neg at hr'_gt_p
+        · push Not at hr'_gt_p
           have hd' : p - r' < d := by omega
           exact ih (p - r') hd' r' hr' hr'_gt_p rfl hr'_rec)
       (p - r) r hr hr_le_p rfl hr_rec
@@ -4098,7 +4058,7 @@ theorem faddeev_c_prime_has_max (E : FaddeevEntropy) :
       c_prime E q hq ≤ c_prime E p hp := by
   -- Proof by contradiction using λ_n → 0
   by_contra h_no_max
-  push_neg at h_no_max
+  push Not at h_no_max
   -- h_no_max: For each prime p, there exists prime q with c_q > c_p
 
   -- Key fact: λ_n → 0 as n → ∞
@@ -4201,7 +4161,7 @@ theorem exists_downwardRecordHolder_gt (E : FaddeevEntropy)
     -- First show q₀ > r (otherwise contradicts downward record-holder)
     have hq₀_gt_r : q₀ > r := by
       by_contra hq₀_le_r
-      push_neg at hq₀_le_r
+      push Not at hq₀_le_r
       have hq₀_lt_r_or_eq : q₀ < r ∨ q₀ = r := Nat.lt_or_eq_of_le hq₀_le_r
       cases hq₀_lt_r_or_eq with
       | inl hq₀_lt_nat =>
@@ -4221,7 +4181,7 @@ theorem exists_downwardRecordHolder_gt (E : FaddeevEntropy)
         · exact ⟨q, hq_prime, hq_gt_r, le_refl q, hq_rec⟩
         · -- q is not a downward record-holder, so there exists s < q with c_s ≤ c_q
           unfold isDownwardRecordHolder at hq_rec
-          push_neg at hq_rec
+          push Not at hq_rec
           obtain ⟨s, hs, hs_lt_q, hs_le⟩ := hq_rec
           -- s < q and c_s ≤ c_q < c_r
           have hs_lt_r : c_prime E s hs < c_prime E r hr := lt_of_le_of_lt hs_le hq_lt
@@ -4233,7 +4193,7 @@ theorem exists_downwardRecordHolder_gt (E : FaddeevEntropy)
           · -- s ≤ r, but we have c_s ≤ c_q < c_r
             -- If s = r, then c_r ≤ c_q < c_r, contradiction
             -- If s < r, then by downward record-holder of r: c_r < c_s, but c_s < c_r, contradiction
-            push_neg at hs_gt_r
+            push Not at hs_gt_r
             have hs_lt_r_or_eq : s < r ∨ s = r := Nat.lt_or_eq_of_le hs_gt_r
             cases hs_lt_r_or_eq with
             | inl hs_lt =>
@@ -4274,7 +4234,7 @@ theorem exists_downwardRecordHolder_gt (E : FaddeevEntropy)
         by_cases h : n + 1 ≤ r
         · exact ⟨r, hr, h, hr_rec⟩
         · -- r < n + 1, so r ≤ n, and combined with n ≤ r, we have r = n
-          push_neg at h
+          push Not at h
           -- Get a larger downward record-holder
           obtain ⟨r', hr', hr'_gt_r, hr'_rec⟩ := next_downwardRecordHolder r hr hr_rec
           -- r' > r ≥ n, so r' ≥ n + 1
@@ -4302,11 +4262,11 @@ theorem lambda_prime_upper_bound (E : FaddeevEntropy) {p : ℕ} (hp : Nat.Prime 
   have hc2_le := h_dom 2 Nat.prime_two h2_dvd
   obtain ⟨a, m, h2_not_dvd, hp1_eq⟩ := Nat.exists_eq_pow_mul_and_not_dvd hp1_pos.ne' 2 (by decide)
   have hm_pos : 0 < m := by
-    by_contra hm_not_pos; push_neg at hm_not_pos
+    by_contra hm_not_pos; push Not at hm_not_pos
     simp [Nat.le_zero.mp hm_not_pos] at hp1_eq; omega
   have hm_odd : Odd m := Nat.odd_iff.mpr (Nat.two_dvd_ne_zero.mp h2_not_dvd)
   have ha_pos : 0 < a := by
-    by_contra ha_zero; push_neg at ha_zero
+    by_contra ha_zero; push Not at ha_zero
     have ha_eq : a = 0 := Nat.le_zero.mp ha_zero
     simp [ha_eq] at hp1_eq; rw [hp1_eq] at h2_dvd; exact h2_not_dvd h2_dvd
   have hFp1 := F_two_pow_mul E a hm_pos
@@ -4387,7 +4347,7 @@ theorem faddeev_c_prime_has_min_aux (E : FaddeevEntropy) :
       c_prime E p hp ≤ c_prime E q hq := by
   -- Proof by contradiction using λ_n → 0
   by_contra h_no_min
-  push_neg at h_no_min
+  push Not at h_no_min
   -- h_no_min: For each prime p, there exists prime q with c_q < c_p
 
   -- Key fact: λ_n → 0 as n → ∞
@@ -4492,7 +4452,7 @@ theorem faddeev_c_prime_has_min_aux (E : FaddeevEntropy) :
         apply mul_nonpos_of_nonpos_of_nonneg hcp₂_sign (le_of_lt hlog_ratio_pos)
       linarith
     · -- Case B: c_{p₂} > 0
-      push_neg at hcp₂_sign
+      push Not at hcp₂_sign
       -- c_{p₂} < c_2, so correction < c_2 · log(p₂/(p₂-1))
       have hcorr_lt : c_prime E p₂ hp₂ * Real.log ((p₂ : ℝ) / ((p₂ : ℝ) - 1)) <
           c_prime E 2 Nat.prime_two * Real.log ((p₂ : ℝ) / ((p₂ : ℝ) - 1)) := by
@@ -4619,14 +4579,14 @@ theorem F_even_upper_bound_with_gap (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n)
     Nat.exists_eq_pow_mul_and_not_dvd hn.ne' 2 (by decide : (2 : ℕ) ≠ 1)
   have hm_pos : 0 < m := by
     by_contra hm_not_pos
-    push_neg at hm_not_pos
+    push Not at hm_not_pos
     simp [Nat.le_zero.mp hm_not_pos] at hn_eq
     omega
   have hm_odd : Odd m := Nat.odd_iff.mpr (Nat.two_dvd_ne_zero.mp h2_not_dvd)
   have h2_dvd : 2 ∣ n := Even.two_dvd heven
   have ha_pos : 0 < a := by
     by_contra ha_zero
-    push_neg at ha_zero
+    push Not at ha_zero
     have ha_eq : a = 0 := Nat.le_zero.mp ha_zero
     simp [ha_eq] at hn_eq
     rw [hn_eq] at h2_dvd
@@ -4680,14 +4640,14 @@ theorem F_even_lower_bound_with_gap (E : FaddeevEntropy) {n : ℕ} (hn : 0 < n)
     Nat.exists_eq_pow_mul_and_not_dvd hn.ne' 2 (by decide : (2 : ℕ) ≠ 1)
   have hm_pos : 0 < m := by
     by_contra hm_not_pos
-    push_neg at hm_not_pos
+    push Not at hm_not_pos
     simp [Nat.le_zero.mp hm_not_pos] at hn_eq
     omega
   have hm_odd : Odd m := Nat.odd_iff.mpr (Nat.two_dvd_ne_zero.mp h2_not_dvd)
   have h2_dvd : 2 ∣ n := Even.two_dvd heven
   have ha_pos : 0 < a := by
     by_contra ha_zero
-    push_neg at ha_zero
+    push Not at ha_zero
     have ha_eq : a = 0 := Nat.le_zero.mp ha_zero
     simp [ha_eq] at hn_eq
     rw [hn_eq] at h2_dvd
@@ -4772,7 +4732,7 @@ theorem faddeev_c_prime_all_equal (E : FaddeevEntropy) :
     · subst hpMax_eq_two
       exact le_rfl
     · by_contra hnot
-      push_neg at hnot
+      push Not at hnot
       set C := c_prime E pMax hpMax with hC_def
       set c2 := c_prime E 2 Nat.prime_two with hc2_def
       set δ := (C - c2) * Real.log 2 with hδ_def
@@ -4860,7 +4820,7 @@ theorem faddeev_c_prime_all_equal (E : FaddeevEntropy) :
     · subst hpMin_eq_two
       exact le_rfl
     · by_contra hnot
-      push_neg at hnot
+      push Not at hnot
       set C := c_prime E pMin hpMin with hC_def
       set c2 := c_prime E 2 Nat.prime_two with hc2_def
       set δ := (c2 - C) * Real.log 2 with hδ_def
@@ -4952,7 +4912,7 @@ theorem faddeev_c_prime_all_equal (E : FaddeevEntropy) :
         · have hprod_nonpos : C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) ≤ 0 := by
             exact mul_nonpos_of_nonpos_of_nonneg hC_nonpos (le_of_lt hlogdiff_pos)
           linarith
-        · push_neg at hC_nonpos
+        · push Not at hC_nonpos
           have hC_le_c2 : C ≤ c2 := le_of_lt hC_lt_c2
           calc C * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ))
               ≤ c2 * (Real.log n - Real.log ((n - 1 : ℕ) : ℝ)) := by
@@ -5072,7 +5032,7 @@ Recovered non-building proof attempt retained for forensic reference.
     · simp only [hp_max_eq_2, le_refl]
     · -- p_max > 2, odd. Use contradiction via λ → 0.
       by_contra h_max_gt_c2
-      push_neg at h_max_gt_c2
+      push Not at h_max_gt_c2
       -- δ := (c_{p_max} - c_2) * log 2 > 0
       set δ := (c_prime E p_max hp_max - c_prime E 2 Nat.prime_two) * Real.log 2 with hδ_def
       have hδ_pos : 0 < δ := mul_pos (sub_pos.mpr h_max_gt_c2) log_two_pos
@@ -5237,7 +5197,7 @@ Recovered non-building proof attempt retained for forensic reference.
       obtain ⟨a, b, hb_odd, hab⟩ := Nat.exists_eq_pow_mul_and_not_dvd hn1_ne 2 (by norm_num)
       have hb_pos : 0 < b := by
         by_contra hb_zero
-        push_neg at hb_zero
+        push Not at hb_zero
         interval_cases b; simp_all
       have hb_ne : b ≠ 0 := by omega
       have ha_ge : k + 1 ≤ a := by
@@ -5587,7 +5547,7 @@ Recovered non-building proof attempt retained for forensic reference.
         -- By contradiction: if c_{p_min} < c_2, the power sequence p_min^{2^k} gives λ → -∞
         -- This contradicts λ → 0 (faddeev_lambda_tendsto_zero).
         by_contra h_lt_c2
-        push_neg at h_lt_c2
+        push Not at h_lt_c2
 
         -- p_min ≠ 2, so p_min ≥ 3 and odd
         have hp_min_ge_3 : 3 ≤ p_min := by
@@ -5758,7 +5718,7 @@ Recovered non-building proof attempt retained for forensic reference.
         obtain ⟨a, b, hb_odd, hab⟩ := Nat.exists_eq_pow_mul_and_not_dvd hn1_ne 2 (by norm_num)
         have hb_pos : 0 < b := by
           by_contra hb_zero
-          push_neg at hb_zero
+          push Not at hb_zero
           interval_cases b; simp_all
         have hb_ne : b ≠ 0 := by omega
         have ha_ge : k + 1 ≤ a := by
@@ -5911,7 +5871,7 @@ Recovered non-building proof attempt retained for forensic reference.
                     _ = δ / 4 := by ring
           case neg =>
             -- c_{p_min} ≤ 0 case: product is nonpositive, δ/4 is positive
-            push_neg at hcpmin_sign
+            push Not at hcpmin_sign
             have h1 : c_prime E p_min hp_min * Real.log (n / (n - 1)) ≤ 0 :=
               mul_nonpos_of_nonpos_of_nonneg hcpmin_sign (le_of_lt hlog_ratio_pos)
             have h2 : (0 : ℝ) < δ / 4 := by positivity
@@ -6416,7 +6376,7 @@ theorem rat_dense_in_Icc : Dense {x : Set.Icc (0 : ℝ) 1 | ∃ m n : ℕ, 0 < n
   let y : Set.Icc (0 : ℝ) 1 := ⟨(m : ℝ) / n, h_nonneg, h_le_one⟩
   -- Show y is in the set of rationals
   have hy_rat : y ∈ {x : Set.Icc (0 : ℝ) 1 | ∃ m n : ℕ, 0 < n ∧ m ≤ n ∧ x.1 = m / n} := by
-    simp only [Set.mem_setOf_eq, y]
+    simp only [Set.mem_ofPred_eq, y]
     exact ⟨m, n, hn_pos, hm_le, rfl⟩
   -- Show y is close to x
   have hy_close : dist y x < ε := by
@@ -6462,7 +6422,7 @@ theorem ηE_eq_ηSh (E : FaddeevEntropy) : ηE E = ηSh := by
   apply Continuous.ext_on rat_dense_in_Icc (continuous_ηE E) continuous_ηSh
   -- Show ηE and ηSh agree on rationals
   intro x hx
-  simp only [Set.mem_setOf_eq] at hx
+  simp only [Set.mem_ofPred_eq] at hx
   obtain ⟨m, n, hn_pos, hm_le, hx_eq⟩ := hx
   -- x.1 = m/n, need to show ηE E x = ηSh x
   -- First rewrite x as the standard rational form
@@ -6553,13 +6513,13 @@ theorem faddeev_H_eq_shannon (E : FaddeevEntropy) {n : ℕ} (p : ProbVec n) :
         ring
       · -- p.1 0 + p.1 1 = 0, so p.1 0 = p.1 1 = 0
         -- Use permutation to bring a positive entry to position 0
-        push_neg at h
+        push Not at h
         have hp0 : p.1 0 = 0 := le_antisymm (by linarith [p.nonneg 1]) (p.nonneg 0)
         have hp1 : p.1 1 = 0 := le_antisymm (by linarith [p.nonneg 0]) (p.nonneg 1)
         -- Find a positive index (exists since sum = 1)
         have hpos : ∃ i, 0 < p.1 i := by
           by_contra h_all_zero
-          push_neg at h_all_zero
+          push Not at h_all_zero
           have hsum := p.sum_eq_one
           have : ∑ i, p.1 i ≤ 0 := Finset.sum_nonpos (fun i _ => h_all_zero i)
           linarith

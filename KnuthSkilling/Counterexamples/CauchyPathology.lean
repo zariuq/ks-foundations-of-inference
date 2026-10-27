@@ -17,7 +17,7 @@ import Mathlib.LinearAlgebra.Basis.VectorSpace
 import Mathlib.LinearAlgebra.Basis.Defs
 import Mathlib.LinearAlgebra.LinearIndependent.Lemmas
 import Mathlib.NumberTheory.Real.Irrational
-import Mathlib.Data.Real.Sqrt
+import Mathlib.Analysis.Real.Sqrt
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 
 namespace KnuthSkilling.Counterexamples
